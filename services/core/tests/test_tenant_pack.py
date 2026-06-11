@@ -54,3 +54,36 @@ def test_provision_passes_pack_id_to_tenant():
 
     assert r.status_code == 201
     assert captured["pack_id"] == "haircare"
+
+
+def test_get_pack_for_tenant_uses_pack_id():
+    from helix.packs.registry import get_pack_for_tenant, _registry
+    from helix.db.models import Tenant
+    from unittest.mock import MagicMock
+
+    mock_pack = MagicMock()
+    mock_pack.id = "haircare"
+    _registry["haircare"] = mock_pack
+
+    tenant = Tenant(name="x", platform="woocommerce", store_url="https://x.com",
+                    credentials_enc=b"enc", pack_id="haircare")
+    result = get_pack_for_tenant(tenant)
+    assert result is mock_pack
+
+    del _registry["haircare"]
+
+
+def test_get_pack_for_tenant_falls_back_when_pack_missing():
+    from helix.packs.registry import get_pack_for_tenant, _registry
+    from helix.db.models import Tenant
+    from unittest.mock import MagicMock
+
+    mock_pack = MagicMock()
+    mock_pack.id = "kbeauty"
+    _registry.clear()
+    _registry["kbeauty"] = mock_pack
+
+    tenant = Tenant(name="x", platform="woocommerce", store_url="https://x.com",
+                    credentials_enc=b"enc", pack_id="unknown_pack")
+    result = get_pack_for_tenant(tenant)
+    assert result is mock_pack

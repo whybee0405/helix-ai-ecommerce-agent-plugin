@@ -7,10 +7,11 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.deps import get_db, get_tenant
-from helix.connectors.models import CanonicalProduct
+from helix.connectors.models import CanonicalCustomer, CanonicalProduct
+from helix.db.crud.customers import upsert_customer
 from helix.db.crud.products import delete_product, upsert_product
-from helix.db.models import Product, Tenant
-from helix.packs.registry import default_pack
+from helix.db.models import Customer, Product, Tenant
+from helix.packs.registry import get_pack_for_tenant
 from helix.workers.tasks.embedding import embed_product
 
 logger = structlog.get_logger(__name__)
@@ -33,7 +34,7 @@ async def sync_products(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> SyncResponse:
-    pack = default_pack()
+    pack = get_pack_for_tenant(tenant)
     validator = jsonschema.Draft7Validator(pack.product_schema)
 
     synced = 0
@@ -76,3 +77,51 @@ async def sync_products(
 
     await db.commit()
     return SyncResponse(synced=synced, failed=failed, errors=errors)
+
+
+class CustomerSyncRequest(BaseModel):
+    customers: list[CanonicalCustomer]
+
+
+class CustomerSyncResponse(BaseModel):
+    synced: int
+    failed: int
+    errors: list[str]
+
+
+@router.post("/customers", response_model=CustomerSyncResponse)
+async def sync_customers(
+    body: CustomerSyncRequest,
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> CustomerSyncResponse:
+    pack = get_pack_for_tenant(tenant)
+    profile_validator = jsonschema.Draft7Validator(pack.profile_schema)
+
+    synced = 0
+    failed = 0
+    errors: list[str] = []
+
+    for cc in body.customers:
+        try:
+            validation_errors = list(profile_validator.iter_errors(cc.profile))
+            if validation_errors:
+                errors.append(f"customer {cc.platform_id}: {validation_errors[0].message}")
+                failed += 1
+                continue
+
+            customer = Customer(
+                tenant_id=tenant.id,
+                platform_id=cc.platform_id,
+                email_hash=cc.email_hash,
+                profile=cc.profile,
+            )
+            await upsert_customer(db, customer)
+            synced += 1
+        except Exception as exc:
+            logger.warning("sync_customer_error", platform_id=cc.platform_id, error=str(exc))
+            errors.append(f"customer {cc.platform_id}: {exc}")
+            failed += 1
+
+    await db.commit()
+    return CustomerSyncResponse(synced=synced, failed=failed, errors=errors)

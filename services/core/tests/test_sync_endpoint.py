@@ -58,7 +58,7 @@ async def test_sync_valid_products_returns_summary(client, tenant):
     with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
          patch("helix.api.routers.sync.upsert_product", new_callable=AsyncMock) as mock_upsert, \
          patch("helix.api.routers.sync.embed_product") as mock_task, \
-         patch("helix.api.routers.sync.default_pack") as mock_pack:
+         patch("helix.api.routers.sync.get_pack_for_tenant") as mock_pack:
         mock_pack.return_value = MagicMock(product_schema={"type": "object", "properties": {}, "required": []})
         mock_upsert.return_value = MagicMock(id=uuid4())
 
@@ -80,7 +80,7 @@ async def test_sync_delete_flag_removes_product(client, tenant):
 
     with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
          patch("helix.api.routers.sync.delete_product", new_callable=AsyncMock, return_value=True) as mock_del, \
-         patch("helix.api.routers.sync.default_pack") as mock_pack:
+         patch("helix.api.routers.sync.get_pack_for_tenant") as mock_pack:
         mock_pack.return_value = MagicMock(product_schema={"type": "object", "properties": {}, "required": []})
 
         resp = await client.post(

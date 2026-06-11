@@ -25,3 +25,13 @@ def default_pack() -> LoadedPack:
     if not _registry:
         raise RuntimeError("No packs loaded")
     return next(iter(_registry.values()))
+
+
+from helix.db.models import Tenant as _Tenant
+
+
+def get_pack_for_tenant(tenant: _Tenant) -> LoadedPack:
+    pack_id = tenant.pack_id or "kbeauty"
+    if pack_id in _registry:
+        return _registry[pack_id]
+    return default_pack()
