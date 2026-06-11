@@ -59,3 +59,27 @@ async def delete_product(
     await session.delete(product)
     await session.flush()
     return True
+
+
+async def vector_search_products(
+    session: AsyncSession,
+    tenant_id: UUID,
+    query_vector: list[float],
+    limit: int = 10,
+    in_stock_only: bool = False,
+    category: str | None = None,
+) -> list[tuple[Product, float]]:
+    distance_col = Product.embedding.cosine_distance(query_vector).label("distance")
+    filters = [Product.tenant_id == tenant_id, Product.embedding.is_not(None)]
+    if in_stock_only:
+        filters.append(Product.in_stock.is_(True))
+    if category:
+        filters.append(Product.categories.contains([category]))
+    q = (
+        select(Product, distance_col)
+        .where(*filters)
+        .order_by(distance_col)
+        .limit(limit)
+    )
+    result = await session.execute(q)
+    return [(row.Product, 1.0 - row.distance) for row in result]
