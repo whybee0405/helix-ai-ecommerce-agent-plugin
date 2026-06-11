@@ -21,6 +21,20 @@ async def get_customer_by_id(
     return result.scalar_one_or_none()
 
 
+async def get_customer_by_platform_id(
+    session: AsyncSession,
+    tenant_id: UUID,
+    platform_id: str,
+) -> Customer | None:
+    result = await session.execute(
+        select(Customer).where(
+            Customer.tenant_id == tenant_id,
+            Customer.platform_id == platform_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def upsert_customer(session: AsyncSession, customer: Customer) -> Customer:
     stmt = (
         insert(Customer)
@@ -43,3 +57,15 @@ async def upsert_customer(session: AsyncSession, customer: Customer) -> Customer
     result = await session.execute(stmt)
     await session.flush()
     return result.scalar_one()
+
+
+async def update_customer_profile(
+    session: AsyncSession,
+    customer: Customer,
+    new_profile: dict,
+) -> Customer:
+    customer.profile = new_profile
+    session.add(customer)
+    await session.flush()
+    await session.refresh(customer)
+    return customer

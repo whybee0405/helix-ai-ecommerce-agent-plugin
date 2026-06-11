@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.deps import get_db, get_tenant
 from helix.connectors.models import CanonicalCustomer, CanonicalOrder, CanonicalProduct
-from helix.db.crud.customers import upsert_customer
+from helix.db.crud.customers import get_customer_by_platform_id, update_customer_profile, upsert_customer
 from helix.db.crud.orders import get_customer_id_by_platform_id, upsert_order
 from helix.db.crud.products import delete_product, upsert_product
 from helix.db.models import Customer, Order, Product, Tenant
@@ -90,6 +90,10 @@ class CustomerSyncResponse(BaseModel):
     errors: list[str]
 
 
+class CustomerProfilePatch(BaseModel):
+    profile: dict
+
+
 @router.post("/customers", response_model=CustomerSyncResponse)
 async def sync_customers(
     body: CustomerSyncRequest,
@@ -126,6 +130,22 @@ async def sync_customers(
 
     await db.commit()
     return CustomerSyncResponse(synced=synced, failed=failed, errors=errors)
+
+
+@router.patch("/customers/{platform_id}/profile")
+async def patch_customer_profile(
+    platform_id: str,
+    body: CustomerProfilePatch,
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    customer = await get_customer_by_platform_id(db, tenant.id, platform_id)
+    if customer is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+    new_profile = {**(customer.profile or {}), **body.profile}
+    updated = await update_customer_profile(db, customer, new_profile)
+    await db.commit()
+    return {"customer_id": str(updated.id), "platform_id": updated.platform_id}
 
 
 class OrderSyncRequest(BaseModel):
