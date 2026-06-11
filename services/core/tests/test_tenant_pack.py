@@ -80,10 +80,15 @@ def test_get_pack_for_tenant_falls_back_when_pack_missing():
 
     mock_pack = MagicMock()
     mock_pack.id = "kbeauty"
-    _registry.clear()
-    _registry["kbeauty"] = mock_pack
+    original = dict(_registry)
+    try:
+        _registry.clear()
+        _registry["kbeauty"] = mock_pack
 
-    tenant = Tenant(name="x", platform="woocommerce", store_url="https://x.com",
-                    credentials_enc=b"enc", pack_id="unknown_pack")
-    result = get_pack_for_tenant(tenant)
-    assert result is mock_pack
+        tenant = Tenant(name="x", platform="woocommerce", store_url="https://x.com",
+                        credentials_enc=b"enc", pack_id="unknown_pack")
+        result = get_pack_for_tenant(tenant)
+        assert result is mock_pack
+    finally:
+        _registry.clear()
+        _registry.update(original)

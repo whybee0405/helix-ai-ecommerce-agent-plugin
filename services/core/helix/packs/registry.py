@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from helix.packs.loader import LoadedPack, PackLoader
+from helix.db.models import Tenant as _Tenant
 
 _registry: dict[str, LoadedPack] = {}
 
@@ -25,9 +26,6 @@ def default_pack() -> LoadedPack:
     if not _registry:
         raise RuntimeError("No packs loaded")
     return next(iter(_registry.values()))
-
-
-from helix.db.models import Tenant as _Tenant
 
 
 def get_pack_for_tenant(tenant: _Tenant) -> LoadedPack:
