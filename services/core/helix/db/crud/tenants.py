@@ -27,3 +27,12 @@ async def create_tenant(session: AsyncSession, tenant: Tenant) -> Tenant:
     await session.flush()
     await session.refresh(tenant)
     return tenant
+
+
+async def update_tenant(session: AsyncSession, tenant: Tenant, **fields) -> Tenant:
+    for key, value in fields.items():
+        setattr(tenant, key, value)
+    session.add(tenant)
+    await session.flush()
+    await session.refresh(tenant)
+    return tenant

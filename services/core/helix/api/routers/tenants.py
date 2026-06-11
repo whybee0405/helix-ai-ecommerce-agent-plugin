@@ -1,5 +1,5 @@
 from typing import Annotated, Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from helix.api.auth.crypto import encrypt_credentials
 from helix.api.deps import get_db
 from helix.config import get_settings
-from helix.db.crud.tenants import create_tenant
+from helix.db.crud.tenants import create_tenant, get_tenant_by_id, update_tenant
 from helix.db.models import Tenant
 
 router = APIRouter(prefix="/v1/tenants", tags=["tenants"])
@@ -25,6 +25,30 @@ class ProvisionRequest(BaseModel):
 class ProvisionResponse(BaseModel):
     tenant_id: str
     public_key: str
+
+
+class TenantDetail(BaseModel):
+    tenant_id: str
+    name: str
+    platform: str
+    store_url: str
+    pack_id: str | None
+    public_key: str
+    created_at: str
+
+
+class TenantPatchRequest(BaseModel):
+    name: str | None = None
+    pack_id: str | None = None
+
+
+def _auth_provision_key(
+    x_helix_provision_key: Annotated[str | None, Header()] = None,
+) -> str:
+    settings = get_settings()
+    if x_helix_provision_key != settings.provision_key.get_secret_value():
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid provision key")
+    return x_helix_provision_key
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=ProvisionResponse)
@@ -51,4 +75,49 @@ async def provision_tenant(
     return ProvisionResponse(
         tenant_id=str(tenant.id),
         public_key=str(tenant.public_key),
+    )
+
+
+@router.get("/{tenant_id}", response_model=TenantDetail)
+async def get_tenant_endpoint(
+    tenant_id: UUID,
+    _: str = Depends(_auth_provision_key),
+    db: AsyncSession = Depends(get_db),
+) -> TenantDetail:
+    tenant = await get_tenant_by_id(db, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    return TenantDetail(
+        tenant_id=str(tenant.id),
+        name=tenant.name,
+        platform=tenant.platform,
+        store_url=tenant.store_url,
+        pack_id=tenant.pack_id,
+        public_key=str(tenant.public_key),
+        created_at=tenant.created_at.isoformat(),
+    )
+
+
+@router.patch("/{tenant_id}", response_model=TenantDetail)
+async def patch_tenant_endpoint(
+    tenant_id: UUID,
+    body: TenantPatchRequest,
+    _: str = Depends(_auth_provision_key),
+    db: AsyncSession = Depends(get_db),
+) -> TenantDetail:
+    tenant = await get_tenant_by_id(db, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    updates = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
+    if updates:
+        tenant = await update_tenant(db, tenant, **updates)
+        await db.commit()
+    return TenantDetail(
+        tenant_id=str(tenant.id),
+        name=tenant.name,
+        platform=tenant.platform,
+        store_url=tenant.store_url,
+        pack_id=tenant.pack_id,
+        public_key=str(tenant.public_key),
+        created_at=tenant.created_at.isoformat(),
     )
