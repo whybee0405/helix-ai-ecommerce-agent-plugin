@@ -54,7 +54,7 @@ def test_patch_profile_merges_and_returns(client, customer):
         patch("helix.api.routers.sync.get_customer_by_platform_id",
               AsyncMock(return_value=customer)),
         patch("helix.api.routers.sync.update_customer_profile",
-              AsyncMock(return_value=updated)),
+              AsyncMock(return_value=updated)) as mock_update,
     ):
         r = c.patch(
             "/v1/sync/customers/plat-cust-1/profile",
@@ -65,6 +65,13 @@ def test_patch_profile_merges_and_returns(client, customer):
     data = r.json()
     assert data["customer_id"] == str(customer.id)
     assert data["platform_id"] == "plat-cust-1"
+
+    # Verify the merged profile was passed to update_customer_profile
+    assert mock_update.called
+    call_args = mock_update.call_args
+    new_profile_passed = call_args.args[2] if len(call_args.args) >= 3 else call_args.kwargs.get("new_profile")
+    assert new_profile_passed["skin_type"] == "dry"
+    assert new_profile_passed["concerns"] == ["acne"]
 
 
 def test_patch_profile_404_unknown_customer(client):
