@@ -25,7 +25,6 @@ class PackDetail(BaseModel):
 
 @router.get("", response_model=list[PackSummary])
 async def list_packs(_tenant: Tenant = Depends(get_tenant)) -> list[PackSummary]:
-    """List all available packs in the registry."""
     return [
         PackSummary(id=p.id, display_name=p.display_name, version=p.version)
         for p in _registry.values()
@@ -36,7 +35,6 @@ async def list_packs(_tenant: Tenant = Depends(get_tenant)) -> list[PackSummary]
 async def get_pack_detail(
     pack_id: str, _tenant: Tenant = Depends(get_tenant)
 ) -> PackDetail:
-    """Get detailed information about a specific pack."""
     if pack_id not in _registry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Pack not found"

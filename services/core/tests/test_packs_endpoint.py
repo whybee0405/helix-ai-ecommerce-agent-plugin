@@ -20,12 +20,6 @@ def app(settings):
 
 
 @pytest.fixture
-async def client(app):
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        yield c
-
-
-@pytest.fixture
 def fake_tenant():
     """Create a fake tenant for testing."""
     return Tenant(
@@ -85,7 +79,6 @@ async def client_without_auth(app, seeded_registry):
         yield c
 
 
-@pytest.mark.asyncio
 async def test_list_packs_returns_loaded_packs(client_with_auth):
     """Test GET /v1/packs returns list of loaded packs."""
     resp = await client_with_auth.get("/v1/packs")
@@ -98,7 +91,6 @@ async def test_list_packs_returns_loaded_packs(client_with_auth):
     assert data[0]["version"] == "1.0"
 
 
-@pytest.mark.asyncio
 async def test_get_pack_returns_detail(client_with_auth):
     """Test GET /v1/packs/{pack_id} returns detailed pack information."""
     resp = await client_with_auth.get("/v1/packs/kbeauty")
@@ -112,7 +104,6 @@ async def test_get_pack_returns_detail(client_with_auth):
     assert "en" in data["copy_locales"]
 
 
-@pytest.mark.asyncio
 async def test_get_pack_404_unknown(client_with_auth):
     """Test GET /v1/packs/{pack_id} returns 404 for unknown pack."""
     resp = await client_with_auth.get("/v1/packs/unknown-pack")
@@ -121,8 +112,7 @@ async def test_get_pack_404_unknown(client_with_auth):
     assert "detail" in data
 
 
-@pytest.mark.asyncio
-async def test_list_packs_requires_auth(client_without_auth, seeded_registry):
+async def test_list_packs_requires_auth(client_without_auth):
     """Test GET /v1/packs requires authentication."""
     resp = await client_without_auth.get("/v1/packs")
     assert resp.status_code == 401
