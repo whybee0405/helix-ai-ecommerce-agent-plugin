@@ -1,0 +1,26 @@
+concerns:
+  - acne
+  - aging
+  - brightening
+  - hydration
+  - pores
+  - redness
+  - texture
+
+routine_steps:
+  - cleanse
+  - tone
+  - treat
+  - moisturize
+  - protect
+  - mask
+
+categories:
+  - cleanser
+  - toner
+  - serum
+  - moisturizer
+  - sunscreen
+  - mask
+  - eye_cream
+  - exfoliant

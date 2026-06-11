@@ -1,0 +1,21 @@
+- id: retinol_aha
+  description: "Do not layer retinol with AHA/BHA on the same night"
+  type: conflict
+  ingredients:
+    - retinol
+    - glycolic acid
+    - lactic acid
+    - salicylic acid
+
+- id: vitamin_c_niacinamide
+  description: "High-concentration vitamin C and niacinamide may reduce efficacy — use AM/PM"
+  type: caution
+  ingredients:
+    - ascorbic acid
+    - niacinamide
+
+- id: spf_last
+  description: "SPF must always be the final step in a morning routine"
+  type: order
+  step: protect
+  position: last

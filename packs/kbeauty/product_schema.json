@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "skin_types": {"type": "array", "items": {"type": "string"}},
+    "concerns_targeted": {"type": "array", "items": {"type": "string"}},
+    "key_ingredients": {"type": "array", "items": {"type": "string"}},
+    "spf": {"type": "integer", "minimum": 0},
+    "ph_level": {"type": "number"},
+    "step": {
+      "type": "string",
+      "enum": ["cleanse", "tone", "treat", "moisturize", "protect", "mask"]
+    }
+  },
+  "required": ["skin_types", "concerns_targeted"]
+}

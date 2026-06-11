@@ -1,0 +1,9 @@
+{
+  "widget": {
+    "greeting": "Hi! I'm your K-beauty advisor. Tell me about your skin.",
+    "ask_skin_type": "What's your skin type?",
+    "ask_concerns": "What are your main skin concerns?",
+    "no_match": "I couldn't find products that match perfectly. Let me connect you with our team.",
+    "routine_title": "Your personalised routine"
+  }
+}
