@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     environment: Literal["development", "production"] = "development"
     log_level: str = "INFO"
     packs_dir: str = "/packs"
+    widget_rate_limit: int = 30
+    cors_allowed_origins: list[str] = ["*"]
+    default_monthly_query_limit: int = 10_000
 
     @property
     def database_url_async(self) -> str:

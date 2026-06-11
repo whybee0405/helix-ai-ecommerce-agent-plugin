@@ -2,6 +2,7 @@ import logging
 
 import structlog
 from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
 
 from helix.config import Settings
 
@@ -55,7 +56,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(jobs.router)
 
     from helix.api.middleware.rate_limit import RateLimitMiddleware
+    from helix.api.middleware.request_id import RequestIdMiddleware
+
     app.add_middleware(RateLimitMiddleware, settings=s)
+    app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=s.cors_allowed_origins,
+        allow_methods=["GET", "POST", "PATCH"],
+        allow_headers=["Authorization", "Content-Type", "X-Helix-Tenant-Key",
+                       "X-Helix-Provision-Key", "X-Request-Id"],
+        expose_headers=["X-Request-Id"],
+    )
 
     return app
 
