@@ -19,6 +19,7 @@ class ProvisionRequest(BaseModel):
     platform: str
     store_url: str
     credentials: dict[str, Any]
+    pack_id: str = "kbeauty"
 
 
 class ProvisionResponse(BaseModel):
@@ -42,6 +43,7 @@ async def provision_tenant(
         platform=body.platform,
         store_url=body.store_url,
         credentials_enc=enc,
+        pack_id=body.pack_id,
     )
     tenant = await create_tenant(db, tenant)
     await db.commit()

@@ -37,6 +37,7 @@ class Tenant(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, default=_now
     )
+    pack_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
 
 class Product(Base):
