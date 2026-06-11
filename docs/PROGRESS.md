@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 4 — Production Hardening
+- **Current phase:** Phase 5 — Shopify Orders, Admin Stats & Pack API
 - **Overall:** complete
 - **Last updated:** 2026-06-11
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 119/119 tests pass
+- **Build health:** green — 133/133 tests pass
 
 ## Phase 0 — Foundations
 
@@ -80,7 +80,21 @@ All 6 tasks complete.
 - [x] Task 5: Widget JS embed (`GET /v1/widget/embed.js`, dev-only demo page)
 - [x] Task 6: Full test suite + PROGRESS.md
 
+## Phase 5: Shopify Orders, Admin Stats & Pack API ✅
+
+All 5 tasks complete.
+
+### Tasks
+- [x] Task 1: Shopify orders webhook — `translate_shopify_order()` + `POST /v1/webhooks/shopify/orders` (4 tests)
+- [x] Task 2: Admin platform stats — `get_platform_stats()` + `GET /v1/admin/stats` (3 tests)
+- [x] Task 3: Pack listing API — `GET /v1/packs` + `GET /v1/packs/{id}` (4 tests)
+- [x] Task 4: Search category filter — JSONB containment on Product.categories (3 tests)
+- [x] Task 5: Full suite (133 tests) + PROGRESS.md
+
 ## Session log
+
+### 2026-06-11 (Phase 5) — Claude Sonnet 4.6
+Built Phase 5 Shopify/admin/pack API: Shopify orders webhook (`POST /v1/webhooks/shopify/orders`) with `translate_shopify_order()` and customer_id resolution; admin platform stats (`GET /v1/admin/stats`, auth: provision key, cross-tenant COUNTs + usage SUM); pack listing API (`GET /v1/packs`, `GET /v1/packs/{id}`, reads in-memory registry); search category filter (JSONB `@>` containment on Product.categories). 133 tests total (14 new Phase 5 + 119 prior). Next: Phase 6.
 
 ### 2026-06-11 (Phase 4) — Claude Sonnet 4.6
 Built Phase 4 production hardening: CORS middleware with configurable origins exposing X-Request-Id; request correlation ID middleware (echoes or generates UUID per request); orders sync endpoint (`POST /v1/sync/orders`) completing the product+customer+orders data loop; monthly quota middleware (Redis INCR per `quota:{tenant_id}:{YYYY-MM}`, 32-day TTL, 429 + X-Quota-Exceeded header, fails open); WooCommerce orders webhook (`POST /v1/webhooks/orders`); dead code removal (pack variable in WC product webhook) and Shopify webhook now uses `get_pack_for_tenant(tenant)`. 119 tests total (20 new Phase 4 + 99 prior). Next: Phase 5 — Shopify orders webhook, admin stats, billing events.
