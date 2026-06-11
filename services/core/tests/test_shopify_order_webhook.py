@@ -50,6 +50,7 @@ def test_translate_shopify_order():
     assert co.status == "paid"  # maps from financial_status
     assert co.customer_platform_id == "67890"
     assert co.tenant_id == tenant_id
+    assert isinstance(co.placed_at, datetime)
 
 
 @pytest.fixture
