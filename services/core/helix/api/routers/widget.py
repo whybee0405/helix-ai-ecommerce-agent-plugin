@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -5,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from helix.api.auth.tokens import issue_widget_token
 from helix.api.deps import get_db, get_tenant, get_widget_tenant
 from helix.config import get_settings
+from helix.db.crud.customers import get_customer_by_id
 from helix.db.crud.products import vector_search_products
 from helix.db.crud.usage_events import create_usage_event
 from helix.db.models import Tenant
@@ -133,6 +136,7 @@ async def issue_session(
 
 class ChatRequest(BaseModel):
     query: str
+    customer_id: str | None = None
     customer_profile: dict = {}
 
 
@@ -164,9 +168,19 @@ async def widget_chat(
         for p, _ in product_rows
     ]
 
+    merged_profile = body.customer_profile
+    if body.customer_id:
+        try:
+            cid = UUID(body.customer_id)
+            customer = await get_customer_by_id(db, cid, tenant.id)
+            if customer:
+                merged_profile = {**customer.profile, **body.customer_profile}
+        except ValueError:
+            pass
+
     result = await handle_query(
         query=body.query,
-        customer_profile=body.customer_profile,
+        customer_profile=merged_profile,
         context_products=context_products,
         tenant_id=tenant.id,
         pack=pack,
