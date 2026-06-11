@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import pytest
 
+from helix.api.routers.widget import widget_chat
 from helix.db.models import Customer, Tenant
 
 
@@ -75,8 +76,6 @@ class TestWidgetCustomerProfile:
                 tokens_out=10,
             )
 
-            from helix.api.routers.widget import widget_chat
-
             body = MagicMock(
                 query="What's good for oily skin?",
                 customer_id=str(test_customer.id),
@@ -128,8 +127,6 @@ class TestWidgetCustomerProfile:
                 tokens_in=10,
                 tokens_out=10,
             )
-
-            from helix.api.routers.widget import widget_chat
 
             body = MagicMock(
                 query="What's good for dry skin?",
@@ -183,8 +180,6 @@ class TestWidgetCustomerProfile:
                 tokens_out=10,
             )
 
-            from helix.api.routers.widget import widget_chat
-
             body = MagicMock(
                 query="What's good for my skin?",
                 customer_id=None,
@@ -236,8 +231,6 @@ class TestWidgetCustomerProfile:
                 tokens_in=10,
                 tokens_out=10,
             )
-
-            from helix.api.routers.widget import widget_chat
 
             body = MagicMock(
                 query="Test query",

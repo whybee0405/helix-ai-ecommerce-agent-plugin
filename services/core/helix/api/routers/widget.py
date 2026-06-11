@@ -1,5 +1,6 @@
 from uuid import UUID
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,8 @@ from helix.domain.consultant import handle_query
 from helix.domain.routine import build_routine
 from helix.domain.search import embed_query
 from helix.packs.registry import get_pack_for_tenant
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/v1/widget", tags=["widget"])
 
@@ -174,9 +177,9 @@ async def widget_chat(
             cid = UUID(body.customer_id)
             customer = await get_customer_by_id(db, cid, tenant.id)
             if customer:
-                merged_profile = {**customer.profile, **body.customer_profile}
+                merged_profile = {**(customer.profile or {}), **body.customer_profile}
         except ValueError:
-            pass
+            logger.warning("widget_chat_invalid_customer_id", customer_id=body.customer_id)
 
     result = await handle_query(
         query=body.query,
