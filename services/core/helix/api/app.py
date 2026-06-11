@@ -38,6 +38,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from helix.api.routers import sync
     app.include_router(sync.router)
 
+    from helix.api.routers import webhooks, widget
+    app.include_router(webhooks.router)
+    app.include_router(widget.router)
+
     return app
 
 
