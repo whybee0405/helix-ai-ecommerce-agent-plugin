@@ -42,6 +42,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(webhooks.router)
     app.include_router(widget.router)
 
+    from helix.api.routers import shopify_webhooks
+    app.include_router(shopify_webhooks.router)
+
+    from helix.api.routers import search
+    app.include_router(search.router)
+
+    from helix.api.routers import analytics
+    app.include_router(analytics.router)
+
+    from helix.api.routers import jobs
+    app.include_router(jobs.router)
+
+    from helix.api.middleware.rate_limit import RateLimitMiddleware
+    app.add_middleware(RateLimitMiddleware, settings=s)
+
     return app
 
 
