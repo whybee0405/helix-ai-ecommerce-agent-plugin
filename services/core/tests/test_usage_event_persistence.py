@@ -42,7 +42,6 @@ class TestRouteResultExtension:
 class TestWidgetChatUsageEvent:
     """Test that widget_chat creates UsageEvent when LLM is called."""
 
-    @pytest.mark.asyncio
     async def test_widget_chat_creates_usage_event_when_llm_called(self) -> None:
         """When handle_query returns cost_usd > 0, create_usage_event should be called."""
         tenant_id = uuid4()
@@ -109,7 +108,6 @@ class TestWidgetChatUsageEvent:
             # Verify db.commit was called
             mock_db.commit.assert_called_once()
 
-    @pytest.mark.asyncio
     async def test_widget_chat_skips_usage_event_when_template_hit(self) -> None:
         """When handle_query returns cost_usd = 0 (template/rules hit), skip create_usage_event."""
         tenant_id = uuid4()
@@ -166,7 +164,6 @@ class TestWidgetChatUsageEvent:
 class TestWidgetRoutineUsageEvent:
     """Test that widget_routine commits the database."""
 
-    @pytest.mark.asyncio
     async def test_widget_routine_commits_db(self) -> None:
         """widget_routine should call db.commit after build_routine."""
         tenant_id = uuid4()
@@ -230,7 +227,6 @@ class TestCreateUsageEventCRUD:
         assert "cost_usd" in params
         assert "endpoint" in params
 
-    @pytest.mark.asyncio
     async def test_create_usage_event_writes_to_db(self) -> None:
         """create_usage_event should create and flush UsageEvent to session."""
         tenant_id = uuid4()

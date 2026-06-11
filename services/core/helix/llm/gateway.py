@@ -208,6 +208,12 @@ class LLMGateway:
         }
 
         await self.classify_intent(query, cache)
+        self._last_usage = {
+            "model": "",
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "cost_usd": 0.0,
+        }  # track only generate tokens
 
         template_layer = TemplateLayer()
         template_result = await template_layer.query(query, pack_templates)
