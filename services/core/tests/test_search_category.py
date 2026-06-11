@@ -58,9 +58,7 @@ async def test_search_with_category_passes_param(client, tenant):
     # Verify category was passed to vector_search_products
     mock_search.assert_called_once()
     call_kwargs = mock_search.call_args.kwargs
-    assert "category" in call_kwargs or len(mock_search.call_args.args) >= 5
-    if "category" in call_kwargs:
-        assert call_kwargs["category"] == "toner"
+    assert call_kwargs.get("category") == "toner"
 
 
 async def test_search_without_category_still_works(client, tenant):

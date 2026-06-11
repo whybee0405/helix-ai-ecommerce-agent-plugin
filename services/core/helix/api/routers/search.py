@@ -43,7 +43,7 @@ async def search_products(
 ) -> SearchResponse:
     settings = get_settings()
     query_vector = await embed_query(q, settings)
-    rows = await vector_search_products(db, tenant.id, query_vector, limit, in_stock_only, category)
+    rows = await vector_search_products(db, tenant.id, query_vector, limit, in_stock_only, category=category)
     results = [
         ProductResult(
             id=str(p.id),
