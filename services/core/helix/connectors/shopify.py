@@ -1,7 +1,7 @@
 import base64
 import hashlib
 import hmac
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from helix.connectors.models import CanonicalOrder, CanonicalProduct
@@ -48,12 +48,14 @@ def translate_shopify_order(payload: dict, tenant_id: UUID) -> CanonicalOrder:
     except (ValueError, TypeError):
         total_minor = 0
 
-    # Parse the created_at timestamp
-    created_at_str = payload.get("created_at", "2026-01-01T00:00:00Z")
-    try:
-        placed_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-    except (ValueError, TypeError):
-        placed_at = datetime.now(datetime.now().astimezone().tzinfo)
+    created_at_str = payload.get("created_at")
+    if created_at_str:
+        try:
+            placed_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            placed_at = datetime.now(timezone.utc)
+    else:
+        placed_at = datetime.now(timezone.utc)
 
     customer = payload.get("customer", {})
     customer_platform_id = None
