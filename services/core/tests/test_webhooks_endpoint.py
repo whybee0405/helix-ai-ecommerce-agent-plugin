@@ -82,9 +82,7 @@ async def test_webhook_valid_signature_accepted(client, tenant):
     with patch("helix.api.routers.webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant), \
          patch("helix.api.routers.webhooks.upsert_product", new_callable=AsyncMock), \
          patch("helix.api.routers.webhooks.embed_product"), \
-         patch("helix.api.routers.webhooks.default_pack") as mock_pack, \
          patch("helix.api.routers.webhooks.get_db"):
-        mock_pack.return_value = MagicMock(product_schema={"type": "object", "properties": {}, "required": []})
 
         resp = await client.post(
             "/v1/webhooks/products",
