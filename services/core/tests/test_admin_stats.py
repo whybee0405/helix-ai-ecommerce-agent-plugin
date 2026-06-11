@@ -36,6 +36,8 @@ def test_admin_stats_returns_data(client):
     data = response.json()
     assert data["total_tenants"] == 5
     assert data["total_products"] == 200
+    assert data["total_customers"] == 50
+    assert data["cost_this_month_usd"] == 2.50
     assert "queries_this_month" in data
 
 

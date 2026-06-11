@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
@@ -31,7 +31,7 @@ def _auth_provision(x_helix_provision_key: Annotated[str | None, Header()] = Non
 async def admin_stats(
     _: str = Depends(_auth_provision), db: AsyncSession = Depends(get_db)
 ) -> PlatformStats:
-    today = date.today()
+    today = datetime.now(timezone.utc).date()
     month_start = datetime(today.year, today.month, 1, tzinfo=timezone.utc)
     month_end = datetime.now(timezone.utc)
     stats = await get_platform_stats(db, month_start, month_end)
