@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +13,107 @@ from helix.domain.search import embed_query
 from helix.packs.registry import get_pack_for_tenant
 
 router = APIRouter(prefix="/v1/widget", tags=["widget"])
+
+
+_EMBED_JS = r"""
+(function () {
+  var script = document.currentScript;
+  var key = (new URLSearchParams(script && script.src ? new URL(script.src).search : '')).get('key')
+    || (script && script.getAttribute('data-helix-key'));
+
+  if (!key) { console.warn('[Helix] No key provided'); return; }
+
+  var LS_TOKEN = 'helix_token_' + key;
+  var LS_EXP   = 'helix_token_exp_' + key;
+  var base = script && script.src ? new URL(script.src).origin : '';
+
+  function getToken() {
+    var exp = parseInt(localStorage.getItem(LS_EXP) || '0', 10);
+    if (exp > Date.now()) return Promise.resolve(localStorage.getItem(LS_TOKEN));
+    return fetch(base + '/v1/widget/session', {
+      method: 'POST',
+      headers: { 'X-Helix-Tenant-Key': key, 'Content-Type': 'application/json' },
+      body: '{}'
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      localStorage.setItem(LS_TOKEN, d.token);
+      localStorage.setItem(LS_EXP, String(Date.now() + (d.expires_in - 60) * 1000));
+      return d.token;
+    });
+  }
+
+  var style = document.createElement('style');
+  style.textContent = [
+    '#helix-btn{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;',
+    'background:#6c47ff;border:none;cursor:pointer;color:#fff;font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,.25);}',
+    '#helix-panel{display:none;position:fixed;bottom:88px;right:24px;width:340px;max-height:480px;',
+    'background:#fff;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.15);',
+    'display:none;flex-direction:column;overflow:hidden;}',
+    '#helix-messages{flex:1;overflow-y:auto;padding:16px;font-family:sans-serif;font-size:14px;}',
+    '#helix-msg-row{display:flex;padding:8px;border-top:1px solid #f0f0f0;}',
+    '#helix-input{flex:1;border:1px solid #ddd;border-radius:6px;padding:6px 10px;font-size:14px;outline:none;}',
+    '#helix-send{margin-left:8px;background:#6c47ff;color:#fff;border:none;border-radius:6px;',
+    'padding:6px 12px;cursor:pointer;font-size:14px;}'
+  ].join('');
+  document.head.appendChild(style);
+
+  var btn = document.createElement('button');
+  btn.id = 'helix-btn';
+  btn.textContent = '\u{1F4AC}';
+  document.body.appendChild(btn);
+
+  var panel = document.createElement('div');
+  panel.id = 'helix-panel';
+  panel.innerHTML = [
+    '<div id="helix-messages"></div>',
+    '<div id="helix-msg-row">',
+    '<input id="helix-input" placeholder="Ask anything..." />',
+    '<button id="helix-send">Send</button>',
+    '</div>'
+  ].join('');
+  document.body.appendChild(panel);
+
+  var open = false;
+  btn.addEventListener('click', function(){
+    open = !open;
+    panel.style.display = open ? 'flex' : 'none';
+  });
+
+  function addMsg(text, role) {
+    var d = document.getElementById('helix-messages');
+    var p = document.createElement('p');
+    p.style.margin = '4px 0';
+    p.style.color = role === 'user' ? '#333' : '#6c47ff';
+    p.textContent = (role === 'user' ? 'You: ' : 'Helix: ') + text;
+    d.appendChild(p);
+    d.scrollTop = d.scrollHeight;
+  }
+
+  function send() {
+    var input = document.getElementById('helix-input');
+    var q = input.value.trim();
+    if (!q) return;
+    input.value = '';
+    addMsg(q, 'user');
+    getToken().then(function(token){
+      return fetch(base + '/v1/widget/chat', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q, customer_profile: {} })
+      });
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ addMsg(d.response || d.detail || 'Error', 'helix'); })
+    .catch(function(){ addMsg('Could not reach Helix. Please try again.', 'helix'); });
+  }
+
+  document.getElementById('helix-send').addEventListener('click', send);
+  document.getElementById('helix-input').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') send();
+  });
+})();
+""".strip()
 
 
 class SessionResponse(BaseModel):
@@ -135,3 +236,25 @@ async def widget_routine(
         missing_steps=result.missing_steps,
         llm_augmented=result.llm_augmented,
     )
+
+
+@router.get("/embed.js", include_in_schema=False)
+async def widget_embed_js() -> Response:
+    return Response(content=_EMBED_JS, media_type="application/javascript")
+
+
+@router.get("/demo.html", include_in_schema=False)
+async def widget_demo_html() -> Response:
+    settings = get_settings()
+    if settings.environment != "development":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    html = """<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Helix Widget Demo</title></head>
+<body style="font-family:sans-serif;padding:40px;background:#f9f9f9;">
+<h1>Helix Widget Demo</h1>
+<p>Set your tenant public key in the script src below:</p>
+<script src="/v1/widget/embed.js?key=YOUR_PUBLIC_KEY"></script>
+</body>
+</html>"""
+    return Response(content=html, media_type="text/html")
