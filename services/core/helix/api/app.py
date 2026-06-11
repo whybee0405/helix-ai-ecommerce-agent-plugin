@@ -35,6 +35,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from helix.api.routers import tenants
     app.include_router(tenants.router)
 
+    from helix.api.routers import sync
+    app.include_router(sync.router)
+
     return app
 
 
