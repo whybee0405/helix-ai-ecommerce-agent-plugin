@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 5 — Shopify Orders, Admin Stats & Pack API
+- **Current phase:** Phase 6 — Usage Event Persistence & Customer Profile Intelligence
 - **Overall:** complete
 - **Last updated:** 2026-06-11
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 133/133 tests pass
+- **Build health:** green — 147/147 tests pass
 
 ## Phase 0 — Foundations
 
@@ -91,7 +91,20 @@ All 5 tasks complete.
 - [x] Task 4: Search category filter — JSONB containment on Product.categories (3 tests)
 - [x] Task 5: Full suite (133 tests) + PROGRESS.md
 
+## Phase 6: Usage Event Persistence & Customer Profile Intelligence ✅
+
+All 4 tasks complete.
+
+### Tasks
+- [x] Task 1: Usage event persistence — RouteResult cost fields + create_usage_event CRUD + widget endpoints write UsageEvent (7 tests)
+- [x] Task 2: Customer profile in widget — get_customer_by_id CRUD + ChatRequest customer_id field + stored/request profile merge (4 tests)
+- [x] Task 3: Customer profile update — get_customer_by_platform_id + update_customer_profile + PATCH /v1/sync/customers/{platform_id}/profile (3 tests)
+- [x] Task 4: Full suite (147 tests) + PROGRESS.md update
+
 ## Session log
+
+### 2026-06-11 (Phase 6) — Claude Sonnet 4.6
+Built Phase 6 usage persistence and customer intelligence: extended RouteResult with cost metadata (model, tokens_in, tokens_out, cost_usd) accumulated in _log_usage (classify reset before generate to avoid bleed); create_usage_event CRUD writes UsageEvent rows after widget LLM calls (analytics endpoint now returns real data); widget_chat optionally merges stored Customer.profile with request profile when customer_id UUID provided (request keys win); PATCH /v1/sync/customers/{platform_id}/profile adds profile update with merge semantics. 147 tests total (14 new Phase 6 + 133 prior). Next: Phase 7.
 
 ### 2026-06-11 (Phase 5) — Claude Sonnet 4.6
 Built Phase 5 Shopify/admin/pack API: Shopify orders webhook (`POST /v1/webhooks/shopify/orders`) with `translate_shopify_order()` and customer_id resolution; admin platform stats (`GET /v1/admin/stats`, auth: provision key, cross-tenant COUNTs + usage SUM); pack listing API (`GET /v1/packs`, `GET /v1/packs/{id}`, reads in-memory registry); search category filter (JSONB `@>` containment on Product.categories). 133 tests total (14 new Phase 5 + 119 prior). Next: Phase 6.
