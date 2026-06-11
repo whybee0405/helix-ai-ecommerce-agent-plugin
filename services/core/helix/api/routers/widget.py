@@ -6,6 +6,7 @@ from helix.api.auth.tokens import issue_widget_token
 from helix.api.deps import get_db, get_tenant, get_widget_tenant
 from helix.config import get_settings
 from helix.db.crud.products import vector_search_products
+from helix.db.crud.usage_events import create_usage_event
 from helix.db.models import Tenant
 from helix.domain.consultant import handle_query
 from helix.domain.routine import build_routine
@@ -173,6 +174,18 @@ async def widget_chat(
         db_session=db,
     )
 
+    if result.cost_usd > 0:
+        await create_usage_event(
+            db,
+            tenant.id,
+            result.model,
+            result.tokens_in,
+            result.tokens_out,
+            result.cost_usd,
+            "/v1/widget/chat",
+        )
+    await db.commit()
+
     return ChatResponse(
         response=result.response,
         source=result.source,
@@ -228,6 +241,8 @@ async def widget_routine(
         })
 
     result = build_routine(products, pack)
+
+    await db.commit()
 
     return RoutineResponse(
         routine=[RoutineStepOut(**s) for s in result.steps],

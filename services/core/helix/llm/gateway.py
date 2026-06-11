@@ -1,7 +1,7 @@
 import json
 import logging
 from enum import Enum
-from typing import TypeVar, Type
+from typing import TypeVar, Type, Literal
 from uuid import UUID
 
 import anthropic
@@ -31,6 +31,36 @@ class LLMParseError(Exception):
     pass
 
 
+class QueryIntent(BaseModel):
+    intent: Literal["product_search", "compatibility", "routine", "faq", "other"]
+    confidence: float
+
+
+class ConsultantResponse(BaseModel):
+    response: str
+    product_ids_referenced: list[str] = []
+
+
+class RouteResult:
+    def __init__(
+        self,
+        response: str,
+        source: str,
+        products_referenced: list[str] | None = None,
+        model: str = "",
+        tokens_in: int = 0,
+        tokens_out: int = 0,
+        cost_usd: float = 0.0,
+    ) -> None:
+        self.response = response
+        self.source = source
+        self.products_referenced = products_referenced or []
+        self.model = model
+        self.tokens_in = tokens_in
+        self.tokens_out = tokens_out
+        self.cost_usd = cost_usd
+
+
 class LLMGateway:
     def __init__(self, settings: Settings, tenant_id: UUID) -> None:
         self._settings = settings
@@ -39,6 +69,12 @@ class LLMGateway:
             ModelTier.CLASSIFY: settings.llm_model_classify,
             ModelTier.GENERATE: settings.llm_model_generate,
             ModelTier.REASON:   settings.llm_model_reason,
+        }
+        self._last_usage: dict = {
+            "model": "",
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "cost_usd": 0.0,
         }
 
     async def complete(
@@ -108,6 +144,10 @@ class LLMGateway:
         out_tokens = message.usage.output_tokens
         in_cost, out_cost = _COSTS.get(model_id, (0.0, 0.0))
         cost_usd = (in_tokens * in_cost + out_tokens * out_cost) / 1_000_000
+        self._last_usage["model"] = model_id
+        self._last_usage["tokens_in"] += in_tokens
+        self._last_usage["tokens_out"] += out_tokens
+        self._last_usage["cost_usd"] = round(self._last_usage["cost_usd"] + cost_usd, 6)
         logger.info(
             "llm_call",
             model=model_id,
@@ -117,3 +157,99 @@ class LLMGateway:
             cost_usd=round(cost_usd, 6),
             tenant_id=str(self._tenant_id),
         )
+
+    async def classify_intent(
+        self,
+        query: str,
+        cache: "LLMCache | None" = None,
+    ) -> QueryIntent:
+        _CLASSIFY_SYS = "Classify user query intent. Return only JSON."
+
+        if cache:
+            cached = await cache.get(self._tier_to_model[ModelTier.CLASSIFY], _CLASSIFY_SYS, query)
+            if cached:
+                return QueryIntent.model_validate(json.loads(cached))
+
+        result = await self.complete(
+            tier=ModelTier.CLASSIFY,
+            system=_CLASSIFY_SYS,
+            user=query,
+            response_schema=QueryIntent,
+            max_tokens=128,
+        )
+
+        if cache:
+            await cache.set(
+                self._tier_to_model[ModelTier.CLASSIFY],
+                _CLASSIFY_SYS,
+                query,
+                result.model_dump_json(),
+                ttl=86400,
+            )
+        return result
+
+    async def route_query(
+        self,
+        query: str,
+        system_prompt: str,
+        context_products: list[dict],
+        customer_profile: dict,
+        pack_rules: list[dict],
+        pack_templates: dict[str, str],
+        cache: "LLMCache | None" = None,
+    ) -> RouteResult:
+        from helix.llm.layers import TemplateLayer, RuleEngineLayer
+
+        self._last_usage = {
+            "model": "",
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "cost_usd": 0.0,
+        }
+
+        await self.classify_intent(query, cache)
+
+        template_layer = TemplateLayer()
+        template_result = await template_layer.query(query, pack_templates)
+        if template_result.answered:
+            return RouteResult(response=template_result.response, source="template")
+
+        rule_layer = RuleEngineLayer()
+        rule_result = await rule_layer.query(query, pack_rules)
+        if rule_result.answered:
+            return RouteResult(response=rule_result.response, source="rules")
+
+        if context_products:
+            product_list = "\n".join(
+                f"- {p['title']} ({p.get('currency','?')} {p.get('price_minor',0)/100:.0f}): "
+                f"{p.get('domain_attributes', {})}"
+                for p in context_products[:5]
+            )
+            grounded_user = (
+                f"Customer profile: {customer_profile}\n\n"
+                f"Available products:\n{product_list}\n\n"
+                f"Customer question: {query}"
+            )
+        else:
+            grounded_user = f"Customer profile: {customer_profile}\n\nCustomer question: {query}"
+
+        llm_result = await self.complete(
+            tier=ModelTier.GENERATE,
+            system=system_prompt,
+            user=grounded_user,
+            response_schema=ConsultantResponse,
+            max_tokens=1024,
+        )
+        return RouteResult(
+            response=llm_result.response,
+            source="llm",
+            products_referenced=llm_result.product_ids_referenced,
+            model=self._last_usage["model"],
+            tokens_in=self._last_usage["tokens_in"],
+            tokens_out=self._last_usage["tokens_out"],
+            cost_usd=self._last_usage["cost_usd"],
+        )
+
+
+# Defer import to avoid circular reference at module level
+from helix.llm.cache import LLMCache  # noqa: E402
