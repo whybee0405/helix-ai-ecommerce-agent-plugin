@@ -7,10 +7,11 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.deps import get_db, get_tenant
-from helix.connectors.models import CanonicalCustomer, CanonicalProduct
+from helix.connectors.models import CanonicalCustomer, CanonicalOrder, CanonicalProduct
 from helix.db.crud.customers import upsert_customer
+from helix.db.crud.orders import get_customer_id_by_platform_id, upsert_order
 from helix.db.crud.products import delete_product, upsert_product
-from helix.db.models import Customer, Product, Tenant
+from helix.db.models import Customer, Order, Product, Tenant
 from helix.packs.registry import get_pack_for_tenant
 from helix.workers.tasks.embedding import embed_product
 
@@ -125,3 +126,51 @@ async def sync_customers(
 
     await db.commit()
     return CustomerSyncResponse(synced=synced, failed=failed, errors=errors)
+
+
+class OrderSyncRequest(BaseModel):
+    orders: list[CanonicalOrder]
+
+
+class OrderSyncResponse(BaseModel):
+    synced: int
+    failed: int
+    errors: list[str]
+
+
+@router.post("/orders", response_model=OrderSyncResponse)
+async def sync_orders(
+    body: OrderSyncRequest,
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> OrderSyncResponse:
+    synced = 0
+    failed = 0
+    errors: list[str] = []
+
+    for co in body.orders:
+        try:
+            customer_id = None
+            if co.customer_platform_id:
+                customer_id = await get_customer_id_by_platform_id(
+                    db, tenant.id, co.customer_platform_id
+                )
+            order = Order(
+                tenant_id=tenant.id,
+                platform_id=co.platform_id,
+                customer_id=customer_id,
+                total_minor=co.total_minor,
+                currency=co.currency,
+                status=co.status,
+                line_items=co.line_items,
+                placed_at=co.placed_at,
+            )
+            await upsert_order(db, order)
+            synced += 1
+        except Exception as exc:
+            logger.warning("sync_order_error", platform_id=co.platform_id, error=str(exc))
+            errors.append(f"order {co.platform_id}: {exc}")
+            failed += 1
+
+    await db.commit()
+    return OrderSyncResponse(synced=synced, failed=failed, errors=errors)
