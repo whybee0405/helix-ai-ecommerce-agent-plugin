@@ -11,7 +11,6 @@ def configure_logging(log_level: str) -> None:
         processors=[
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.stdlib.add_log_level,
-            structlog.stdlib.add_logger_name,
             structlog.processors.JSONRenderer(),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(
@@ -32,6 +31,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from helix.api.routers import health
 
     app.include_router(health.router)
+
+    from helix.api.routers import tenants
+    app.include_router(tenants.router)
 
     return app
 
