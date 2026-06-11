@@ -1,5 +1,5 @@
 from typing import Annotated, Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
@@ -54,12 +54,10 @@ def _auth_provision_key(
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=ProvisionResponse)
 async def provision_tenant(
     body: ProvisionRequest,
-    x_helix_provision_key: Annotated[str | None, Header()] = None,
+    _: str = Depends(_auth_provision_key),
     db: AsyncSession = Depends(get_db),
 ) -> ProvisionResponse:
     settings = get_settings()
-    if x_helix_provision_key != settings.provision_key.get_secret_value():
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid provision key")
 
     enc = encrypt_credentials(body.credentials, settings.credential_encryption_key.get_secret_value())
     tenant = Tenant(
