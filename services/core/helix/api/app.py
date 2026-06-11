@@ -56,9 +56,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(jobs.router)
 
     from helix.api.middleware.rate_limit import RateLimitMiddleware
+    from helix.api.middleware.quota import QuotaMiddleware
     from helix.api.middleware.request_id import RequestIdMiddleware
 
     app.add_middleware(RateLimitMiddleware, settings=s)
+    app.add_middleware(QuotaMiddleware, settings=s)
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(
         CORSMiddleware,
