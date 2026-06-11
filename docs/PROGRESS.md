@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 3 — Multi-Pack & Widget Embed
+- **Current phase:** Phase 4 — Production Hardening
 - **Overall:** complete
 - **Last updated:** 2026-06-11
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 99/99 tests pass
+- **Build health:** green — 119/119 tests pass
 
 ## Phase 0 — Foundations
 
@@ -56,6 +56,18 @@ All 6 tasks complete.
 - [x] Task 5: Shopify PHP connector plugin (4 files, mirrors WooCommerce pattern)
 - [x] Task 6: Full test suite + PROGRESS.md
 
+## Phase 4 — Production Hardening
+
+All 6 tasks complete.
+
+### Tasks
+- [x] Task 1: CORS middleware + X-Request-Id correlation header
+- [x] Task 2: Orders sync endpoint (`POST /v1/sync/orders`)
+- [x] Task 3: Monthly quota middleware (Redis counter, 429 + X-Quota-Exceeded on limit)
+- [x] Task 4: WooCommerce orders webhook (`POST /v1/webhooks/orders`)
+- [x] Task 5: Dead code cleanup + Shopify webhook uses `get_pack_for_tenant`
+- [x] Task 6: Full test suite + PROGRESS.md
+
 ## Phase 3 — Multi-Pack & Widget Embed
 
 All 6 tasks complete.
@@ -69,6 +81,9 @@ All 6 tasks complete.
 - [x] Task 6: Full test suite + PROGRESS.md
 
 ## Session log
+
+### 2026-06-11 (Phase 4) — Claude Sonnet 4.6
+Built Phase 4 production hardening: CORS middleware with configurable origins exposing X-Request-Id; request correlation ID middleware (echoes or generates UUID per request); orders sync endpoint (`POST /v1/sync/orders`) completing the product+customer+orders data loop; monthly quota middleware (Redis INCR per `quota:{tenant_id}:{YYYY-MM}`, 32-day TTL, 429 + X-Quota-Exceeded header, fails open); WooCommerce orders webhook (`POST /v1/webhooks/orders`); dead code removal (pack variable in WC product webhook) and Shopify webhook now uses `get_pack_for_tenant(tenant)`. 119 tests total (20 new Phase 4 + 99 prior). Next: Phase 5 — Shopify orders webhook, admin stats, billing events.
 
 ### 2026-06-11 (Phase 3) — Claude Sonnet 4.6
 Built Phase 3 multi-pack and widget: per-tenant `pack_id` column with migration 0002; `get_pack_for_tenant()` replacing `default_pack()` in all widget/sync callers; tenant management endpoints (GET + PATCH, auth: provision key); job status endpoints scoped by tenant (GET single + list with type filter); embeddable vanilla-JS chat widget served from `/v1/widget/embed.js` with floating UI and localStorage token caching; dev-only demo page. 99 tests total (18 new Phase 3 + 81 prior). Next: Phase 4 — billing metering, multi-tenant admin dashboard, production hardening.
