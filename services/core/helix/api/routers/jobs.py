@@ -56,5 +56,5 @@ async def list_jobs_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> list[JobOut]:
-    jobs = await jobs_crud.list_jobs(db, tenant.id, type=type)
+    jobs = await jobs_crud.list_jobs(db, tenant.id, job_type=type)
     return [_job_out(j) for j in jobs]
