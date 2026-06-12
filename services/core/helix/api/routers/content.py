@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.deps import get_db, get_tenant
+from helix.config import get_settings
+from helix.connectors.writeback import write_back_to_platform
 from helix.db.crud.content import (
     approve_content_draft,
     count_content_drafts,
@@ -62,6 +64,16 @@ class ContentDraftListResponse(BaseModel):
     offset: int
 
 
+class ApproveDraftOut(BaseModel):
+    product_id: str
+    field: str
+    draft_text: str
+    status: str
+    created_at: str
+    approved_at: str | None
+    platform_synced: bool
+
+
 @router.get("/drafts", response_model=ContentDraftListResponse)
 async def list_drafts(
     status: str | None = Query(default=None),
@@ -106,23 +118,44 @@ async def get_product_draft(
     return _draft_out(draft)
 
 
-@router.post("/products/{product_id}/draft/approve", response_model=ContentDraftOut)
+@router.post("/products/{product_id}/draft/approve", response_model=ApproveDraftOut)
 async def approve_product_draft(
     product_id: UUID,
+    field: str = Query(default="description_html"),
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
-) -> ContentDraftOut:
-    draft = await get_content_draft(db, tenant.id, product_id)
+) -> ApproveDraftOut:
+    draft = await get_content_draft(db, tenant.id, product_id, field=field)
     if draft is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No draft found for this product")
     if draft.status == "approved":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Draft already approved")
-    product = await get_product_by_id(db, tenant.id, product_id)
-    product.description_html = draft.draft_text
-    db.add(product)
+
+    if field == "description_html":
+        product = await get_product_by_id(db, tenant.id, product_id)
+        product.description_html = draft.draft_text
+        db.add(product)
+
     draft = await approve_content_draft(db, draft)
     await db.commit()
-    return _draft_out(draft)
+
+    platform_synced = False
+    if field == "description_html":
+        settings = get_settings()
+        product_row = await get_product_by_id(db, tenant.id, product_id)
+        platform_synced = await write_back_to_platform(
+            tenant, product_row.platform_id, field, draft.draft_text, settings
+        )
+
+    return ApproveDraftOut(
+        product_id=str(draft.product_id),
+        field=draft.field,
+        draft_text=draft.draft_text,
+        status=draft.status,
+        created_at=draft.created_at.isoformat(),
+        approved_at=draft.approved_at.isoformat() if draft.approved_at else None,
+        platform_synced=platform_synced,
+    )
 
 
 @router.post("/bulk-generate", response_model=BulkGenerateResponse)

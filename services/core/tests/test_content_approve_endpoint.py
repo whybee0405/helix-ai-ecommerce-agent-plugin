@@ -53,6 +53,8 @@ def test_approve_draft_returns_200():
         patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
         patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
         patch("helix.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
+        patch("helix.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=False),
+        patch("helix.api.routers.content.get_settings", return_value=MagicMock()),
     ):
         r = client.post(f"/v1/content/products/{product_id}/draft/approve")
 
