@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 14 — Admin Tenant Operations
+- **Current phase:** Phase 15 — AI Product Description Generation
 - **Overall:** complete
 - **Last updated:** 2026-06-12
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 212/229 tests pass (17 require live Redis/Anthropic — infra-only, not code failures)
+- **Build health:** green — 227/244 tests pass (17 require live Redis/Anthropic — infra-only, not code failures)
 
 ## Phase 0 — Foundations
 
@@ -121,6 +121,16 @@ All 4 tasks complete.
 - [x] Task 3: Conversation list + detail endpoints — `GET /v1/conversations` (limit/offset, merchant auth), `GET /v1/conversations/{id}` with messages (4 tests)
 - [x] Task 4: Message feedback tests — full coverage of `POST /v1/widget/conversations/{message_id}/feedback` (thumbs_up, thumbs_down, 404, 401) (4 tests)
 
+## Phase 15: AI Product Description Generation ✅
+
+All 4 tasks complete.
+
+### Tasks
+- [x] Task 1: `ContentDraft` model + Alembic migration 0004 + CRUD (`upsert_content_draft`, `get_content_draft`, `approve_content_draft`, `list_products_without_draft`) + `get_product_by_id` in products CRUD (3 tests)
+- [x] Task 2: `generate_description` Celery task — `_build_system_prompt` with pack copy guidance, `_build_user_prompt` (None-safe attrs, `price_minor/100`, categories), `LLMParseError` handled without retry, `asyncio.run(_generate_async(...))` with `LLMGateway(settings, tenant_id).complete(ModelTier.GENERATE, ...)` (3 tests)
+- [x] Task 3: Content router (`POST /v1/content/products/{id}/generate` → 202, `GET /v1/content/products/{id}/draft` → 200/404, `POST /v1/content/products/{id}/draft/approve` → 200/404/409, `POST /v1/content/bulk-generate` → 200) registered in `app.py` (9 tests)
+- [x] Task 4: Full suite (244 tests total, 227 pass, 17 infra-only) + PROGRESS.md
+
 ## Phase 14: Admin Tenant Operations ✅
 
 All 4 tasks complete.
@@ -177,6 +187,9 @@ All 3 tasks complete.
 - [x] Task 3: Embedding coverage — `get_embedding_coverage` CRUD (COUNT non-null embeddings) + `GET /v1/analytics/products/embedding-coverage` (coverage_rate=1.0 when no products) (3 tests)
 
 ## Session log
+
+### 2026-06-12 (Phase 15) — Claude Sonnet 4.6
+Built Phase 15 AI product description generation: `ContentDraft` SQLAlchemy model with `UniqueConstraint(tenant_id, product_id, field)` and upsert (DELETE + INSERT) pattern; Alembic migration 0004; `generate_description` Celery task using `LLMGateway(settings, tenant_id).complete(ModelTier.GENERATE, ...)` with `DescriptionDraft(html: str)` structured response — `LLMParseError` handled without retry (parse failures don't self-heal); system prompt enriched with pack-specific copy guidance; user prompt None-safe on domain_attributes; content router with 4 endpoints: `POST /v1/content/products/{id}/generate` (202, fires `generate_description.delay`), `GET /v1/content/products/{id}/draft` (200/404), `POST /v1/content/products/{id}/draft/approve` (writes `draft_text → product.description_html`, 404/409 if already approved), `POST /v1/content/bulk-generate` (queues all without draft). 244 tests total (15 new Phase 15 + 229 prior); 227 pass, 17 infra-only failures unchanged. Next: Phase 16.
 
 ### 2026-06-12 (Phase 14) — Claude Sonnet 4.6
 Built Phase 14 operator-facing admin endpoints: tenant list + detail (`GET /v1/admin/tenants`, `GET /v1/admin/tenants/{id}`) with cross-tenant CRUD, `TenantOut` explicitly excluding `credentials_enc`; per-tenant usage summary (`GET /v1/admin/tenants/{id}/usage`) with exclusive month upper bound (first-of-next-month `<` comparison) and strptime validation on `?month=` param; quota reset (`POST /v1/admin/tenants/{id}/quota/reset`) using `aioredis.from_url(..., decode_responses=True)` in a try/finally. Route `/usage` registered before `/{id}` catch-all. Fixed two stale tests: `test_db_models` updated for conversation tables, `test_search_category` updated for price params. Committed pending `get_widget_tenant` and `TemplateLayer` implementations. 229 tests total (9 new + 220 prior); 212 pass, 17 require live Redis/Anthropic infra.
