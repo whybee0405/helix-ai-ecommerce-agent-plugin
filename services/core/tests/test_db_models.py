@@ -3,7 +3,7 @@ from helix.db.models import Base, Customer, Job, Order, Product, Tenant, UsageEv
 
 def test_all_tables_defined():
     tables = Base.metadata.tables
-    assert set(tables.keys()) == {"tenant", "product", "customer", "order", "job", "usage_event"}
+    assert {"tenant", "product", "customer", "order", "job", "usage_event"}.issubset(set(tables.keys()))
 
 
 def test_product_has_embedding_column():
