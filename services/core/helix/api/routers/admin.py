@@ -1,3 +1,4 @@
+import calendar
 from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
@@ -8,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.deps import get_db
 from helix.config import get_settings
-from helix.db.crud.admin import get_platform_stats
+from helix.db.crud.admin import get_platform_stats, get_tenant_usage_summary
 from helix.db.crud.tenants import count_tenants, get_tenant_by_id, list_tenants
 from helix.db.models import Tenant
 
@@ -38,6 +39,15 @@ class TenantListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class TenantUsageSummary(BaseModel):
+    tenant_id: str
+    month: str
+    total_queries: int
+    total_cost_usd: float
+    total_tokens_in: int
+    total_tokens_out: int
 
 
 def _tenant_out(tenant: Tenant) -> TenantOut:
@@ -84,6 +94,29 @@ async def list_tenants_endpoint(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get("/tenants/{tenant_id}/usage", response_model=TenantUsageSummary)
+async def get_tenant_usage_endpoint(
+    tenant_id: UUID,
+    month: str | None = Query(default=None, description="YYYY-MM format, defaults to current month"),
+    _: str = Depends(_auth_provision),
+    db: AsyncSession = Depends(get_db),
+) -> TenantUsageSummary:
+    today = datetime.now(timezone.utc)
+    if month:
+        year, mon = int(month.split("-")[0]), int(month.split("-")[1])
+    else:
+        year, mon = today.year, today.month
+    month_start = datetime(year, mon, 1, tzinfo=timezone.utc)
+    last_day = calendar.monthrange(year, mon)[1]
+    month_end = datetime(year, mon, last_day, 23, 59, 59, tzinfo=timezone.utc)
+    usage = await get_tenant_usage_summary(db, tenant_id, month_start, month_end)
+    return TenantUsageSummary(
+        tenant_id=str(tenant_id),
+        month=f"{year}-{mon:02d}",
+        **usage,
     )
 
 
