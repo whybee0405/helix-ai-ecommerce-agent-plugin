@@ -83,3 +83,21 @@ async def vector_search_products(
     )
     result = await session.execute(q)
     return [(row.Product, 1.0 - row.distance) for row in result]
+
+
+async def suggest_product_titles(
+    session: AsyncSession,
+    tenant_id: UUID,
+    prefix: str,
+    limit: int = 5,
+) -> list[str]:
+    result = await session.execute(
+        select(Product.title)
+        .where(
+            Product.tenant_id == tenant_id,
+            Product.title.ilike(f"{prefix}%"),
+        )
+        .order_by(Product.title)
+        .limit(limit)
+    )
+    return [row.title for row in result]

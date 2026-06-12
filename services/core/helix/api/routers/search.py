@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.deps import get_db, get_tenant
 from helix.config import get_settings
-from helix.db.crud.products import vector_search_products
+from helix.db.crud.products import suggest_product_titles, vector_search_products
 from helix.db.models import Tenant
 from helix.domain.search import embed_query
 
@@ -30,6 +30,22 @@ class ProductResult(BaseModel):
 class SearchResponse(BaseModel):
     results: list[ProductResult]
     total: int
+
+
+class SuggestResponse(BaseModel):
+    suggestions: list[str]
+    prefix: str
+
+
+@router.get("/suggest", response_model=SuggestResponse)
+async def suggest_products(
+    q: Annotated[str, Query(min_length=1)],
+    limit: Annotated[int, Query(ge=1, le=20)] = 5,
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> SuggestResponse:
+    suggestions = await suggest_product_titles(db, tenant.id, q, limit)
+    return SuggestResponse(suggestions=suggestions, prefix=q)
 
 
 @router.get("/products", response_model=SearchResponse)
