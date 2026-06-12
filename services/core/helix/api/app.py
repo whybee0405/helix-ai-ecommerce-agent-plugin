@@ -67,6 +67,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from helix.api.routers import customers
     app.include_router(customers.router)
 
+    from helix.api.routers import content
+    app.include_router(content.router)
+
     from helix.api.middleware.rate_limit import RateLimitMiddleware
     from helix.api.middleware.quota import QuotaMiddleware
     from helix.api.middleware.request_id import RequestIdMiddleware
