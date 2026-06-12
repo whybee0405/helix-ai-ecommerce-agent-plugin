@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 11 — Customer List & Segment Analytics
+- **Current phase:** Phase 12 — Order Analytics & Inventory Insights
 - **Overall:** complete
 - **Last updated:** 2026-06-12
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 202/202 tests pass
+- **Build health:** green — 211/211 tests pass
 
 ## Phase 0 — Foundations
 
@@ -121,6 +121,15 @@ All 4 tasks complete.
 - [x] Task 3: Conversation list + detail endpoints — `GET /v1/conversations` (limit/offset, merchant auth), `GET /v1/conversations/{id}` with messages (4 tests)
 - [x] Task 4: Message feedback tests — full coverage of `POST /v1/widget/conversations/{message_id}/feedback` (thumbs_up, thumbs_down, 404, 401) (4 tests)
 
+## Phase 12: Order Analytics & Inventory Insights ✅
+
+All 3 tasks complete.
+
+### Tasks
+- [x] Task 1: Order revenue analytics — `get_order_analytics` CRUD (`func.coalesce(SUM)` NULL-safe) + `GET /v1/analytics/orders` (total_orders, total_revenue_minor, avg_order_value_minor, period) (3 tests)
+- [x] Task 2: Orders by status — `get_orders_by_status` CRUD (GROUP BY status, count + revenue) + `GET /v1/analytics/orders/by-status` (3 tests)
+- [x] Task 3: Inventory snapshot — `get_inventory_snapshot` CRUD (`case()` conditional counts for in_stock/out_of_stock) + `GET /v1/analytics/products/inventory` (in_stock_rate=1.0 when empty) (3 tests)
+
 ## Phase 11: Customer List & Segment Analytics ✅
 
 All 3 tasks complete.
@@ -149,6 +158,9 @@ All 3 tasks complete.
 - [x] Task 3: Embedding coverage — `get_embedding_coverage` CRUD (COUNT non-null embeddings) + `GET /v1/analytics/products/embedding-coverage` (coverage_rate=1.0 when no products) (3 tests)
 
 ## Session log
+
+### 2026-06-12 (Phase 12) — Claude Sonnet 4.6
+Built Phase 12 commerce analytics: order revenue analytics (`GET /v1/analytics/orders`) with `func.coalesce(SUM, 0)` for NULL-safe revenue across zero-order tenants, 30-day default window, `period` dict in response; order status breakdown (`GET /v1/analytics/orders/by-status`) groups by status with per-group revenue totals ordered by count; inventory snapshot (`GET /v1/analytics/products/inventory`) uses SQLAlchemy `case()` conditional counts for in_stock/out_of_stock split, `in_stock_rate=1.0` for empty catalogs. Line_items JSONB skipped — raw platform payloads (Shopify/WooCommerce) have different schemas; aggregations on structured columns only. 211 tests total (9 new Phase 12 + 202 prior). Next: Phase 13.
 
 ### 2026-06-12 (Phase 11) — Claude Sonnet 4.6
 Built Phase 11 customer insights: new `GET /v1/customers` (paginated list with total count) and `GET /v1/customers/{id}` (detail) merchant endpoints via new `customers.py` router; `GET /v1/customers/{id}/conversations` endpoint for customer conversation history — route registered before `/{id}` to prevent FastAPI catch-all shadowing; `GET /v1/analytics/customers/segments` groups customers by `skin_type` JSONB attribute using `func.jsonb_extract_path_text`, buckets `None` as `"unknown"`. All endpoints tenant-scoped with `get_tenant` auth and 404 on unknown resource. 202 tests total (9 new Phase 11 + 193 prior). Next: Phase 12.
