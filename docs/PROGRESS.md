@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 16 — Merchant Management APIs
+- **Current phase:** Phase 17 — SEO Metadata Generation & Platform Write-back
 - **Overall:** complete
 - **Last updated:** 2026-06-12
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 236/253 tests pass (17 require live Redis/Anthropic — infra-only, not code failures)
+- **Build health:** green — 245/262 tests pass (17 require live Redis/Anthropic — infra-only, not code failures)
 
 ## Phase 0 — Foundations
 
@@ -121,6 +121,16 @@ All 4 tasks complete.
 - [x] Task 3: Conversation list + detail endpoints — `GET /v1/conversations` (limit/offset, merchant auth), `GET /v1/conversations/{id}` with messages (4 tests)
 - [x] Task 4: Message feedback tests — full coverage of `POST /v1/widget/conversations/{message_id}/feedback` (thumbs_up, thumbs_down, 404, 401) (4 tests)
 
+## Phase 17: SEO Metadata Generation & Platform Write-back ✅
+
+All 4 tasks complete.
+
+### Tasks
+- [x] Task 1: SEO generation task — `helix/workers/tasks/seo.py` with `generate_seo_metadata` Celery task; one LLM call produces `SeoMeta(meta_title, meta_description)` stored as two ContentDraft rows; `list_products_without_draft(field=)` generalised (backwards-compatible default `"description_html"`); `?field=` query param added to `GET /v1/content/products/{id}/draft`; `POST /v1/content/products/{id}/generate-seo` (202) and `POST /v1/content/bulk-generate-seo` added to content router (9 new tests total for P17-1 + P17-2 + P17-3)
+- [x] Task 2: Write-back client — `helix/connectors/writeback.py`; `write_back_to_platform(tenant, platform_id, field, text, settings) -> bool`; WooCommerce (Basic auth, PUT `/wp-json/wc/v3/products/{id}`); Shopify (X-Shopify-Access-Token header, PUT `/admin/api/2024-01/products/{id}.json`); never raises; `credentials_enc` never logged
+- [x] Task 3: Approve write-back wiring — `approve_product_draft` gets `?field=` param; `ApproveDraftOut` adds `platform_synced: bool`; `db.commit()` before write-back (draft approved even if platform unreachable); write-back only for `field == "description_html"`, failure non-fatal (returns 200 with `platform_synced=False`)
+- [x] Task 4: Full suite (262 tests total, 245 pass, 17 infra-only) + PROGRESS.md
+
 ## Phase 16: Merchant Management APIs ✅
 
 All 4 tasks complete.
@@ -197,6 +207,9 @@ All 3 tasks complete.
 - [x] Task 3: Embedding coverage — `get_embedding_coverage` CRUD (COUNT non-null embeddings) + `GET /v1/analytics/products/embedding-coverage` (coverage_rate=1.0 when no products) (3 tests)
 
 ## Session log
+
+### 2026-06-12 (Phase 17) — Claude Sonnet 4.6
+Built Phase 17 SEO metadata generation and platform write-back: `generate_seo_metadata` Celery task produces `meta_title` + `meta_description` as two ContentDraft rows per product from one `SeoMeta`-typed LLM call; `list_products_without_draft` generalised to accept a `field` param so `bulk-generate-seo` queries absence of `meta_title` drafts; two new endpoints (`POST /v1/content/products/{id}/generate-seo`, `POST /v1/content/bulk-generate-seo`); `GET /v1/content/products/{id}/draft` now accepts `?field=` to retrieve any field type. Platform write-back client in `helix/connectors/writeback.py` handles WooCommerce (Basic auth) and Shopify (access token), never raises, returns bool; credentials decrypted via Fernet, never logged. Approve endpoint wired: `?field=` param added, product model updated only for `description_html`, `db.commit()` before write-back (draft is approved even if platform is unreachable), `ApproveDraftOut` adds `platform_synced: bool`. 262 tests total (9 new Phase 17 + 253 prior); 245 pass, 17 infra-only failures unchanged. Next: Phase 18.
 
 ### 2026-06-12 (Phase 16) — Claude Sonnet 4.6
 Built Phase 16 merchant management APIs: content draft review queue (`GET /v1/content/drafts`) with optional status filter and pagination, registered before `/products/{product_id}/...` routes to avoid path-param collision; product management router (`GET /v1/products/{id}` returning full detail including `description_html`, `PATCH /v1/products/{id}` with `exclude_unset=True` so only explicitly-sent fields are updated, 422 on empty body); merchant dashboard (`GET /v1/dashboard`) aggregating product count, customer count, conversations this month, pending drafts, this-month usage (queries + cost_usd), quota limit and used — month boundary exclusive upper bound. 253 tests total (9 new Phase 16 + 244 prior); 236 pass, 17 infra-only failures unchanged. Next: Phase 17.
