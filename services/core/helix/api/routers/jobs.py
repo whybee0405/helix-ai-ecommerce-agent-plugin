@@ -7,7 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.deps import get_db, get_tenant
 from helix.db.crud import jobs as jobs_crud
+from helix.db.crud.products import list_products_without_embedding
 from helix.db.models import Tenant
+from helix.workers.tasks.embedding import embed_product
 
 router = APIRouter(prefix="/v1/jobs", tags=["jobs"])
 
@@ -36,6 +38,21 @@ def _job_out(job) -> JobOut:
         finished_at=job.finished_at.isoformat() if job.finished_at else None,
         created_at=job.created_at.isoformat(),
     )
+
+
+class BulkEmbedResponse(BaseModel):
+    queued: int
+
+
+@router.post("/embed/bulk", response_model=BulkEmbedResponse)
+async def bulk_embed_endpoint(
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> BulkEmbedResponse:
+    products = await list_products_without_embedding(db, tenant.id)
+    for product in products:
+        embed_product.delay(str(tenant.id), str(product.id))
+    return BulkEmbedResponse(queued=len(products))
 
 
 @router.get("/{job_id}", response_model=JobOut)

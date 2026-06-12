@@ -218,3 +218,16 @@ async def browse_products(
         .offset(offset)
     )
     return list(result.scalars().all()), total
+
+
+async def list_products_without_embedding(
+    session: AsyncSession,
+    tenant_id: UUID,
+) -> list[Product]:
+    result = await session.execute(
+        select(Product).where(
+            Product.tenant_id == tenant_id,
+            Product.embedding.is_(None),
+        )
+    )
+    return list(result.scalars().all())
