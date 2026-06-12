@@ -231,3 +231,15 @@ async def list_products_without_embedding(
         )
     )
     return list(result.scalars().all())
+
+
+async def get_product_by_id(
+    session: AsyncSession, tenant_id: UUID, product_id: UUID
+) -> Product | None:
+    result = await session.execute(
+        select(Product).where(
+            Product.tenant_id == tenant_id,
+            Product.id == product_id,
+        )
+    )
+    return result.scalar_one_or_none()
