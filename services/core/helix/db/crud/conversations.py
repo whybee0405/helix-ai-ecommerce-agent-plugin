@@ -185,3 +185,39 @@ async def get_conversation_analytics(
         "feedback_count": feedback_count,
         "feedback_positive_rate": feedback_positive_rate,
     }
+
+
+async def get_top_queries(
+    session: AsyncSession,
+    tenant_id: UUID,
+    limit: int = 10,
+    start: date | None = None,
+    end: date | None = None,
+) -> list[dict]:
+    stmt = (
+        select(
+            ConversationMessage.content,
+            func.count(ConversationMessage.id).label("cnt"),
+        )
+        .where(
+            ConversationMessage.tenant_id == tenant_id,
+            ConversationMessage.role == "user",
+        )
+    )
+
+    if start:
+        start_dt = datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
+        stmt = stmt.where(ConversationMessage.created_at >= start_dt)
+    if end:
+        end_dt = datetime(end.year, end.month, end.day, tzinfo=timezone.utc) + timedelta(days=1)
+        stmt = stmt.where(ConversationMessage.created_at < end_dt)
+
+    stmt = (
+        stmt
+        .group_by(ConversationMessage.content)
+        .order_by(func.count(ConversationMessage.id).desc())
+        .limit(limit)
+    )
+
+    result = await session.execute(stmt)
+    return [{"query": row.content, "count": row.cnt} for row in result.all()]

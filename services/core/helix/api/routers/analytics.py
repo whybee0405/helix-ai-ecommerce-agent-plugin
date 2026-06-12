@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.deps import get_db, get_tenant
 from helix.config import get_settings
-from helix.db.crud.conversations import get_conversation_analytics
+from helix.db.crud.conversations import get_conversation_analytics, get_top_queries
 from helix.db.crud.usage import get_usage_summary
 from helix.db.models import Tenant
 
@@ -107,3 +107,24 @@ async def get_conversation_analytics_endpoint(
         period={"start": str(start), "end": str(end)},
         **stats,
     )
+
+
+class TopQueryItem(BaseModel):
+    query: str
+    count: int
+
+
+class TopQueriesResponse(BaseModel):
+    queries: list[TopQueryItem]
+
+
+@router.get("/top-queries", response_model=TopQueriesResponse)
+async def get_top_queries_endpoint(
+    limit: int = Query(default=10, ge=1, le=50),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> TopQueriesResponse:
+    queries = await get_top_queries(db, tenant.id, limit=limit, start=start_date, end=end_date)
+    return TopQueriesResponse(queries=[TopQueryItem(**q) for q in queries])
