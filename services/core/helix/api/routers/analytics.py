@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from helix.api.deps import get_db, get_tenant
 from helix.config import get_settings
 from helix.db.crud.conversations import get_conversation_analytics, get_top_queries, get_top_referenced_products
-from helix.db.crud.orders import get_order_analytics
+from helix.db.crud.orders import get_order_analytics, get_orders_by_status
 from helix.db.crud.customers import get_customer_segments
 from helix.db.crud.products import get_embedding_coverage
 from helix.db.crud.usage import get_usage_summary
@@ -217,4 +217,29 @@ async def get_order_analytics_endpoint(
     return OrderAnalyticsResponse(
         period={"start": effective_start.isoformat(), "end": effective_end.isoformat()},
         **analytics,
+    )
+
+
+class OrderStatusItem(BaseModel):
+    status: str
+    count: int
+    total_revenue_minor: int
+
+
+class OrdersByStatusResponse(BaseModel):
+    statuses: list[OrderStatusItem]
+
+
+@router.get("/orders/by-status", response_model=OrdersByStatusResponse)
+async def get_orders_by_status_endpoint(
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> OrdersByStatusResponse:
+    statuses = await get_orders_by_status(
+        db, tenant.id, start=start_date, end=end_date
+    )
+    return OrdersByStatusResponse(
+        statuses=[OrderStatusItem(**s) for s in statuses]
     )

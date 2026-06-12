@@ -74,3 +74,31 @@ async def get_order_analytics(
     revenue = row.total_revenue_minor or 0
     avg = round(revenue / total) if total > 0 else 0
     return {"total_orders": total, "total_revenue_minor": revenue, "avg_order_value_minor": avg}
+
+
+async def get_orders_by_status(
+    session: AsyncSession,
+    tenant_id: UUID,
+    start: date | None = None,
+    end: date | None = None,
+) -> list[dict]:
+    stmt = (
+        select(
+            Order.status,
+            func.count(Order.id).label("count"),
+            func.coalesce(func.sum(Order.total_minor), 0).label("total_revenue_minor"),
+        )
+        .where(Order.tenant_id == tenant_id)
+    )
+    if start:
+        start_dt = datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
+        stmt = stmt.where(Order.placed_at >= start_dt)
+    if end:
+        end_dt = datetime(end.year, end.month, end.day, tzinfo=timezone.utc) + timedelta(days=1)
+        stmt = stmt.where(Order.placed_at < end_dt)
+    stmt = stmt.group_by(Order.status).order_by(func.count(Order.id).desc())
+    result = await session.execute(stmt)
+    return [
+        {"status": row.status, "count": row.count, "total_revenue_minor": row.total_revenue_minor}
+        for row in result.all()
+    ]
