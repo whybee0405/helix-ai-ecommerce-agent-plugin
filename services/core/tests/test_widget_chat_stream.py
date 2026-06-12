@@ -26,7 +26,6 @@ def test_chat_stream_returns_event_stream_content_type():
 
     tenant = MagicMock(spec=Tenant)
     tenant.id = uuid4()
-    tenant.public_key = uuid4()
 
     # Override the dependency
     app.dependency_overrides[get_widget_tenant] = lambda: tenant
@@ -61,7 +60,6 @@ def test_chat_stream_contains_token_and_done_events():
 
     tenant = MagicMock(spec=Tenant)
     tenant.id = uuid4()
-    tenant.public_key = uuid4()
 
     app.dependency_overrides[get_widget_tenant] = lambda: tenant
 
@@ -105,7 +103,6 @@ def test_chat_stream_passes_source_in_done_event():
 
     tenant = MagicMock(spec=Tenant)
     tenant.id = uuid4()
-    tenant.public_key = uuid4()
 
     app.dependency_overrides[get_widget_tenant] = lambda: tenant
 

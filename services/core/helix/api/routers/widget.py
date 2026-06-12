@@ -1,4 +1,5 @@
 import json
+from collections.abc import AsyncGenerator
 from uuid import UUID
 
 import structlog
@@ -17,6 +18,7 @@ from helix.db.models import Tenant
 from helix.domain.consultant import handle_query
 from helix.domain.routine import build_routine
 from helix.domain.search import embed_query
+from helix.llm.gateway import RouteResult
 from helix.packs.registry import get_pack_for_tenant
 
 logger = structlog.get_logger(__name__)
@@ -151,12 +153,12 @@ class ChatResponse(BaseModel):
     products_referenced: list[str] = []
 
 
-@router.post("/chat", response_model=ChatResponse)
-async def widget_chat(
-    body: ChatRequest,
-    tenant: Tenant = Depends(get_widget_tenant),
-    db: AsyncSession = Depends(get_db),
-) -> ChatResponse:
+async def _run_chat_pipeline(
+    body: "ChatRequest",
+    tenant: Tenant,
+    db: AsyncSession,
+    endpoint: str,
+) -> "RouteResult":
     settings = get_settings()
     pack = get_pack_for_tenant(tenant)
 
@@ -181,7 +183,7 @@ async def widget_chat(
             if customer:
                 merged_profile = {**(customer.profile or {}), **body.customer_profile}
         except ValueError:
-            logger.warning("widget_chat_invalid_customer_id", customer_id=body.customer_id)
+            logger.warning("widget_chat_invalid_customer_id", customer_id=body.customer_id, endpoint=endpoint)
 
     result = await handle_query(
         query=body.query,
@@ -195,16 +197,21 @@ async def widget_chat(
 
     if result.cost_usd > 0:
         await create_usage_event(
-            db,
-            tenant.id,
-            result.model,
-            result.tokens_in,
-            result.tokens_out,
-            result.cost_usd,
-            "/v1/widget/chat",
+            db, tenant.id, result.model,
+            result.tokens_in, result.tokens_out,
+            result.cost_usd, endpoint,
         )
     await db.commit()
+    return result
 
+
+@router.post("/chat", response_model=ChatResponse)
+async def widget_chat(
+    body: ChatRequest,
+    tenant: Tenant = Depends(get_widget_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> ChatResponse:
+    result = await _run_chat_pipeline(body, tenant, db, "/v1/widget/chat")
     return ChatResponse(
         response=result.response,
         source=result.source,
@@ -218,65 +225,13 @@ async def widget_chat_stream(
     tenant: Tenant = Depends(get_widget_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
-    settings = get_settings()
-    pack = get_pack_for_tenant(tenant)
+    result = await _run_chat_pipeline(body, tenant, db, "/v1/widget/chat/stream")
 
-    query_vector = await embed_query(body.query, settings)
-    product_rows = await vector_search_products(db, tenant.id, query_vector, limit=5)
-    context_products = [
-        {
-            "title": p.title,
-            "price_minor": p.price_minor,
-            "currency": p.currency,
-            "categories": p.categories or [],
-            "domain_attributes": p.domain_attributes or {},
-        }
-        for p, _ in product_rows
-    ]
+    async def _events() -> AsyncGenerator[str, None]:
+        yield f"data: {json.dumps({'type': 'token', 'content': result.response})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'source': result.source})}\n\n"
 
-    merged_profile = body.customer_profile
-    if body.customer_id:
-        try:
-            cid = UUID(body.customer_id)
-            customer = await get_customer_by_id(db, cid, tenant.id)
-            if customer:
-                merged_profile = {**(customer.profile or {}), **body.customer_profile}
-        except ValueError:
-            logger.warning("widget_chat_stream_invalid_customer_id", customer_id=body.customer_id)
-
-    result = await handle_query(
-        query=body.query,
-        customer_profile=merged_profile,
-        context_products=context_products,
-        tenant_id=tenant.id,
-        pack=pack,
-        settings=settings,
-        db_session=db,
-    )
-
-    if result.cost_usd > 0:
-        await create_usage_event(
-            db,
-            tenant.id,
-            result.model,
-            result.tokens_in,
-            result.tokens_out,
-            result.cost_usd,
-            "/v1/widget/chat/stream",
-        )
-    await db.commit()
-
-    # Generator function to emit SSE events
-    async def event_generator():
-        # Emit token event with response content
-        token_event = {"type": "token", "content": result.response}
-        yield f"data: {json.dumps(token_event)}\n\n"
-
-        # Emit done event with source
-        done_event = {"type": "done", "source": result.source}
-        yield f"data: {json.dumps(done_event)}\n\n"
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(_events(), media_type="text/event-stream")
 
 
 class RoutineRequest(BaseModel):
