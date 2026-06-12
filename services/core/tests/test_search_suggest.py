@@ -16,7 +16,6 @@ def test_suggest_returns_matching_titles():
 
     tenant = MagicMock(spec=Tenant)
     tenant.id = uuid4()
-    tenant.public_key = uuid4()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
@@ -41,7 +40,6 @@ def test_suggest_empty_results_ok():
 
     tenant = MagicMock(spec=Tenant)
     tenant.id = uuid4()
-    tenant.public_key = uuid4()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
