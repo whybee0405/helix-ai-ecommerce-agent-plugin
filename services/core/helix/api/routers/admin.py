@@ -50,6 +50,11 @@ class TenantUsageSummary(BaseModel):
     total_tokens_out: int
 
 
+class QuotaResetResponse(BaseModel):
+    reset: bool
+    key: str
+
+
 def _tenant_out(tenant: Tenant) -> TenantOut:
     return TenantOut(
         id=str(tenant.id),
@@ -139,17 +144,17 @@ async def get_tenant_endpoint(
     return _tenant_out(tenant)
 
 
-@router.post("/tenants/{tenant_id}/quota/reset")
+@router.post("/tenants/{tenant_id}/quota/reset", response_model=QuotaResetResponse)
 async def reset_tenant_quota(
     tenant_id: UUID,
     _: str = Depends(_auth_provision),
-) -> dict:
+) -> QuotaResetResponse:
     settings = get_settings()
     today = datetime.now(timezone.utc)
     key = f"quota:{tenant_id}:{today.year}-{today.month:02d}"
-    r = aioredis.from_url(str(settings.redis_url))
+    r = aioredis.from_url(str(settings.redis_url), decode_responses=True)
     try:
         await r.delete(key)
     finally:
         await r.aclose()
-    return {"reset": True, "key": key}
+    return QuotaResetResponse(reset=True, key=key)

@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -47,6 +48,10 @@ def test_quota_reset_calls_delete():
     app.dependency_overrides.clear()
 
     mock_redis.delete.assert_called_once()
+    today = datetime.now(timezone.utc)
+    expected_key = f"quota:{tenant_id}:{today.year}-{today.month:02d}"
+    mock_redis.delete.assert_called_once_with(expected_key)
+    mock_redis.aclose.assert_called_once()
 
 
 def test_quota_reset_requires_provision_key():
