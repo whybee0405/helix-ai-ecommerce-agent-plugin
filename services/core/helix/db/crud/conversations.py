@@ -221,3 +221,34 @@ async def get_top_queries(
 
     result = await session.execute(stmt)
     return [{"query": row.content, "count": row.cnt} for row in result.all()]
+
+
+async def get_top_referenced_products(
+    session: AsyncSession,
+    tenant_id: UUID,
+    limit: int = 10,
+    start: "date | None" = None,
+    end: "date | None" = None,
+) -> list[dict]:
+    pid_col = func.jsonb_array_elements_text(
+        ConversationMessage.products_referenced
+    ).column_valued("pid")
+
+    stmt = (
+        select(pid_col, func.count().label("cnt"))
+        .where(
+            ConversationMessage.tenant_id == tenant_id,
+            ConversationMessage.role == "assistant",
+        )
+    )
+
+    if start:
+        start_dt = datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
+        stmt = stmt.where(ConversationMessage.created_at >= start_dt)
+    if end:
+        end_dt = datetime(end.year, end.month, end.day, tzinfo=timezone.utc) + timedelta(days=1)
+        stmt = stmt.where(ConversationMessage.created_at < end_dt)
+
+    stmt = stmt.group_by(pid_col).order_by(func.count().desc()).limit(limit)
+    result = await session.execute(stmt)
+    return [{"product_id": row.pid, "count": row.cnt} for row in result.all()]

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.deps import get_db, get_tenant
 from helix.config import get_settings
-from helix.db.crud.conversations import get_conversation_analytics, get_top_queries
+from helix.db.crud.conversations import get_conversation_analytics, get_top_queries, get_top_referenced_products
 from helix.db.crud.usage import get_usage_summary
 from helix.db.models import Tenant
 
@@ -128,3 +128,28 @@ async def get_top_queries_endpoint(
 ) -> TopQueriesResponse:
     queries = await get_top_queries(db, tenant.id, limit=limit, start=start_date, end=end_date)
     return TopQueriesResponse(queries=[TopQueryItem(**q) for q in queries])
+
+
+class TopReferencedProductItem(BaseModel):
+    product_id: str
+    count: int
+
+
+class TopReferencedProductsResponse(BaseModel):
+    products: list[TopReferencedProductItem]
+
+
+@router.get("/products/top", response_model=TopReferencedProductsResponse)
+async def get_top_referenced_products_endpoint(
+    limit: int = Query(default=10, ge=1, le=50),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> TopReferencedProductsResponse:
+    products = await get_top_referenced_products(
+        db, tenant.id, limit=limit, start=start_date, end=end_date
+    )
+    return TopReferencedProductsResponse(
+        products=[TopReferencedProductItem(**p) for p in products]
+    )
