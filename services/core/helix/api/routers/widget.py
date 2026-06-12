@@ -1,5 +1,7 @@
 import json
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
+from typing import Literal
 from uuid import UUID
 
 import structlog
@@ -11,6 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from helix.api.auth.tokens import issue_widget_token
 from helix.api.deps import get_db, get_tenant, get_widget_tenant
 from helix.config import get_settings
+from helix.db.crud.conversations import (
+    append_messages,
+    create_conversation,
+    get_conversation,
+)
+from helix.db.crud.conversations import get_message, set_message_feedback
 from helix.db.crud.customers import get_customer_by_id
 from helix.db.crud.products import vector_search_products
 from helix.db.crud.usage_events import create_usage_event
@@ -145,12 +153,22 @@ class ChatRequest(BaseModel):
     query: str
     customer_id: str | None = None
     customer_profile: dict = {}
+    conversation_id: str | None = None
 
 
 class ChatResponse(BaseModel):
     response: str
     source: str
     products_referenced: list[str] = []
+    conversation_id: str
+    assistant_message_id: str
+
+
+@dataclass
+class PipelineResult:
+    route: RouteResult
+    conversation_id: UUID
+    assistant_message_id: UUID
 
 
 async def _run_chat_pipeline(
@@ -158,7 +176,7 @@ async def _run_chat_pipeline(
     tenant: Tenant,
     db: AsyncSession,
     endpoint: str,
-) -> "RouteResult":
+) -> PipelineResult:
     settings = get_settings()
     pack = get_pack_for_tenant(tenant)
 
@@ -201,8 +219,40 @@ async def _run_chat_pipeline(
             result.tokens_in, result.tokens_out,
             result.cost_usd, endpoint,
         )
+
+    conversation = None
+    if body.conversation_id:
+        try:
+            conv_uuid = UUID(body.conversation_id)
+            conversation = await get_conversation(db, conv_uuid, tenant.id)
+        except ValueError:
+            pass
+
+    if conversation is None:
+        customer_uuid = None
+        if body.customer_id:
+            try:
+                customer_uuid = UUID(body.customer_id)
+            except ValueError:
+                pass
+        conversation = await create_conversation(db, tenant.id, customer_uuid)
+
+    _user_msg, assistant_msg = await append_messages(
+        db,
+        conversation_id=conversation.id,
+        tenant_id=tenant.id,
+        user_content=body.query,
+        assistant_content=result.response,
+        source=result.source,
+        products_referenced=result.products_referenced,
+    )
+
     await db.commit()
-    return result
+    return PipelineResult(
+        route=result,
+        conversation_id=conversation.id,
+        assistant_message_id=assistant_msg.id,
+    )
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -211,11 +261,13 @@ async def widget_chat(
     tenant: Tenant = Depends(get_widget_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ChatResponse:
-    result = await _run_chat_pipeline(body, tenant, db, "/v1/widget/chat")
+    pipeline = await _run_chat_pipeline(body, tenant, db, "/v1/widget/chat")
     return ChatResponse(
-        response=result.response,
-        source=result.source,
-        products_referenced=result.products_referenced,
+        response=pipeline.route.response,
+        source=pipeline.route.source,
+        products_referenced=pipeline.route.products_referenced,
+        conversation_id=str(pipeline.conversation_id),
+        assistant_message_id=str(pipeline.assistant_message_id),
     )
 
 
@@ -225,11 +277,11 @@ async def widget_chat_stream(
     tenant: Tenant = Depends(get_widget_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
-    result = await _run_chat_pipeline(body, tenant, db, "/v1/widget/chat/stream")
+    pipeline = await _run_chat_pipeline(body, tenant, db, "/v1/widget/chat/stream")
 
     async def _events() -> AsyncGenerator[str, None]:
-        yield f"data: {json.dumps({'type': 'token', 'content': result.response})}\n\n"
-        yield f"data: {json.dumps({'type': 'done', 'source': result.source})}\n\n"
+        yield f"data: {json.dumps({'type': 'token', 'content': pipeline.route.response})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'source': pipeline.route.source, 'conversation_id': str(pipeline.conversation_id), 'assistant_message_id': str(pipeline.assistant_message_id)})}\n\n"
 
     return StreamingResponse(_events(), media_type="text/event-stream")
 
@@ -292,6 +344,30 @@ async def widget_routine(
         missing_steps=result.missing_steps,
         llm_augmented=result.llm_augmented,
     )
+
+
+class FeedbackRequest(BaseModel):
+    feedback: Literal["thumbs_up", "thumbs_down"]
+
+
+class FeedbackResponse(BaseModel):
+    message_id: str
+    feedback: str
+
+
+@router.post("/conversations/{message_id}/feedback", response_model=FeedbackResponse)
+async def submit_message_feedback(
+    message_id: UUID,
+    body: FeedbackRequest,
+    tenant: Tenant = Depends(get_widget_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> FeedbackResponse:
+    msg = await get_message(db, message_id, tenant.id)
+    if msg is None or msg.role != "assistant":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+    await set_message_feedback(db, message_id, tenant.id, body.feedback)
+    await db.commit()
+    return FeedbackResponse(message_id=str(message_id), feedback=body.feedback)
 
 
 @router.get("/embed.js", include_in_schema=False)
