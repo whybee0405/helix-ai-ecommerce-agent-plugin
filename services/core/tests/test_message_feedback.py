@@ -74,9 +74,10 @@ def test_feedback_404_on_unknown_message():
     tenant.id = uuid4()
     app.dependency_overrides[get_widget_tenant] = lambda: tenant
 
+    message_id = uuid4()
     with patch("helix.api.routers.widget.set_message_feedback", new_callable=AsyncMock, return_value=None):
         r = client.post(
-            f"/v1/widget/conversations/{uuid4()}/feedback",
+            f"/v1/widget/conversations/{message_id}/feedback",
             json={"feedback": "thumbs_down"},
         )
 
