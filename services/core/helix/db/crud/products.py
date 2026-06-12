@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -130,3 +130,26 @@ async def get_similar_products(
         .limit(limit)
     )
     return [(row.Product, 1.0 - row.distance) for row in result]
+
+
+async def get_embedding_coverage(
+    session: AsyncSession,
+    tenant_id: UUID,
+) -> dict:
+    result = await session.execute(
+        select(
+            func.count(Product.id).label("total"),
+            func.count(Product.embedding).label("embedded"),
+        ).where(Product.tenant_id == tenant_id)
+    )
+    row = result.one()
+    total = row.total or 0
+    embedded = row.embedded or 0
+    missing = total - embedded
+    coverage_rate = round(embedded / total, 2) if total > 0 else 1.0
+    return {
+        "total": total,
+        "embedded": embedded,
+        "missing": missing,
+        "coverage_rate": coverage_rate,
+    }

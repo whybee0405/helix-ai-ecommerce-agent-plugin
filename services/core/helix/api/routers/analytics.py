@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from helix.api.deps import get_db, get_tenant
 from helix.config import get_settings
 from helix.db.crud.conversations import get_conversation_analytics, get_top_queries, get_top_referenced_products
+from helix.db.crud.products import get_embedding_coverage
 from helix.db.crud.usage import get_usage_summary
 from helix.db.models import Tenant
 
@@ -153,3 +154,19 @@ async def get_top_referenced_products_endpoint(
     return TopReferencedProductsResponse(
         products=[TopReferencedProductItem(**p) for p in products]
     )
+
+
+class EmbeddingCoverage(BaseModel):
+    total: int
+    embedded: int
+    missing: int
+    coverage_rate: float
+
+
+@router.get("/products/embedding-coverage", response_model=EmbeddingCoverage)
+async def get_embedding_coverage_endpoint(
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> EmbeddingCoverage:
+    coverage = await get_embedding_coverage(db, tenant.id)
+    return EmbeddingCoverage(**coverage)
