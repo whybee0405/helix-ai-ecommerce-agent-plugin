@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 10 — Product Similarity & Performance Analytics
+- **Current phase:** Phase 11 — Customer List & Segment Analytics
 - **Overall:** complete
 - **Last updated:** 2026-06-12
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 193/193 tests pass
+- **Build health:** green — 202/202 tests pass
 
 ## Phase 0 — Foundations
 
@@ -121,6 +121,15 @@ All 4 tasks complete.
 - [x] Task 3: Conversation list + detail endpoints — `GET /v1/conversations` (limit/offset, merchant auth), `GET /v1/conversations/{id}` with messages (4 tests)
 - [x] Task 4: Message feedback tests — full coverage of `POST /v1/widget/conversations/{message_id}/feedback` (thumbs_up, thumbs_down, 404, 401) (4 tests)
 
+## Phase 11: Customer List & Segment Analytics ✅
+
+All 3 tasks complete.
+
+### Tasks
+- [x] Task 1: Customer list & detail — `list_customers` + `count_customers` CRUD + new `GET /v1/customers` (paginated) + `GET /v1/customers/{id}` router; registered in `app.py` (3 tests)
+- [x] Task 2: Customer conversation history — `list_conversations_by_customer` CRUD + `GET /v1/customers/{id}/conversations` endpoint (route registered before `/{id}` to avoid FastAPI shadowing) (3 tests)
+- [x] Task 3: Customer segment analytics — `get_customer_segments` CRUD (JSONB skin_type grouping, `None` → `"unknown"`) + `GET /v1/analytics/customers/segments` (3 tests)
+
 ## Phase 9: Conversation Context & Analytics ✅
 
 All 3 tasks complete.
@@ -140,6 +149,9 @@ All 3 tasks complete.
 - [x] Task 3: Embedding coverage — `get_embedding_coverage` CRUD (COUNT non-null embeddings) + `GET /v1/analytics/products/embedding-coverage` (coverage_rate=1.0 when no products) (3 tests)
 
 ## Session log
+
+### 2026-06-12 (Phase 11) — Claude Sonnet 4.6
+Built Phase 11 customer insights: new `GET /v1/customers` (paginated list with total count) and `GET /v1/customers/{id}` (detail) merchant endpoints via new `customers.py` router; `GET /v1/customers/{id}/conversations` endpoint for customer conversation history — route registered before `/{id}` to prevent FastAPI catch-all shadowing; `GET /v1/analytics/customers/segments` groups customers by `skin_type` JSONB attribute using `func.jsonb_extract_path_text`, buckets `None` as `"unknown"`. All endpoints tenant-scoped with `get_tenant` auth and 404 on unknown resource. 202 tests total (9 new Phase 11 + 193 prior). Next: Phase 12.
 
 ### 2026-06-12 (Phase 10) — Claude Sonnet 4.6
 Built Phase 10 product intelligence and analytics: similar products endpoint (`GET /v1/search/similar/{product_id}`) uses pgvector cosine distance on existing embeddings, returns top N similar products for a tenant, 404 if source has no embedding; top referenced products (`GET /v1/analytics/products/top`) unnests the JSONB `products_referenced` array from assistant conversation messages, groups and counts by product ID; embedding coverage health check (`GET /v1/analytics/products/embedding-coverage`) uses `COUNT(embedding)` to count non-null rows, computes coverage rate (1.0 when catalog is empty). All endpoints merchant-facing with `get_tenant` auth and tenant isolation. 193 tests total (9 new Phase 10 + 184 prior). Next: Phase 11.
