@@ -101,3 +101,32 @@ async def suggest_product_titles(
         .limit(limit)
     )
     return [row.title for row in result]
+
+
+async def get_similar_products(
+    session: AsyncSession,
+    tenant_id: UUID,
+    product_id: UUID,
+    limit: int = 5,
+) -> list[tuple[Product, float]]:
+    source = await session.scalar(
+        select(Product).where(
+            Product.id == product_id,
+            Product.tenant_id == tenant_id,
+        )
+    )
+    if source is None or source.embedding is None:
+        return []
+
+    distance_col = Product.embedding.cosine_distance(source.embedding).label("distance")
+    result = await session.execute(
+        select(Product, distance_col)
+        .where(
+            Product.tenant_id == tenant_id,
+            Product.embedding.is_not(None),
+            Product.id != product_id,
+        )
+        .order_by(distance_col)
+        .limit(limit)
+    )
+    return [(row.Product, 1.0 - row.distance) for row in result]
