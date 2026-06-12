@@ -68,6 +68,7 @@ async def get_quota_status(
         used_str = await redis_client.get(key)
         used = int(used_str) if used_str else 0
     except Exception:
+        logger.warning("quota_redis_error", tenant_id=str(tenant.id))
         used = 0
     finally:
         await redis_client.aclose()

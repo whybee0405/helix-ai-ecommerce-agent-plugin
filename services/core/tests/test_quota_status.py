@@ -29,9 +29,10 @@ def test_quota_status_returns_used_count():
 
     assert r.status_code == 200
     data = r.json()
+    expected_limit = settings.default_monthly_query_limit
     assert data["used"] == 3421
-    assert data["limit"] == 10000
-    assert data["remaining"] == 6579
+    assert data["limit"] == expected_limit
+    assert data["remaining"] == expected_limit - 3421
 
 
 def test_quota_status_zero_when_key_missing():
@@ -54,8 +55,9 @@ def test_quota_status_zero_when_key_missing():
 
     assert r.status_code == 200
     data = r.json()
+    expected_limit = settings.default_monthly_query_limit
     assert data["used"] == 0
-    assert data["remaining"] == 10000
+    assert data["remaining"] == expected_limit
 
 
 def test_quota_status_requires_auth():
