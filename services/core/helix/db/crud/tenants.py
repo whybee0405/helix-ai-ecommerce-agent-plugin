@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.db.models import Tenant
@@ -36,3 +36,19 @@ async def update_tenant(session: AsyncSession, tenant: Tenant, **fields) -> Tena
     await session.flush()
     await session.refresh(tenant)
     return tenant
+
+
+async def list_tenants(
+    session: AsyncSession,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[Tenant]:
+    result = await session.execute(
+        select(Tenant).order_by(Tenant.created_at.desc()).limit(limit).offset(offset)
+    )
+    return list(result.scalars().all())
+
+
+async def count_tenants(session: AsyncSession) -> int:
+    result = await session.execute(select(func.count(Tenant.id)))
+    return result.scalar_one()
