@@ -243,3 +243,20 @@ async def get_product_by_id(
         )
     )
     return result.scalar_one_or_none()
+
+
+async def update_product(
+    session: AsyncSession,
+    tenant_id: UUID,
+    product_id: UUID,
+    updates: dict,
+) -> Product | None:
+    product = await get_product_by_id(session, tenant_id, product_id)
+    if product is None:
+        return None
+    for field, value in updates.items():
+        setattr(product, field, value)
+    session.add(product)
+    await session.flush()
+    await session.refresh(product)
+    return product
