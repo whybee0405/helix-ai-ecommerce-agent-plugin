@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -152,4 +152,28 @@ async def get_embedding_coverage(
         "embedded": embedded,
         "missing": missing,
         "coverage_rate": coverage_rate,
+    }
+
+
+async def get_inventory_snapshot(
+    session: AsyncSession,
+    tenant_id: UUID,
+) -> dict:
+    result = await session.execute(
+        select(
+            func.count(Product.id).label("total"),
+            func.count(case((Product.in_stock == True, 1))).label("in_stock"),
+            func.count(case((Product.in_stock == False, 1))).label("out_of_stock"),
+        ).where(Product.tenant_id == tenant_id)
+    )
+    row = result.one()
+    total = row.total or 0
+    in_stock = row.in_stock or 0
+    out_of_stock = row.out_of_stock or 0
+    in_stock_rate = round(in_stock / total, 2) if total > 0 else 1.0
+    return {
+        "total": total,
+        "in_stock": in_stock,
+        "out_of_stock": out_of_stock,
+        "in_stock_rate": in_stock_rate,
     }

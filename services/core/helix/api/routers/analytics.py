@@ -11,7 +11,7 @@ from helix.config import get_settings
 from helix.db.crud.conversations import get_conversation_analytics, get_top_queries, get_top_referenced_products
 from helix.db.crud.orders import get_order_analytics, get_orders_by_status
 from helix.db.crud.customers import get_customer_segments
-from helix.db.crud.products import get_embedding_coverage
+from helix.db.crud.products import get_embedding_coverage, get_inventory_snapshot
 from helix.db.crud.usage import get_usage_summary
 from helix.db.models import Tenant
 
@@ -243,3 +243,19 @@ async def get_orders_by_status_endpoint(
     return OrdersByStatusResponse(
         statuses=[OrderStatusItem(**s) for s in statuses]
     )
+
+
+class InventorySnapshot(BaseModel):
+    total: int
+    in_stock: int
+    out_of_stock: int
+    in_stock_rate: float
+
+
+@router.get("/products/inventory", response_model=InventorySnapshot)
+async def get_inventory_snapshot_endpoint(
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> InventorySnapshot:
+    snapshot = await get_inventory_snapshot(db, tenant.id)
+    return InventorySnapshot(**snapshot)
