@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 9 — Conversation Context & Analytics
+- **Current phase:** Phase 10 — Product Similarity & Performance Analytics
 - **Overall:** complete
 - **Last updated:** 2026-06-12
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 184/184 tests pass
+- **Build health:** green — 193/193 tests pass
 
 ## Phase 0 — Foundations
 
@@ -130,7 +130,19 @@ All 3 tasks complete.
 - [x] Task 2: Conversation analytics — `get_conversation_analytics` CRUD + `GET /v1/analytics/conversations` (total convs, messages, avg per conv, feedback positive rate) (3 tests)
 - [x] Task 3: Top queries — `get_top_queries` CRUD + `GET /v1/analytics/top-queries` (most frequent customer queries grouped by content, descending count) (3 tests)
 
+## Phase 10: Product Similarity & Performance Analytics ✅
+
+All 3 tasks complete.
+
+### Tasks
+- [x] Task 1: Similar products — `get_similar_products` CRUD (pgvector cosine distance, excluding self) + `GET /v1/search/similar/{product_id}` (404 if no embedding) (3 tests)
+- [x] Task 2: Top referenced products — `get_top_referenced_products` CRUD (unnest JSONB `products_referenced`, group by product_id) + `GET /v1/analytics/products/top` (3 tests)
+- [x] Task 3: Embedding coverage — `get_embedding_coverage` CRUD (COUNT non-null embeddings) + `GET /v1/analytics/products/embedding-coverage` (coverage_rate=1.0 when no products) (3 tests)
+
 ## Session log
+
+### 2026-06-12 (Phase 10) — Claude Sonnet 4.6
+Built Phase 10 product intelligence and analytics: similar products endpoint (`GET /v1/search/similar/{product_id}`) uses pgvector cosine distance on existing embeddings, returns top N similar products for a tenant, 404 if source has no embedding; top referenced products (`GET /v1/analytics/products/top`) unnests the JSONB `products_referenced` array from assistant conversation messages, groups and counts by product ID; embedding coverage health check (`GET /v1/analytics/products/embedding-coverage`) uses `COUNT(embedding)` to count non-null rows, computes coverage rate (1.0 when catalog is empty). All endpoints merchant-facing with `get_tenant` auth and tenant isolation. 193 tests total (9 new Phase 10 + 184 prior). Next: Phase 11.
 
 ### 2026-06-12 (Phase 9) — Claude Sonnet 4.6
 Built Phase 9 conversation context and analytics: restructured `_run_chat_pipeline` to resolve the conversation before calling `handle_query`, fetch prior messages (last 10), and pass `conversation_history` through `handle_query` → `route_query` → `complete` where they are prepended to the Anthropic `messages` array — enabling genuine multi-turn follow-up questions. Template and rules layers remain stateless. Mutable default arg anti-pattern fixed (`None` sentinel). Two new analytics endpoints: `GET /v1/analytics/conversations` (volume, avg messages, feedback rate) and `GET /v1/analytics/top-queries` (most frequent user queries, grouped exact match). 184 tests total (10 new Phase 9 + 174 prior). Next: Phase 10.
