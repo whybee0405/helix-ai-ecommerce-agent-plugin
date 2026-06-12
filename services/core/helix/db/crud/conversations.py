@@ -240,7 +240,7 @@ async def list_conversations_by_customer(
         .limit(limit)
         .offset(offset)
     )
-    return result.scalars().all()
+    return list(result.scalars().all())
 
 
 async def get_top_referenced_products(
