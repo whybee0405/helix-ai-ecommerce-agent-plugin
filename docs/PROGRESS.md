@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 15 — AI Product Description Generation
+- **Current phase:** Phase 16 — Merchant Management APIs
 - **Overall:** complete
 - **Last updated:** 2026-06-12
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 227/244 tests pass (17 require live Redis/Anthropic — infra-only, not code failures)
+- **Build health:** green — 236/253 tests pass (17 require live Redis/Anthropic — infra-only, not code failures)
 
 ## Phase 0 — Foundations
 
@@ -121,6 +121,16 @@ All 4 tasks complete.
 - [x] Task 3: Conversation list + detail endpoints — `GET /v1/conversations` (limit/offset, merchant auth), `GET /v1/conversations/{id}` with messages (4 tests)
 - [x] Task 4: Message feedback tests — full coverage of `POST /v1/widget/conversations/{message_id}/feedback` (thumbs_up, thumbs_down, 404, 401) (4 tests)
 
+## Phase 16: Merchant Management APIs ✅
+
+All 4 tasks complete.
+
+### Tasks
+- [x] Task 1: Content draft list — `list_content_drafts` + `count_content_drafts` CRUD (optional status filter, `created_at desc` order); `GET /v1/content/drafts?status=&limit=&offset=` registered BEFORE `/products/{product_id}/...` routes; `ContentDraftListResponse(items, total, limit, offset)` (3 tests)
+- [x] Task 2: Product management router — `update_product` CRUD (`setattr` loop, `exclude_unset=True` semantics); new `products.py` router with `GET /v1/products/{id}` (detail including `description_html`) and `PATCH /v1/products/{id}` (422 on empty body, 404 if not found, commits on success); registered in `app.py` (3 tests)
+- [x] Task 3: Merchant dashboard — `get_dashboard_summary` CRUD in `dashboard.py` (5 parallel counts + `get_tenant_usage_summary`); `GET /v1/dashboard` endpoint with exclusive month boundary; `DashboardOut` includes `quota_limit` from settings and `quota_used = queries_this_month` (3 tests)
+- [x] Task 4: Full suite (253 tests total, 236 pass, 17 infra-only) + PROGRESS.md
+
 ## Phase 15: AI Product Description Generation ✅
 
 All 4 tasks complete.
@@ -187,6 +197,9 @@ All 3 tasks complete.
 - [x] Task 3: Embedding coverage — `get_embedding_coverage` CRUD (COUNT non-null embeddings) + `GET /v1/analytics/products/embedding-coverage` (coverage_rate=1.0 when no products) (3 tests)
 
 ## Session log
+
+### 2026-06-12 (Phase 16) — Claude Sonnet 4.6
+Built Phase 16 merchant management APIs: content draft review queue (`GET /v1/content/drafts`) with optional status filter and pagination, registered before `/products/{product_id}/...` routes to avoid path-param collision; product management router (`GET /v1/products/{id}` returning full detail including `description_html`, `PATCH /v1/products/{id}` with `exclude_unset=True` so only explicitly-sent fields are updated, 422 on empty body); merchant dashboard (`GET /v1/dashboard`) aggregating product count, customer count, conversations this month, pending drafts, this-month usage (queries + cost_usd), quota limit and used — month boundary exclusive upper bound. 253 tests total (9 new Phase 16 + 244 prior); 236 pass, 17 infra-only failures unchanged. Next: Phase 17.
 
 ### 2026-06-12 (Phase 15) — Claude Sonnet 4.6
 Built Phase 15 AI product description generation: `ContentDraft` SQLAlchemy model with `UniqueConstraint(tenant_id, product_id, field)` and upsert (DELETE + INSERT) pattern; Alembic migration 0004; `generate_description` Celery task using `LLMGateway(settings, tenant_id).complete(ModelTier.GENERATE, ...)` with `DescriptionDraft(html: str)` structured response — `LLMParseError` handled without retry (parse failures don't self-heal); system prompt enriched with pack-specific copy guidance; user prompt None-safe on domain_attributes; content router with 4 endpoints: `POST /v1/content/products/{id}/generate` (202, fires `generate_description.delay`), `GET /v1/content/products/{id}/draft` (200/404), `POST /v1/content/products/{id}/draft/approve` (writes `draft_text → product.description_html`, 404/409 if already approved), `POST /v1/content/bulk-generate` (queues all without draft). 244 tests total (15 new Phase 15 + 229 prior); 227 pass, 17 infra-only failures unchanged. Next: Phase 16.
