@@ -17,6 +17,7 @@ from helix.db.crud.conversations import (
     append_messages,
     create_conversation,
     get_conversation,
+    get_messages,
     set_message_feedback,
 )
 from helix.db.crud.customers import get_customer_by_id
@@ -194,31 +195,16 @@ async def _run_chat_pipeline(
     ]
 
     merged_profile = body.customer_profile
+    customer_uuid = None
     if body.customer_id:
         try:
             cid = UUID(body.customer_id)
+            customer_uuid = cid
             customer = await get_customer_by_id(db, cid, tenant.id)
             if customer:
                 merged_profile = {**(customer.profile or {}), **body.customer_profile}
         except ValueError:
             logger.warning("widget_chat_invalid_customer_id", customer_id=body.customer_id, endpoint=endpoint)
-
-    result = await handle_query(
-        query=body.query,
-        customer_profile=merged_profile,
-        context_products=context_products,
-        tenant_id=tenant.id,
-        pack=pack,
-        settings=settings,
-        db_session=db,
-    )
-
-    if result.cost_usd > 0:
-        await create_usage_event(
-            db, tenant.id, result.model,
-            result.tokens_in, result.tokens_out,
-            result.cost_usd, endpoint,
-        )
 
     conversation = None
     if body.conversation_id:
@@ -229,13 +215,31 @@ async def _run_chat_pipeline(
             pass
 
     if conversation is None:
-        customer_uuid = None
-        if body.customer_id:
-            try:
-                customer_uuid = UUID(body.customer_id)
-            except ValueError:
-                pass
         conversation = await create_conversation(db, tenant.id, customer_uuid)
+
+    prior_messages = await get_messages(db, conversation.id, tenant.id)
+    conversation_history = [
+        {"role": msg.role, "content": msg.content}
+        for msg in prior_messages[-10:]
+    ]
+
+    result = await handle_query(
+        query=body.query,
+        customer_profile=merged_profile,
+        context_products=context_products,
+        tenant_id=tenant.id,
+        pack=pack,
+        settings=settings,
+        db_session=db,
+        conversation_history=conversation_history,
+    )
+
+    if result.cost_usd > 0:
+        await create_usage_event(
+            db, tenant.id, result.model,
+            result.tokens_in, result.tokens_out,
+            result.cost_usd, endpoint,
+        )
 
     _user_msg, assistant_msg = await append_messages(
         db,

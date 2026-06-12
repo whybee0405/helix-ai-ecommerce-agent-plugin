@@ -85,6 +85,7 @@ class LLMGateway:
         response_schema: Type[T],
         *,
         max_tokens: int = 1024,
+        message_history: list[dict] = [],
     ) -> T:
         model_id = self._tier_to_model[tier]
         client = anthropic.AsyncAnthropic(
@@ -99,7 +100,7 @@ class LLMGateway:
             model=model_id,
             max_tokens=max_tokens,
             system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
-            messages=[{"role": "user", "content": user_with_schema}],
+            messages=[*message_history, {"role": "user", "content": user_with_schema}],
         )
 
         raw = message.content[0].text
@@ -110,15 +111,10 @@ class LLMGateway:
                 max_tokens=max_tokens,
                 system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
                 messages=[
+                    *message_history,
                     {"role": "user", "content": user_with_schema},
                     {"role": "assistant", "content": raw},
-                    {
-                        "role": "user",
-                        "content": (
-                            "Your response was not valid JSON. "
-                            "Return only the JSON object, nothing else."
-                        ),
-                    },
+                    {"role": "user", "content": "Your response was not valid JSON. Return only the JSON object, nothing else."},
                 ],
             )
             result = self._parse(repair_msg.content[0].text, response_schema)
@@ -197,6 +193,7 @@ class LLMGateway:
         pack_rules: list[dict],
         pack_templates: dict[str, str],
         cache: "LLMCache | None" = None,
+        conversation_history: list[dict] = [],
     ) -> RouteResult:
         from helix.llm.layers import TemplateLayer, RuleEngineLayer
 
@@ -245,6 +242,7 @@ class LLMGateway:
             user=grounded_user,
             response_schema=ConsultantResponse,
             max_tokens=1024,
+            message_history=conversation_history,
         )
         return RouteResult(
             response=llm_result.response,
