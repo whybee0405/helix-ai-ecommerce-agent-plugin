@@ -18,8 +18,10 @@ async def handle_query(
     pack: LoadedPack,
     settings: Settings,
     db_session,
-    conversation_history: list[dict] = [],
+    conversation_history: list[dict] | None = None,
 ) -> RouteResult:
+    if conversation_history is None:
+        conversation_history = []
     gateway = LLMGateway(settings=settings, tenant_id=tenant_id)
     cache = LLMCache(settings)
 

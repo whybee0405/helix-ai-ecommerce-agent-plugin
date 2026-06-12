@@ -85,8 +85,10 @@ class LLMGateway:
         response_schema: Type[T],
         *,
         max_tokens: int = 1024,
-        message_history: list[dict] = [],
+        message_history: list[dict] | None = None,
     ) -> T:
+        if message_history is None:
+            message_history = []
         model_id = self._tier_to_model[tier]
         client = anthropic.AsyncAnthropic(
             api_key=self._settings.anthropic_api_key.get_secret_value()
@@ -193,8 +195,10 @@ class LLMGateway:
         pack_rules: list[dict],
         pack_templates: dict[str, str],
         cache: "LLMCache | None" = None,
-        conversation_history: list[dict] = [],
+        conversation_history: list[dict] | None = None,
     ) -> RouteResult:
+        if conversation_history is None:
+            conversation_history = []
         from helix.llm.layers import TemplateLayer, RuleEngineLayer
 
         self._last_usage = {
