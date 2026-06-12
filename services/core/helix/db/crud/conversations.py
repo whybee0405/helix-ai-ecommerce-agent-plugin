@@ -1,6 +1,7 @@
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.db.models import Conversation, ConversationMessage
@@ -125,3 +126,62 @@ async def set_message_feedback(
     await session.flush()
     await session.refresh(msg)
     return msg
+
+
+async def get_conversation_analytics(
+    session: AsyncSession,
+    tenant_id: UUID,
+    start: date,
+    end: date,
+) -> dict:
+    start_dt = datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
+    end_dt = datetime(end.year, end.month, end.day, tzinfo=timezone.utc) + timedelta(days=1)
+
+    conv_result = await session.execute(
+        select(func.count(Conversation.id)).where(
+            Conversation.tenant_id == tenant_id,
+            Conversation.created_at >= start_dt,
+            Conversation.created_at < end_dt,
+        )
+    )
+    total_conversations = conv_result.scalar_one() or 0
+
+    msg_result = await session.execute(
+        select(
+            func.count(ConversationMessage.id),
+            func.count(ConversationMessage.feedback),
+            func.sum(
+                case(
+                    (ConversationMessage.feedback == "thumbs_up", 1),
+                    else_=0,
+                )
+            ),
+        ).where(
+            ConversationMessage.tenant_id == tenant_id,
+            ConversationMessage.created_at >= start_dt,
+            ConversationMessage.created_at < end_dt,
+        )
+    )
+    total_messages, feedback_count, feedback_positive_count = msg_result.one()
+    total_messages = total_messages or 0
+    feedback_count = feedback_count or 0
+    feedback_positive_count = int(feedback_positive_count or 0)
+
+    avg_messages = (
+        round(total_messages / total_conversations, 1)
+        if total_conversations > 0
+        else 0.0
+    )
+    feedback_positive_rate = (
+        round(feedback_positive_count / feedback_count, 2)
+        if feedback_count > 0
+        else None
+    )
+
+    return {
+        "total_conversations": total_conversations,
+        "total_messages": total_messages,
+        "avg_messages_per_conversation": avg_messages,
+        "feedback_count": feedback_count,
+        "feedback_positive_rate": feedback_positive_rate,
+    }

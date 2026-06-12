@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.deps import get_db, get_tenant
 from helix.config import get_settings
+from helix.db.crud.conversations import get_conversation_analytics
 from helix.db.crud.usage import get_usage_summary
 from helix.db.models import Tenant
 
@@ -78,4 +79,31 @@ async def get_quota_status(
         used=used,
         limit=limit,
         remaining=max(0, limit - used),
+    )
+
+
+class ConversationAnalytics(BaseModel):
+    period: dict
+    total_conversations: int
+    total_messages: int
+    avg_messages_per_conversation: float
+    feedback_count: int
+    feedback_positive_rate: float | None
+
+
+@router.get("/conversations", response_model=ConversationAnalytics)
+async def get_conversation_analytics_endpoint(
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> ConversationAnalytics:
+    today = date.today()
+    start = start_date or (today - timedelta(days=30))
+    end = end_date or today
+
+    stats = await get_conversation_analytics(db, tenant.id, start, end)
+    return ConversationAnalytics(
+        period={"start": str(start), "end": str(end)},
+        **stats,
     )
