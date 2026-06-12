@@ -1,6 +1,6 @@
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,3 +69,29 @@ async def update_customer_profile(
     await session.flush()
     await session.refresh(customer)
     return customer
+
+
+async def list_customers(
+    session: AsyncSession,
+    tenant_id: UUID,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[Customer]:
+    result = await session.execute(
+        select(Customer)
+        .where(Customer.tenant_id == tenant_id)
+        .order_by(Customer.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return result.scalars().all()
+
+
+async def count_customers(
+    session: AsyncSession,
+    tenant_id: UUID,
+) -> int:
+    result = await session.execute(
+        select(func.count(Customer.id)).where(Customer.tenant_id == tenant_id)
+    )
+    return result.scalar_one()
