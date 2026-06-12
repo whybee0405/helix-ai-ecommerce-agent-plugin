@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from helix.api.deps import get_db, get_tenant
 from helix.config import get_settings
 from helix.db.crud.conversations import get_conversation_analytics, get_top_queries, get_top_referenced_products
+from helix.db.crud.customers import get_customer_segments
 from helix.db.crud.products import get_embedding_coverage
 from helix.db.crud.usage import get_usage_summary
 from helix.db.models import Tenant
@@ -170,3 +171,23 @@ async def get_embedding_coverage_endpoint(
 ) -> EmbeddingCoverage:
     coverage = await get_embedding_coverage(db, tenant.id)
     return EmbeddingCoverage(**coverage)
+
+
+class CustomerSegmentItem(BaseModel):
+    skin_type: str
+    count: int
+
+
+class CustomerSegmentsResponse(BaseModel):
+    segments: list[CustomerSegmentItem]
+
+
+@router.get("/customers/segments", response_model=CustomerSegmentsResponse)
+async def get_customer_segments_endpoint(
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> CustomerSegmentsResponse:
+    segments = await get_customer_segments(db, tenant.id)
+    return CustomerSegmentsResponse(
+        segments=[CustomerSegmentItem(**s) for s in segments]
+    )

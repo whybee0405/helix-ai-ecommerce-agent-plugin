@@ -95,3 +95,22 @@ async def count_customers(
         select(func.count(Customer.id)).where(Customer.tenant_id == tenant_id)
     )
     return result.scalar_one()
+
+
+async def get_customer_segments(
+    session: AsyncSession,
+    tenant_id: UUID,
+) -> list[dict]:
+    skin_type_col = func.jsonb_extract_path_text(
+        Customer.profile, "skin_type"
+    ).label("skin_type")
+    result = await session.execute(
+        select(skin_type_col, func.count(Customer.id).label("count"))
+        .where(Customer.tenant_id == tenant_id)
+        .group_by(skin_type_col)
+        .order_by(func.count(Customer.id).desc())
+    )
+    return [
+        {"skin_type": row.skin_type or "unknown", "count": row.count}
+        for row in result.all()
+    ]
