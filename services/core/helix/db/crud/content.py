@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.db.models import ContentDraft, Product
@@ -78,3 +78,37 @@ async def list_products_without_draft(
         )
     )
     return list(result.scalars().all())
+
+
+async def list_content_drafts(
+    session: AsyncSession,
+    tenant_id: UUID,
+    status: str | None = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[ContentDraft]:
+    filters = [ContentDraft.tenant_id == tenant_id]
+    if status is not None:
+        filters.append(ContentDraft.status == status)
+    result = await session.execute(
+        select(ContentDraft)
+        .where(*filters)
+        .order_by(ContentDraft.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(result.scalars().all())
+
+
+async def count_content_drafts(
+    session: AsyncSession,
+    tenant_id: UUID,
+    status: str | None = None,
+) -> int:
+    filters = [ContentDraft.tenant_id == tenant_id]
+    if status is not None:
+        filters.append(ContentDraft.status == status)
+    result = await session.execute(
+        select(func.count(ContentDraft.id)).where(*filters)
+    )
+    return result.scalar_one()

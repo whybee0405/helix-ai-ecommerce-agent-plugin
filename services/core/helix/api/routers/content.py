@@ -1,13 +1,16 @@
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.deps import get_db, get_tenant
 from helix.db.crud.content import (
     approve_content_draft,
+    count_content_drafts,
     get_content_draft,
+    list_content_drafts,
     list_products_without_draft,
 )
 from helix.db.crud.products import get_product_by_id
@@ -43,6 +46,31 @@ def _draft_out(draft) -> ContentDraftOut:
         status=draft.status,
         created_at=draft.created_at.isoformat(),
         approved_at=draft.approved_at.isoformat() if draft.approved_at else None,
+    )
+
+
+class ContentDraftListResponse(BaseModel):
+    items: list[ContentDraftOut]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.get("/drafts", response_model=ContentDraftListResponse)
+async def list_drafts(
+    status: str | None = Query(default=None),
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> ContentDraftListResponse:
+    drafts = await list_content_drafts(db, tenant.id, status=status, limit=limit, offset=offset)
+    total = await count_content_drafts(db, tenant.id, status=status)
+    return ContentDraftListResponse(
+        items=[_draft_out(d) for d in drafts],
+        total=total,
+        limit=limit,
+        offset=offset,
     )
 
 
