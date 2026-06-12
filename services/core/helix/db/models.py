@@ -142,3 +142,41 @@ class UsageEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, default=_now
     )
+
+
+class Conversation(Base):
+    __tablename__ = "conversation"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(
+        ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    customer_id: Mapped[Optional[UUID]] = mapped_column(
+        ForeignKey("customer.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, default=_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, default=_now, onupdate=_now
+    )
+
+
+class ConversationMessage(Base):
+    __tablename__ = "conversation_message"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    conversation_id: Mapped[UUID] = mapped_column(
+        ForeignKey("conversation.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tenant_id: Mapped[UUID] = mapped_column(
+        ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    products_referenced: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    feedback: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, default=_now
+    )
