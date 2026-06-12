@@ -11,7 +11,7 @@ from helix.db.crud.products import get_product_by_id
 from helix.db.crud.tenants import get_tenant_by_id
 from helix.db.crud.content import upsert_content_draft
 from helix.packs.registry import get_pack_for_tenant
-from helix.llm.gateway import LLMGateway, ModelTier
+from helix.llm.gateway import LLMGateway, LLMParseError, ModelTier
 
 logger = structlog.get_logger(__name__)
 
@@ -21,17 +21,20 @@ class DescriptionDraft(BaseModel):
 
 
 def _build_system_prompt(pack) -> str:
-    return (
+    base = (
         "You are a product copywriter for an e-commerce store. "
         "Write compelling, SEO-optimised product descriptions grounded in the product data provided. "
         "Do not invent claims not supported by the product attributes. "
         "Return valid JSON only."
     )
+    # Pack-specific copy guidance, e.g. tone, brand constraints, prohibited claims
+    guidance = getattr(pack, "copy", {}).get("description_guidance", "") if pack else ""
+    return f"{base}\n\n{guidance}" if guidance else base
 
 
 def _build_user_prompt(product) -> str:
     attrs = product.domain_attributes or {}
-    attr_lines = "\n".join(f"- {k}: {v}" for k, v in attrs.items() if v)
+    attr_lines = "\n".join(f"- {k}: {v}" for k, v in attrs.items() if v is not None)
     price = product.price_minor / 100
     cats = ", ".join(product.categories or [])
     return (
@@ -87,5 +90,8 @@ async def _generate_async(tenant_id_str: str, product_id_str: str) -> None:
 def generate_description(self, tenant_id_str: str, product_id_str: str) -> None:
     try:
         asyncio.run(_generate_async(tenant_id_str, product_id_str))
+    except LLMParseError as exc:
+        # Parsing failures won't self-heal on retry; log and drop.
+        logger.error("generate_description_parse_failure", product_id=product_id_str, error=str(exc))
     except Exception as exc:
         raise self.retry(exc=exc)
