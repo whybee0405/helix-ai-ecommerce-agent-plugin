@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from helix.api.deps import get_db, get_tenant
 from helix.config import get_settings
 from helix.db.crud.conversations import get_conversation_analytics, get_top_queries, get_top_referenced_products
+from helix.db.crud.orders import get_order_analytics
 from helix.db.crud.customers import get_customer_segments
 from helix.db.crud.products import get_embedding_coverage
 from helix.db.crud.usage import get_usage_summary
@@ -190,4 +191,30 @@ async def get_customer_segments_endpoint(
     segments = await get_customer_segments(db, tenant.id)
     return CustomerSegmentsResponse(
         segments=[CustomerSegmentItem(**s) for s in segments]
+    )
+
+
+class OrderAnalyticsResponse(BaseModel):
+    period: dict
+    total_orders: int
+    total_revenue_minor: int
+    avg_order_value_minor: int
+
+
+@router.get("/orders", response_model=OrderAnalyticsResponse)
+async def get_order_analytics_endpoint(
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> OrderAnalyticsResponse:
+    today = date.today()
+    effective_start = start_date or (today - timedelta(days=30))
+    effective_end = end_date or today
+    analytics = await get_order_analytics(
+        db, tenant.id, start=effective_start, end=effective_end
+    )
+    return OrderAnalyticsResponse(
+        period={"start": effective_start.isoformat(), "end": effective_end.isoformat()},
+        **analytics,
     )

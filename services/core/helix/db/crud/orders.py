@@ -1,6 +1,7 @@
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,3 +49,28 @@ async def get_customer_id_by_platform_id(
         )
     )
     return result.scalar_one_or_none()
+
+
+async def get_order_analytics(
+    session: AsyncSession,
+    tenant_id: UUID,
+    start: date | None = None,
+    end: date | None = None,
+) -> dict:
+    stmt = select(
+        func.count(Order.id).label("total_orders"),
+        func.coalesce(func.sum(Order.total_minor), 0).label("total_revenue_minor"),
+    ).where(Order.tenant_id == tenant_id)
+
+    if start:
+        start_dt = datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
+        stmt = stmt.where(Order.placed_at >= start_dt)
+    if end:
+        end_dt = datetime(end.year, end.month, end.day, tzinfo=timezone.utc) + timedelta(days=1)
+        stmt = stmt.where(Order.placed_at < end_dt)
+
+    row = (await session.execute(stmt)).one()
+    total = row.total_orders or 0
+    revenue = row.total_revenue_minor or 0
+    avg = round(revenue / total) if total > 0 else 0
+    return {"total_orders": total, "total_revenue_minor": revenue, "avg_order_value_minor": avg}
