@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 6 — Usage Event Persistence & Customer Profile Intelligence
+- **Current phase:** Phase 7 — Streaming Widget Chat, Search Suggestions & Quota Visibility
 - **Overall:** complete
-- **Last updated:** 2026-06-11
+- **Last updated:** 2026-06-12
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 147/147 tests pass
+- **Build health:** green — 157/157 tests pass
 
 ## Phase 0 — Foundations
 
@@ -101,7 +101,20 @@ All 4 tasks complete.
 - [x] Task 3: Customer profile update — get_customer_by_platform_id + update_customer_profile + PATCH /v1/sync/customers/{platform_id}/profile (3 tests)
 - [x] Task 4: Full suite (147 tests) + PROGRESS.md update
 
+## Phase 7: Streaming Widget Chat, Search Suggestions & Quota Visibility ✅
+
+All 4 tasks complete.
+
+### Tasks
+- [x] Task 1: SSE streaming chat — `_run_chat_pipeline` helper + `POST /v1/widget/chat/stream` + `AsyncGenerator[str, None]` SSE events (4 tests)
+- [x] Task 2: Product title autocomplete — `suggest_product_titles()` ILIKE prefix CRUD + `GET /v1/search/suggest` (3 tests)
+- [x] Task 3: Quota status endpoint — `GET /v1/analytics/quota` reads Redis `quota:{tenant_id}:{YYYY-MM}` key (3 tests)
+- [x] Task 4: Full suite (157 tests) + PROGRESS.md update
+
 ## Session log
+
+### 2026-06-12 (Phase 7) — Claude Sonnet 4.6
+Built Phase 7 streaming and observability: SSE streaming chat endpoint (`POST /v1/widget/chat/stream`) using `_run_chat_pipeline` helper that eliminates the duplicated embed→search→handle_query→usage pipeline from `widget_chat`; streaming yields two events: `{"type":"token","content":"..."}` then `{"type":"done","source":"..."}`. Product title autocomplete (`GET /v1/search/suggest`) with ILIKE prefix match, tenant-scoped, alphabetically ordered. Quota status endpoint (`GET /v1/analytics/quota`) reads Redis `quota:{tenant_id}:{YYYY-MM}` key written by QuotaMiddleware, falls back to 0 with structlog warning on Redis error, test assertions use `settings.default_monthly_query_limit` not magic number. 157 tests total (10 new Phase 7 + 147 prior). Next: Phase 8.
 
 ### 2026-06-11 (Phase 6) — Claude Sonnet 4.6
 Built Phase 6 usage persistence and customer intelligence: extended RouteResult with cost metadata (model, tokens_in, tokens_out, cost_usd) accumulated in _log_usage (classify reset before generate to avoid bleed); create_usage_event CRUD writes UsageEvent rows after widget LLM calls (analytics endpoint now returns real data); widget_chat optionally merges stored Customer.profile with request profile when customer_id UUID provided (request keys win); PATCH /v1/sync/customers/{platform_id}/profile adds profile update with merge semantics. 147 tests total (14 new Phase 6 + 133 prior). Next: Phase 7.
