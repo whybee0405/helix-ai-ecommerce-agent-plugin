@@ -49,7 +49,7 @@ async def get_tenant_usage_summary(
             ).where(
                 UsageEvent.tenant_id == tenant_id,
                 UsageEvent.created_at >= month_start,
-                UsageEvent.created_at <= month_end,
+                UsageEvent.created_at < month_end,
             )
         )
     ).one()

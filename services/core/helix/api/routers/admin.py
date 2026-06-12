@@ -1,4 +1,3 @@
-import calendar
 from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
@@ -106,12 +105,19 @@ async def get_tenant_usage_endpoint(
 ) -> TenantUsageSummary:
     today = datetime.now(timezone.utc)
     if month:
-        year, mon = int(month.split("-")[0]), int(month.split("-")[1])
+        try:
+            parsed = datetime.strptime(month, "%Y-%m")
+            year, mon = parsed.year, parsed.month
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="month must be in YYYY-MM format",
+            )
     else:
         year, mon = today.year, today.month
     month_start = datetime(year, mon, 1, tzinfo=timezone.utc)
-    last_day = calendar.monthrange(year, mon)[1]
-    month_end = datetime(year, mon, last_day, 23, 59, 59, tzinfo=timezone.utc)
+    next_mon, next_year = (mon + 1, year) if mon < 12 else (1, year + 1)
+    month_end = datetime(next_year, next_mon, 1, tzinfo=timezone.utc)
     usage = await get_tenant_usage_summary(db, tenant_id, month_start, month_end)
     return TenantUsageSummary(
         tenant_id=str(tenant_id),
