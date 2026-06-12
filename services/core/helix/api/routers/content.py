@@ -16,6 +16,7 @@ from helix.db.crud.content import (
 from helix.db.crud.products import get_product_by_id
 from helix.db.models import Tenant
 from helix.workers.tasks.content import generate_description
+from helix.workers.tasks.seo import generate_seo_metadata
 
 router = APIRouter(prefix="/v1/content", tags=["content"])
 
@@ -36,6 +37,11 @@ class ContentDraftOut(BaseModel):
 
 class BulkGenerateResponse(BaseModel):
     queued: int
+
+
+class SeoGenerateResponse(BaseModel):
+    product_id: str
+    queued: bool
 
 
 def _draft_out(draft) -> ContentDraftOut:
@@ -90,10 +96,11 @@ async def generate_product_description(
 @router.get("/products/{product_id}/draft", response_model=ContentDraftOut)
 async def get_product_draft(
     product_id: UUID,
+    field: str = Query(default="description_html"),
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ContentDraftOut:
-    draft = await get_content_draft(db, tenant.id, product_id)
+    draft = await get_content_draft(db, tenant.id, product_id, field=field)
     if draft is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No draft found for this product")
     return _draft_out(draft)
@@ -126,4 +133,29 @@ async def bulk_generate_endpoint(
     products = await list_products_without_draft(db, tenant.id)
     for product in products:
         generate_description.delay(str(tenant.id), str(product.id))
+    return BulkGenerateResponse(queued=len(products))
+
+
+@router.post("/products/{product_id}/generate-seo",
+             response_model=SeoGenerateResponse, status_code=202)
+async def generate_product_seo(
+    product_id: UUID,
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> SeoGenerateResponse:
+    product = await get_product_by_id(db, tenant.id, product_id)
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    generate_seo_metadata.delay(str(tenant.id), str(product_id))
+    return SeoGenerateResponse(product_id=str(product_id), queued=True)
+
+
+@router.post("/bulk-generate-seo", response_model=BulkGenerateResponse)
+async def bulk_generate_seo_endpoint(
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> BulkGenerateResponse:
+    products = await list_products_without_draft(db, tenant.id, field="meta_title")
+    for product in products:
+        generate_seo_metadata.delay(str(tenant.id), str(product.id))
     return BulkGenerateResponse(queued=len(products))

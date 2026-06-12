@@ -61,13 +61,13 @@ async def approve_content_draft(
 
 
 async def list_products_without_draft(
-    session: AsyncSession, tenant_id: UUID
+    session: AsyncSession, tenant_id: UUID, field: str = "description_html"
 ) -> list[Product]:
     subq = (
         select(ContentDraft.product_id)
         .where(
             ContentDraft.tenant_id == tenant_id,
-            ContentDraft.field == "description_html",
+            ContentDraft.field == field,
         )
         .scalar_subquery()
     )
