@@ -70,7 +70,7 @@ def test_append_messages_creates_two_rows():
 
 
 def test_get_conversation_tenant_scoped():
-    session = AsyncMock()
+    session = _make_session()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
     session.execute = AsyncMock(return_value=mock_result)
@@ -84,19 +84,16 @@ def test_get_conversation_tenant_scoped():
 
 
 def test_set_message_feedback_updates_field():
-    session = AsyncMock()
+    session = _make_session()
     message_id = uuid4()
     tenant_id = uuid4()
 
     mock_msg = MagicMock(spec=ConversationMessage)
+    mock_msg.role = "assistant"
     mock_msg.feedback = None
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_msg
     session.execute = AsyncMock(return_value=mock_result)
-    session.flush = AsyncMock()
-    session.refresh = AsyncMock()
-    added = []
-    session.add = lambda obj: added.append(obj)
 
     result = asyncio.run(set_message_feedback(session, message_id, tenant_id, "thumbs_up"))
 

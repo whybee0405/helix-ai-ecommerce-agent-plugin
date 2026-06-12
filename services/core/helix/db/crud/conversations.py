@@ -78,7 +78,7 @@ async def list_conversations(
         .limit(limit)
         .offset(offset)
     )
-    return list(result.scalars())
+    return list(result.scalars().all())
 
 
 async def get_messages(
@@ -94,7 +94,7 @@ async def get_messages(
         )
         .order_by(ConversationMessage.created_at)
     )
-    return list(result.scalars())
+    return list(result.scalars().all())
 
 
 async def get_message(
@@ -118,7 +118,7 @@ async def set_message_feedback(
     feedback: str,
 ) -> ConversationMessage | None:
     msg = await get_message(session, message_id, tenant_id)
-    if msg is None:
+    if msg is None or msg.role != "assistant":
         return None
     msg.feedback = feedback
     session.add(msg)

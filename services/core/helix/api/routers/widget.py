@@ -17,8 +17,8 @@ from helix.db.crud.conversations import (
     append_messages,
     create_conversation,
     get_conversation,
+    set_message_feedback,
 )
-from helix.db.crud.conversations import get_message, set_message_feedback
 from helix.db.crud.customers import get_customer_by_id
 from helix.db.crud.products import vector_search_products
 from helix.db.crud.usage_events import create_usage_event
@@ -362,10 +362,9 @@ async def submit_message_feedback(
     tenant: Tenant = Depends(get_widget_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> FeedbackResponse:
-    msg = await get_message(db, message_id, tenant.id)
-    if msg is None or msg.role != "assistant":
+    msg = await set_message_feedback(db, message_id, tenant.id, body.feedback)
+    if msg is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
-    await set_message_feedback(db, message_id, tenant.id, body.feedback)
     await db.commit()
     return FeedbackResponse(message_id=str(message_id), feedback=body.feedback)
 
