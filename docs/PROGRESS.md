@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 12 — Order Analytics & Inventory Insights
+- **Current phase:** Phase 13 — Search Enhancements & Bulk Re-embedding
 - **Overall:** complete
 - **Last updated:** 2026-06-12
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 211/211 tests pass
+- **Build health:** green — 220/220 tests pass
 
 ## Phase 0 — Foundations
 
@@ -121,6 +121,15 @@ All 4 tasks complete.
 - [x] Task 3: Conversation list + detail endpoints — `GET /v1/conversations` (limit/offset, merchant auth), `GET /v1/conversations/{id}` with messages (4 tests)
 - [x] Task 4: Message feedback tests — full coverage of `POST /v1/widget/conversations/{message_id}/feedback` (thumbs_up, thumbs_down, 404, 401) (4 tests)
 
+## Phase 13: Search Enhancements & Bulk Re-embedding ✅
+
+All 3 tasks complete.
+
+### Tasks
+- [x] Task 1: Price range filters — `min_price`/`max_price` keyword args added to `vector_search_products` CRUD + `GET /v1/search/products` (3 tests)
+- [x] Task 2: Product browse endpoint — `browse_products` CRUD (count + paginated SELECT, price ASC order) + `GET /v1/search/browse` with `ProductOut`/`BrowseResponse` models (no score field) (3 tests)
+- [x] Task 3: Bulk re-embedding — `list_products_without_embedding` CRUD (`embedding.is_(None)`) + `POST /v1/jobs/embed/bulk` (queues each via `embed_product.delay`, returns `{queued: N}`) (3 tests)
+
 ## Phase 12: Order Analytics & Inventory Insights ✅
 
 All 3 tasks complete.
@@ -158,6 +167,9 @@ All 3 tasks complete.
 - [x] Task 3: Embedding coverage — `get_embedding_coverage` CRUD (COUNT non-null embeddings) + `GET /v1/analytics/products/embedding-coverage` (coverage_rate=1.0 when no products) (3 tests)
 
 ## Session log
+
+### 2026-06-12 (Phase 13) — Claude Sonnet 4.6
+Built Phase 13 search enhancements and ops tooling: price range filters (`min_price`/`max_price`, both `ge=0`) added to `vector_search_products` CRUD and `GET /v1/search/products` — appended to existing filter list after in_stock/category; product browse endpoint (`GET /v1/search/browse`) runs two queries (COUNT + paginated SELECT ordered by price ASC) with no embedding requirement, returns `ProductOut` (no score field) + pagination metadata; bulk re-embedding trigger (`POST /v1/jobs/embed/bulk`) fetches all products with `embedding IS NULL` using `is_(None)` and queues each via `embed_product.delay(tenant_id, product_id)`. 220 tests total (9 new Phase 13 + 211 prior). Next: Phase 14.
 
 ### 2026-06-12 (Phase 12) — Claude Sonnet 4.6
 Built Phase 12 commerce analytics: order revenue analytics (`GET /v1/analytics/orders`) with `func.coalesce(SUM, 0)` for NULL-safe revenue across zero-order tenants, 30-day default window, `period` dict in response; order status breakdown (`GET /v1/analytics/orders/by-status`) groups by status with per-group revenue totals ordered by count; inventory snapshot (`GET /v1/analytics/products/inventory`) uses SQLAlchemy `case()` conditional counts for in_stock/out_of_stock split, `in_stock_rate=1.0` for empty catalogs. Line_items JSONB skipped — raw platform payloads (Shopify/WooCommerce) have different schemas; aggregations on structured columns only. 211 tests total (9 new Phase 12 + 202 prior). Next: Phase 13.
