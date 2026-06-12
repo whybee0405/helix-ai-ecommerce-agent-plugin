@@ -70,13 +70,12 @@ async def test_generate_seo_async_upserts_two_drafts():
         await _generate_seo_async(str(tenant_id), str(product_id))
 
     assert mock_upsert.call_count == 2
-    # upsert_content_draft(session, tenant_id, product_id, field, draft_text)
-    # args[3] = field, args[4] = draft_text
-    calls_by_field = {c.args[3]: c.args[4] for c in mock_upsert.call_args_list}
-    assert "meta_title" in calls_by_field
-    assert "meta_description" in calls_by_field
-    assert calls_by_field["meta_title"] == mock_seo_result.meta_title
-    assert calls_by_field["meta_description"] == mock_seo_result.meta_description
+    mock_upsert.assert_any_call(
+        mock_session, tenant_id, product_id, "meta_title", mock_seo_result.meta_title
+    )
+    mock_upsert.assert_any_call(
+        mock_session, tenant_id, product_id, "meta_description", mock_seo_result.meta_description
+    )
     mock_session.commit.assert_called_once()
 
 
