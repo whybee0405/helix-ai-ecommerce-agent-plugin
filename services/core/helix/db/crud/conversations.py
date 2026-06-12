@@ -223,6 +223,26 @@ async def get_top_queries(
     return [{"query": row.content, "count": row.cnt} for row in result.all()]
 
 
+async def list_conversations_by_customer(
+    session: AsyncSession,
+    tenant_id: UUID,
+    customer_id: UUID,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[Conversation]:
+    result = await session.execute(
+        select(Conversation)
+        .where(
+            Conversation.tenant_id == tenant_id,
+            Conversation.customer_id == customer_id,
+        )
+        .order_by(Conversation.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return result.scalars().all()
+
+
 async def get_top_referenced_products(
     session: AsyncSession,
     tenant_id: UUID,

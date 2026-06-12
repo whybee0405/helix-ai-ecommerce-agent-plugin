@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.deps import get_db, get_tenant
+from helix.db.crud.conversations import list_conversations_by_customer
 from helix.db.crud.customers import count_customers, get_customer_by_id, list_customers
 from helix.db.models import Tenant
 
@@ -25,6 +26,17 @@ class CustomerListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class ConversationSummary(BaseModel):
+    id: str
+    customer_id: str | None
+    created_at: str
+    updated_at: str
+
+
+class CustomerConversationsResponse(BaseModel):
+    conversations: list[ConversationSummary]
 
 
 @router.get("", response_model=CustomerListResponse)
@@ -50,6 +62,33 @@ async def list_customers_endpoint(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get("/{customer_id}/conversations", response_model=CustomerConversationsResponse)
+async def get_customer_conversations_endpoint(
+    customer_id: UUID,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> CustomerConversationsResponse:
+    customer = await get_customer_by_id(db, customer_id, tenant.id)
+    if customer is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+    convs = await list_conversations_by_customer(
+        db, tenant.id, customer_id, limit=limit, offset=offset
+    )
+    return CustomerConversationsResponse(
+        conversations=[
+            ConversationSummary(
+                id=str(c.id),
+                customer_id=str(c.customer_id) if c.customer_id else None,
+                created_at=c.created_at.isoformat(),
+                updated_at=c.updated_at.isoformat(),
+            )
+            for c in convs
+        ]
     )
 
 
