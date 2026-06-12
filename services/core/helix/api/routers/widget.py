@@ -1,7 +1,9 @@
+import json
 from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -208,6 +210,73 @@ async def widget_chat(
         source=result.source,
         products_referenced=result.products_referenced,
     )
+
+
+@router.post("/chat/stream")
+async def widget_chat_stream(
+    body: ChatRequest,
+    tenant: Tenant = Depends(get_widget_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    settings = get_settings()
+    pack = get_pack_for_tenant(tenant)
+
+    query_vector = await embed_query(body.query, settings)
+    product_rows = await vector_search_products(db, tenant.id, query_vector, limit=5)
+    context_products = [
+        {
+            "title": p.title,
+            "price_minor": p.price_minor,
+            "currency": p.currency,
+            "categories": p.categories or [],
+            "domain_attributes": p.domain_attributes or {},
+        }
+        for p, _ in product_rows
+    ]
+
+    merged_profile = body.customer_profile
+    if body.customer_id:
+        try:
+            cid = UUID(body.customer_id)
+            customer = await get_customer_by_id(db, cid, tenant.id)
+            if customer:
+                merged_profile = {**(customer.profile or {}), **body.customer_profile}
+        except ValueError:
+            logger.warning("widget_chat_stream_invalid_customer_id", customer_id=body.customer_id)
+
+    result = await handle_query(
+        query=body.query,
+        customer_profile=merged_profile,
+        context_products=context_products,
+        tenant_id=tenant.id,
+        pack=pack,
+        settings=settings,
+        db_session=db,
+    )
+
+    if result.cost_usd > 0:
+        await create_usage_event(
+            db,
+            tenant.id,
+            result.model,
+            result.tokens_in,
+            result.tokens_out,
+            result.cost_usd,
+            "/v1/widget/chat/stream",
+        )
+    await db.commit()
+
+    # Generator function to emit SSE events
+    async def event_generator():
+        # Emit token event with response content
+        token_event = {"type": "token", "content": result.response}
+        yield f"data: {json.dumps(token_event)}\n\n"
+
+        # Emit done event with source
+        done_event = {"type": "done", "source": result.source}
+        yield f"data: {json.dumps(done_event)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 class RoutineRequest(BaseModel):
