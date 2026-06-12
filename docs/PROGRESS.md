@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 7 — Streaming Widget Chat, Search Suggestions & Quota Visibility
+- **Current phase:** Phase 8 — Conversation History & Merchant Feedback
 - **Overall:** complete
 - **Last updated:** 2026-06-12
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 157/157 tests pass
+- **Build health:** green — 174/174 tests pass
 
 ## Phase 0 — Foundations
 
@@ -111,7 +111,20 @@ All 4 tasks complete.
 - [x] Task 3: Quota status endpoint — `GET /v1/analytics/quota` reads Redis `quota:{tenant_id}:{YYYY-MM}` key (3 tests)
 - [x] Task 4: Full suite (157 tests) + PROGRESS.md update
 
+## Phase 8: Conversation History & Merchant Feedback ✅
+
+All 4 tasks complete.
+
+### Tasks
+- [x] Task 1: Conversation models + CRUD — `Conversation` and `ConversationMessage` SQLAlchemy models, Alembic migration 0003, full CRUD layer (`create_conversation`, `append_messages`, `get_conversation`, `list_conversations`, `get_messages`, `get_message`, `set_message_feedback`) (5 tests)
+- [x] Task 2: Widget conversation integration — `ChatRequest.conversation_id`, `ChatResponse.conversation_id` + `assistant_message_id`, `PipelineResult` dataclass, `_run_chat_pipeline` creates/appends Conversation rows, feedback endpoint `POST /v1/widget/conversations/{message_id}/feedback` (4 tests)
+- [x] Task 3: Conversation list + detail endpoints — `GET /v1/conversations` (limit/offset, merchant auth), `GET /v1/conversations/{id}` with messages (4 tests)
+- [x] Task 4: Message feedback tests — full coverage of `POST /v1/widget/conversations/{message_id}/feedback` (thumbs_up, thumbs_down, 404, 401) (4 tests)
+
 ## Session log
+
+### 2026-06-12 (Phase 8) — Claude Sonnet 4.6
+Built Phase 8 conversation history and merchant feedback: persisted every widget chat turn as paired `Conversation` + `ConversationMessage` rows (user + assistant) in PostgreSQL; `_run_chat_pipeline` now creates or appends to a Conversation and returns `PipelineResult(route, conversation_id, assistant_message_id)`; `ChatResponse` includes both IDs so the embed JS can link feedback to specific messages. Merchant-facing read endpoints (`GET /v1/conversations`, `GET /v1/conversations/{id}`) with `get_tenant` auth and tenant isolation. Customer-initiated feedback endpoint (`POST /v1/widget/conversations/{message_id}/feedback`) using widget JWT — role check (`role == "assistant"`) enforced inside `set_message_feedback` CRUD, endpoint makes a single call (no double-fetch). 174 tests total (17 new Phase 8 + 157 prior). Next: Phase 9.
 
 ### 2026-06-12 (Phase 7) — Claude Sonnet 4.6
 Built Phase 7 streaming and observability: SSE streaming chat endpoint (`POST /v1/widget/chat/stream`) using `_run_chat_pipeline` helper that eliminates the duplicated embed→search→handle_query→usage pipeline from `widget_chat`; streaming yields two events: `{"type":"token","content":"..."}` then `{"type":"done","source":"..."}`. Product title autocomplete (`GET /v1/search/suggest`) with ILIKE prefix match, tenant-scoped, alphabetically ordered. Quota status endpoint (`GET /v1/analytics/quota`) reads Redis `quota:{tenant_id}:{YYYY-MM}` key written by QuotaMiddleware, falls back to 0 with structlog warning on Redis error, test assertions use `settings.default_monthly_query_limit` not magic number. 157 tests total (10 new Phase 7 + 147 prior). Next: Phase 8.
