@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -136,3 +137,19 @@ async def get_tenant_endpoint(
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
     return _tenant_out(tenant)
+
+
+@router.post("/tenants/{tenant_id}/quota/reset")
+async def reset_tenant_quota(
+    tenant_id: UUID,
+    _: str = Depends(_auth_provision),
+) -> dict:
+    settings = get_settings()
+    today = datetime.now(timezone.utc)
+    key = f"quota:{tenant_id}:{today.year}-{today.month:02d}"
+    r = aioredis.from_url(str(settings.redis_url))
+    try:
+        await r.delete(key)
+    finally:
+        await r.aclose()
+    return {"reset": True, "key": key}
