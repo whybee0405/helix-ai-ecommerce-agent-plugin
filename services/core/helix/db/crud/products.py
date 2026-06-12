@@ -183,3 +183,38 @@ async def get_inventory_snapshot(
         "out_of_stock": out_of_stock,
         "in_stock_rate": in_stock_rate,
     }
+
+
+async def browse_products(
+    session: AsyncSession,
+    tenant_id: UUID,
+    in_stock_only: bool = False,
+    category: str | None = None,
+    min_price: int | None = None,
+    max_price: int | None = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[Product], int]:
+    filters = [Product.tenant_id == tenant_id]
+    if in_stock_only:
+        filters.append(Product.in_stock.is_(True))
+    if category:
+        filters.append(Product.categories.contains([category]))
+    if min_price is not None:
+        filters.append(Product.price_minor >= min_price)
+    if max_price is not None:
+        filters.append(Product.price_minor <= max_price)
+
+    count_result = await session.execute(
+        select(func.count(Product.id)).where(*filters)
+    )
+    total = count_result.scalar_one()
+
+    result = await session.execute(
+        select(Product)
+        .where(*filters)
+        .order_by(Product.price_minor.asc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(result.scalars().all()), total
