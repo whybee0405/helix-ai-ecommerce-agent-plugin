@@ -10,6 +10,7 @@ from helix.api.deps import get_db
 from helix.config import get_settings
 from helix.db.crud.admin import get_platform_stats
 from helix.db.crud.tenants import count_tenants, get_tenant_by_id, list_tenants
+from helix.db.models import Tenant
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
@@ -39,7 +40,7 @@ class TenantListResponse(BaseModel):
     offset: int
 
 
-def _tenant_out(tenant) -> TenantOut:
+def _tenant_out(tenant: Tenant) -> TenantOut:
     return TenantOut(
         id=str(tenant.id),
         name=tenant.name,
