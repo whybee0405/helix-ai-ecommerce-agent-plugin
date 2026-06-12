@@ -1,11 +1,11 @@
 # Helix — Build Progress
 
 ## Status snapshot
-- **Current phase:** Phase 8 — Conversation History & Merchant Feedback
+- **Current phase:** Phase 9 — Conversation Context & Analytics
 - **Overall:** complete
 - **Last updated:** 2026-06-12
 - **Last worked by:** Claude Sonnet 4.6
-- **Build health:** green — 174/174 tests pass
+- **Build health:** green — 184/184 tests pass
 
 ## Phase 0 — Foundations
 
@@ -121,7 +121,19 @@ All 4 tasks complete.
 - [x] Task 3: Conversation list + detail endpoints — `GET /v1/conversations` (limit/offset, merchant auth), `GET /v1/conversations/{id}` with messages (4 tests)
 - [x] Task 4: Message feedback tests — full coverage of `POST /v1/widget/conversations/{message_id}/feedback` (thumbs_up, thumbs_down, 404, 401) (4 tests)
 
+## Phase 9: Conversation Context & Analytics ✅
+
+All 3 tasks complete.
+
+### Tasks
+- [x] Task 1: Multi-turn context injection — restructured `_run_chat_pipeline` to resolve conversation before `handle_query`; `conversation_history` (last 10 messages) threaded through `handle_query` → `route_query` → `complete` and prepended to Anthropic `messages` array; template/rules layers unchanged (4 tests)
+- [x] Task 2: Conversation analytics — `get_conversation_analytics` CRUD + `GET /v1/analytics/conversations` (total convs, messages, avg per conv, feedback positive rate) (3 tests)
+- [x] Task 3: Top queries — `get_top_queries` CRUD + `GET /v1/analytics/top-queries` (most frequent customer queries grouped by content, descending count) (3 tests)
+
 ## Session log
+
+### 2026-06-12 (Phase 9) — Claude Sonnet 4.6
+Built Phase 9 conversation context and analytics: restructured `_run_chat_pipeline` to resolve the conversation before calling `handle_query`, fetch prior messages (last 10), and pass `conversation_history` through `handle_query` → `route_query` → `complete` where they are prepended to the Anthropic `messages` array — enabling genuine multi-turn follow-up questions. Template and rules layers remain stateless. Mutable default arg anti-pattern fixed (`None` sentinel). Two new analytics endpoints: `GET /v1/analytics/conversations` (volume, avg messages, feedback rate) and `GET /v1/analytics/top-queries` (most frequent user queries, grouped exact match). 184 tests total (10 new Phase 9 + 174 prior). Next: Phase 10.
 
 ### 2026-06-12 (Phase 8) — Claude Sonnet 4.6
 Built Phase 8 conversation history and merchant feedback: persisted every widget chat turn as paired `Conversation` + `ConversationMessage` rows (user + assistant) in PostgreSQL; `_run_chat_pipeline` now creates or appends to a Conversation and returns `PipelineResult(route, conversation_id, assistant_message_id)`; `ChatResponse` includes both IDs so the embed JS can link feedback to specific messages. Merchant-facing read endpoints (`GET /v1/conversations`, `GET /v1/conversations/{id}`) with `get_tenant` auth and tenant isolation. Customer-initiated feedback endpoint (`POST /v1/widget/conversations/{message_id}/feedback`) using widget JWT — role check (`role == "assistant"`) enforced inside `set_message_feedback` CRUD, endpoint makes a single call (no double-fetch). 174 tests total (17 new Phase 8 + 157 prior). Next: Phase 9.
