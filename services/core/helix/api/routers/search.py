@@ -55,12 +55,17 @@ async def search_products(
     limit: Annotated[int, Query(ge=1, le=50)] = 10,
     in_stock_only: bool = False,
     category: str | None = Query(default=None),
+    min_price: int | None = Query(default=None, ge=0),
+    max_price: int | None = Query(default=None, ge=0),
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> SearchResponse:
     settings = get_settings()
     query_vector = await embed_query(q, settings)
-    rows = await vector_search_products(db, tenant.id, query_vector, limit, in_stock_only, category=category)
+    rows = await vector_search_products(
+        db, tenant.id, query_vector, limit, in_stock_only,
+        category=category, min_price=min_price, max_price=max_price,
+    )
     results = [
         ProductResult(
             id=str(p.id),

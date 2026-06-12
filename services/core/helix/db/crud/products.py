@@ -68,6 +68,8 @@ async def vector_search_products(
     limit: int = 10,
     in_stock_only: bool = False,
     category: str | None = None,
+    min_price: int | None = None,
+    max_price: int | None = None,
 ) -> list[tuple[Product, float]]:
     distance_col = Product.embedding.cosine_distance(query_vector).label("distance")
     filters = [Product.tenant_id == tenant_id, Product.embedding.is_not(None)]
@@ -75,6 +77,10 @@ async def vector_search_products(
         filters.append(Product.in_stock.is_(True))
     if category:
         filters.append(Product.categories.contains([category]))
+    if min_price is not None:
+        filters.append(Product.price_minor >= min_price)
+    if max_price is not None:
+        filters.append(Product.price_minor <= max_price)
     q = (
         select(Product, distance_col)
         .where(*filters)
