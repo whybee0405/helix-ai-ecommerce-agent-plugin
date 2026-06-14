@@ -6,7 +6,7 @@ class Helix_Admin {
         add_action( 'admin_menu', [ self::class, 'add_settings_page' ] );
         add_action( 'admin_init', [ self::class, 'register_settings' ] );
         add_action( 'admin_post_helix_save_settings', [ self::class, 'save_settings' ] );
-        add_action( 'admin_post_helix_run_sync', [ self::class, 'handle_sync' ] );
+        add_action( 'wp_ajax_helix_run_sync', [ self::class, 'ajax_run_sync' ] );
     }
 
     public static function add_settings_page(): void {
@@ -52,6 +52,9 @@ class Helix_Admin {
                 update_option( 'helix_tenant_id', $result['tenant_id'] );
                 update_option( 'helix_public_key', $result['public_key'] );
                 Helix_Webhooks::register_webhooks( get_option( 'helix_api_url' ), $result['tenant_id'] );
+            } else {
+                wp_safe_redirect( admin_url( 'admin.php?page=helix-connector&connect_error=' . urlencode( $result->get_error_message() ) ) );
+                exit;
             }
         }
 
@@ -59,15 +62,24 @@ class Helix_Admin {
         exit;
     }
 
-    public static function handle_sync(): void {
-        check_admin_referer( 'helix_run_sync' );
+    public static function ajax_run_sync(): void {
+        check_ajax_referer( 'helix_run_sync', 'nonce' );
         if ( ! current_user_can( 'manage_woocommerce' ) ) {
-            wp_die( 'Unauthorized' );
+            wp_send_json_error( [ 'message' => 'Unauthorized' ], 403 );
         }
+
         $result = Helix_Sync::run_full_sync();
-        $synced = $result['synced'] ?? 0;
-        wp_safe_redirect( admin_url( "admin.php?page=helix-connector&synced={$synced}" ) );
-        exit;
+
+        if ( isset( $result['error'] ) ) {
+            wp_send_json_error( [ 'message' => $result['error'] ] );
+        }
+
+        wp_send_json_success( [
+            'synced'  => $result['synced'] ?? 0,
+            'failed'  => $result['failed'] ?? 0,
+            'errors'  => $result['errors'] ?? [],
+            'last_sync' => get_option( 'helix_last_sync', '' ),
+        ] );
     }
 
     public static function render_settings_page(): void {
@@ -80,15 +92,15 @@ class Helix_Admin {
             <h1>Helix Connector</h1>
 
             <?php if ( isset( $_GET['saved'] ) ) : ?>
-                <div class="notice notice-success"><p>Settings saved.</p></div>
+                <div class="notice notice-success is-dismissible"><p>Settings saved and store connected.</p></div>
             <?php endif; ?>
-            <?php if ( isset( $_GET['synced'] ) ) : ?>
-                <div class="notice notice-success"><p>Sync complete. <?php echo esc_html( (int) $_GET['synced'] ); ?> products synced.</p></div>
+            <?php if ( isset( $_GET['connect_error'] ) ) : ?>
+                <div class="notice notice-error is-dismissible"><p>Connection failed: <?php echo esc_html( urldecode( $_GET['connect_error'] ) ); ?></p></div>
             <?php endif; ?>
 
             <h2>Connection</h2>
             <p>Status: <strong><?php echo $connected ? '&#x2713; Connected (tenant: ' . esc_html( $tenant_id ) . ')' : '&#x2717; Not connected'; ?></strong></p>
-            <p>Last sync: <?php echo esc_html( $last_sync ); ?> (<?php echo esc_html( $sync_count ); ?> products)</p>
+            <p>Last sync: <span id="helix-last-sync"><?php echo esc_html( $last_sync ); ?></span> &mdash; <span id="helix-sync-count"><?php echo esc_html( $sync_count ); ?></span> products</p>
 
             <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
                 <?php wp_nonce_field( 'helix_save_settings' ); ?>
@@ -104,11 +116,80 @@ class Helix_Admin {
 
             <?php if ( $connected ) : ?>
                 <h2>Catalog Sync</h2>
-                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-                    <?php wp_nonce_field( 'helix_run_sync' ); ?>
-                    <input type="hidden" name="action" value="helix_run_sync">
-                    <?php submit_button( 'Sync Catalog Now', 'secondary' ); ?>
-                </form>
+                <p>
+                    <button id="helix-sync-btn" class="button button-secondary">Sync Catalog Now</button>
+                    <span id="helix-sync-spinner" class="spinner" style="float:none;margin:0 6px;vertical-align:middle;display:none;"></span>
+                </p>
+                <div id="helix-sync-result" style="display:none;margin-top:12px;"></div>
+
+                <script>
+                document.getElementById('helix-sync-btn').addEventListener('click', function () {
+                    var btn     = this;
+                    var spinner = document.getElementById('helix-sync-spinner');
+                    var result  = document.getElementById('helix-sync-result');
+
+                    btn.disabled     = true;
+                    spinner.style.display = 'inline-block';
+                    result.style.display  = 'none';
+                    result.innerHTML      = '';
+
+                    var data = new FormData();
+                    data.append('action', 'helix_run_sync');
+                    data.append('nonce', '<?php echo esc_js( wp_create_nonce( 'helix_run_sync' ) ); ?>');
+
+                    fetch('<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        body: data,
+                    })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        spinner.style.display = 'none';
+                        btn.disabled = false;
+                        result.style.display = 'block';
+
+                        if ( res.success ) {
+                            var d   = res.data;
+                            var html = '<div class="notice notice-success inline" style="margin:0;">'
+                                + '<p><strong>Sync complete.</strong> '
+                                + d.synced + ' product' + (d.synced !== 1 ? 's' : '') + ' synced';
+
+                            if ( d.failed > 0 ) {
+                                html += ', <strong style="color:#b32d2e;">' + d.failed + ' failed</strong>';
+                            }
+
+                            html += '.</p>';
+
+                            if ( d.errors && d.errors.length > 0 ) {
+                                html += '<details style="margin:4px 0 8px 0;"><summary style="cursor:pointer;">Show errors (' + d.errors.length + ')</summary>'
+                                    + '<ul style="margin:8px 0 4px 16px;">';
+                                d.errors.forEach(function (e) {
+                                    html += '<li>' + e.replace(/</g, '&lt;') + '</li>';
+                                });
+                                html += '</ul></details>';
+                            }
+
+                            html += '</div>';
+
+                            if ( d.last_sync ) {
+                                document.getElementById('helix-last-sync').textContent = d.last_sync;
+                                document.getElementById('helix-sync-count').textContent = d.synced;
+                            }
+
+                            result.innerHTML = html;
+                        } else {
+                            var msg = (res.data && res.data.message) ? res.data.message : 'Unknown error.';
+                            result.innerHTML = '<div class="notice notice-error inline" style="margin:0;"><p><strong>Sync failed:</strong> ' + msg.replace(/</g, '&lt;') + '</p></div>';
+                        }
+                    })
+                    .catch(function (err) {
+                        spinner.style.display = 'none';
+                        btn.disabled = false;
+                        result.style.display = 'block';
+                        result.innerHTML = '<div class="notice notice-error inline" style="margin:0;"><p><strong>Request failed:</strong> ' + err.message + '</p></div>';
+                    });
+                });
+                </script>
             <?php endif; ?>
         </div>
         <?php

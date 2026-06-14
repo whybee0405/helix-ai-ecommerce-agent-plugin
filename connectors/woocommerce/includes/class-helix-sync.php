@@ -14,6 +14,7 @@ class Helix_Sync {
         $page    = 1;
         $synced  = 0;
         $failed  = 0;
+        $errors  = [];
 
         do {
             $wc_products = wc_get_products( [
@@ -27,14 +28,16 @@ class Helix_Sync {
                 break;
             }
 
-            $batch = array_map( [ self::class, 'translate_product' ], $wc_products );
+            $batch  = array_map( [ self::class, 'translate_product' ], $wc_products );
             $result = $client->sync_products( $batch );
 
             if ( is_wp_error( $result ) ) {
                 $failed += count( $batch );
+                $errors[] = $result->get_error_message();
             } else {
                 $synced += $result['synced'] ?? 0;
                 $failed += $result['failed'] ?? 0;
+                $errors  = array_merge( $errors, $result['errors'] ?? [] );
             }
 
             $page++;
@@ -43,7 +46,7 @@ class Helix_Sync {
         update_option( 'helix_last_sync', current_time( 'mysql' ) );
         update_option( 'helix_synced_count', $synced );
 
-        return [ 'synced' => $synced, 'failed' => $failed ];
+        return [ 'synced' => $synced, 'failed' => $failed, 'errors' => $errors ];
     }
 
     public static function translate_product( WC_Product $wc_product ): array {
@@ -58,12 +61,12 @@ class Helix_Sync {
             'description_html'  => $wc_product->get_description() ?: null,
             'price_minor'       => $price_minor,
             'currency'          => get_woocommerce_currency(),
-            'images'            => array_map(
+            'images'            => array_values( array_filter( array_map(
                 fn( int $id ) => wp_get_attachment_url( $id ),
-                $wc_product->get_gallery_image_ids()
+                $wc_product->get_image_id()
                     ? array_merge( [ $wc_product->get_image_id() ], $wc_product->get_gallery_image_ids() )
-                    : ( $wc_product->get_image_id() ? [ $wc_product->get_image_id() ] : [] )
-            ),
+                    : $wc_product->get_gallery_image_ids()
+            ), fn( $url ) => is_string( $url ) && $url !== '' ) ),
             'categories'        => array_map(
                 fn( WP_Term $t ) => $t->name,
                 get_the_terms( $wc_product->get_id(), 'product_cat' ) ?: []
