@@ -51,11 +51,11 @@ def upgrade() -> None:
         sa.Column("description_html", sa.Text, nullable=True),
         sa.Column("price_minor", sa.Integer, nullable=False),
         sa.Column("currency", sa.String(3), nullable=False),
-        sa.Column("images", postgresql.JSONB, nullable=False, server_default="'[]'"),
-        sa.Column("categories", postgresql.JSONB, nullable=False, server_default="'[]'"),
+        sa.Column("images", postgresql.JSONB, nullable=False, server_default=sa.text("'[]'")),
+        sa.Column("categories", postgresql.JSONB, nullable=False, server_default=sa.text("'[]'")),
         sa.Column("in_stock", sa.Boolean, nullable=False),
         sa.Column(
-            "domain_attributes", postgresql.JSONB, nullable=False, server_default="'{}'"
+            "domain_attributes", postgresql.JSONB, nullable=False, server_default=sa.text("'{}'")
         ),
         sa.Column("embedding", Vector(1024), nullable=True),
         sa.Column(
@@ -79,7 +79,7 @@ def upgrade() -> None:
         ),
         sa.Column("platform_id", sa.String, nullable=False),
         sa.Column("email_hash", sa.String, nullable=False),
-        sa.Column("profile", postgresql.JSONB, nullable=False, server_default="'{}'"),
+        sa.Column("profile", postgresql.JSONB, nullable=False, server_default=sa.text("'{}'")),
         sa.Column(
             "created_at",
             sa.TIMESTAMP(timezone=True),
@@ -109,7 +109,7 @@ def upgrade() -> None:
         sa.Column("total_minor", sa.Integer, nullable=False),
         sa.Column("currency", sa.String(3), nullable=False),
         sa.Column("status", sa.String, nullable=False),
-        sa.Column("line_items", postgresql.JSONB, nullable=False, server_default="'[]'"),
+        sa.Column("line_items", postgresql.JSONB, nullable=False, server_default=sa.text("'[]'")),
         sa.Column("placed_at", sa.TIMESTAMP(timezone=True), nullable=False),
         sa.UniqueConstraint("tenant_id", "platform_id", name="uq_order_tenant_platform"),
     )
@@ -125,7 +125,7 @@ def upgrade() -> None:
             index=True,
         ),
         sa.Column("type", sa.String, nullable=False),
-        sa.Column("status", sa.String, nullable=False, server_default="'pending'"),
+        sa.Column("status", sa.String, nullable=False, server_default=sa.text("'pending'")),
         sa.Column("progress", sa.Integer, nullable=False, server_default="0"),
         sa.Column("total", sa.Integer, nullable=True),
         sa.Column("error", sa.Text, nullable=True),
