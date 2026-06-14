@@ -89,10 +89,10 @@ class Helix_Sync {
                 continue;
             }
 
-            // Taxonomy attributes return term IDs — resolve to names.
+            // Taxonomy attributes return term IDs — resolve to lowercase names.
             if ( $attribute->is_taxonomy() ) {
                 $options = array_values( array_filter( array_map(
-                    fn( $id ) => get_term_field( 'name', $id, $slug ),
+                    fn( $id ) => strtolower( get_term_field( 'name', $id, $slug ) ),
                     $options
                 ), fn( $v ) => is_string( $v ) && $v !== '' ) );
             }
