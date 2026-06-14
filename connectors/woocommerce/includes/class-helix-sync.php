@@ -76,14 +76,35 @@ class Helix_Sync {
         ];
     }
 
+    // Attributes whose value should be a single string rather than an array.
+    private const SCALAR_ATTRIBUTES = [ 'step', 'spf', 'ph_level' ];
+
     private static function extract_domain_attributes( WC_Product $wc_product ): array {
         $attrs = [];
         foreach ( $wc_product->get_attributes() as $slug => $attribute ) {
             $key     = str_replace( [ 'pa_', '-' ], [ '', '_' ], $slug );
             $options = $attribute->get_options();
-            if ( ! empty( $options ) ) {
-                $attrs[ $key ] = count( $options ) === 1 ? $options[0] : $options;
+
+            if ( empty( $options ) ) {
+                continue;
             }
+
+            // Taxonomy attributes return term IDs — resolve to names.
+            if ( $attribute->is_taxonomy() ) {
+                $options = array_values( array_filter( array_map(
+                    fn( $id ) => get_term_field( 'name', $id, $slug ),
+                    $options
+                ), fn( $v ) => is_string( $v ) && $v !== '' ) );
+            }
+
+            if ( empty( $options ) ) {
+                continue;
+            }
+
+            // Scalar attributes are always a single string; everything else is an array.
+            $attrs[ $key ] = in_array( $key, self::SCALAR_ATTRIBUTES, true )
+                ? (string) $options[0]
+                : $options;
         }
         return $attrs;
     }
