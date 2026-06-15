@@ -133,7 +133,13 @@ class LLMGateway:
     @staticmethod
     def _parse(text: str, schema: Type[T]) -> T | None:
         try:
-            return schema.model_validate(json.loads(text))
+            stripped = text.strip()
+            if stripped.startswith("```"):
+                stripped = stripped.split("```", 2)[1]
+                if stripped.startswith("json"):
+                    stripped = stripped[4:]
+                stripped = stripped.rsplit("```", 1)[0].strip()
+            return schema.model_validate(json.loads(stripped))
         except (json.JSONDecodeError, ValidationError):
             return None
 

@@ -76,6 +76,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from helix.api.routers import dashboard
     app.include_router(dashboard.router)
 
+    from helix.api.routers import plugin as plugin_router
+    app.include_router(plugin_router.router)
+
     from helix.packs.registry import load_all_packs
     load_all_packs(s.packs_dir)
 

@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import case, func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -11,7 +11,7 @@ async def upsert_product(session: AsyncSession, product: Product) -> Product:
     stmt = (
         insert(Product)
         .values(
-            id=product.id,
+            id=product.id or uuid4(),
             tenant_id=product.tenant_id,
             platform_id=product.platform_id,
             title=product.title,

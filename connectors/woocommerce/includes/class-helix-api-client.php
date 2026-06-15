@@ -51,4 +51,35 @@ class Helix_API_Client {
         }
         return json_decode( wp_remote_retrieve_body( $response ), true );
     }
+
+    public function get( string $path ): array|WP_Error {
+        $response = wp_remote_get( $this->api_url . $path, [
+            'headers' => [ 'X-Helix-Tenant-Key' => $this->tenant_key ],
+            'timeout' => 15,
+        ] );
+        if ( is_wp_error( $response ) ) return $response;
+        $code = wp_remote_retrieve_response_code( $response );
+        if ( $code >= 400 ) return new WP_Error( 'helix_api_error', "HTTP {$code}", $response );
+        return json_decode( wp_remote_retrieve_body( $response ), true ) ?? [];
+    }
+
+    public function get_dashboard(): array|WP_Error {
+        return $this->get( '/v1/dashboard' );
+    }
+
+    public function get_widget_events(): array|WP_Error {
+        return $this->get( '/v1/dashboard/widget-events' );
+    }
+
+    public function get_conversations( int $page = 1, int $limit = 20 ): array|WP_Error {
+        return $this->get( "/v1/dashboard/conversations?page={$page}&limit={$limit}" );
+    }
+
+    public function get_conversation_messages( string $conversation_id ): array|WP_Error {
+        return $this->get( "/v1/dashboard/conversations/{$conversation_id}/messages" );
+    }
+
+    public function get_daily_events( int $days = 30 ): array|WP_Error {
+        return $this->get( "/v1/dashboard/events/daily?days={$days}" );
+    }
 }

@@ -6,7 +6,7 @@ from helix.config import Settings
 logger = structlog.get_logger(__name__)
 
 _VOYAGE_URL = "https://api.voyageai.com/v1/embeddings"
-_VOYAGE_MODEL = "voyage-3-lite"
+_VOYAGE_MODEL = "voyage-3"
 
 
 async def embed_query(query: str, settings: Settings) -> list[float]:

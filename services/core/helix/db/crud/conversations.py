@@ -272,3 +272,93 @@ async def get_top_referenced_products(
     stmt = stmt.group_by(pid_col).order_by(func.count().desc()).limit(limit)
     result = await session.execute(stmt)
     return [{"product_id": row.pid, "count": row.cnt} for row in result.all()]
+
+
+async def list_conversations_with_stats(
+    session: AsyncSession,
+    tenant_id: UUID,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[dict], int]:
+    from helix.db.models import WidgetEvent
+    from sqlalchemy import exists, literal_column, text
+
+    # Total count
+    total_result = await session.execute(
+        select(func.count(Conversation.id)).where(Conversation.tenant_id == tenant_id)
+    )
+    total = total_result.scalar_one()
+
+    # Stats per conversation via subqueries
+    msg_count = (
+        select(func.count(ConversationMessage.id))
+        .where(ConversationMessage.conversation_id == Conversation.id)
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
+    last_msg_at = (
+        select(func.max(ConversationMessage.created_at))
+        .where(ConversationMessage.conversation_id == Conversation.id)
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
+    first_msg = (
+        select(ConversationMessage.content)
+        .where(
+            ConversationMessage.conversation_id == Conversation.id,
+            ConversationMessage.role == "user",
+        )
+        .correlate(Conversation)
+        .order_by(ConversationMessage.created_at)
+        .limit(1)
+        .scalar_subquery()
+    )
+    has_atc = (
+        select(func.count(WidgetEvent.id))
+        .where(
+            WidgetEvent.conversation_id == Conversation.id,
+            WidgetEvent.event_type == "add_to_cart",
+        )
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
+    has_wa = (
+        select(func.count(WidgetEvent.id))
+        .where(
+            WidgetEvent.conversation_id == Conversation.id,
+            WidgetEvent.event_type == "whatsapp_click",
+        )
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
+
+    rows = (
+        await session.execute(
+            select(
+                Conversation.id,
+                Conversation.created_at,
+                msg_count.label("message_count"),
+                last_msg_at.label("last_message_at"),
+                first_msg.label("first_message"),
+                has_atc.label("add_to_cart_count"),
+                has_wa.label("whatsapp_click_count"),
+            )
+            .where(Conversation.tenant_id == tenant_id)
+            .order_by(Conversation.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+
+    return [
+        {
+            "id": str(r.id),
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "message_count": r.message_count or 0,
+            "last_message_at": r.last_message_at.isoformat() if r.last_message_at else None,
+            "first_message": r.first_message or "",
+            "add_to_cart_count": r.add_to_cart_count or 0,
+            "whatsapp_click_count": r.whatsapp_click_count or 0,
+        }
+        for r in rows
+    ], total

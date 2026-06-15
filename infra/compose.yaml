@@ -37,6 +37,7 @@ services:
     volumes:
       - ../services/core:/app
       - ../packs:/packs
+      - ../connectors/woocommerce:/plugin:ro
 
   worker:
     build:

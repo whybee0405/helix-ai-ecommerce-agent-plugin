@@ -25,6 +25,10 @@ class Helix_Admin {
         register_setting( 'helix_settings', 'helix_provision_key', [ 'sanitize_callback' => 'sanitize_text_field' ] );
         register_setting( 'helix_settings', 'helix_consumer_key', [ 'sanitize_callback' => 'sanitize_text_field' ] );
         register_setting( 'helix_settings', 'helix_consumer_secret', [ 'sanitize_callback' => 'sanitize_text_field' ] );
+        register_setting( 'helix_settings', 'helix_widget_enabled', [ 'sanitize_callback' => 'absint' ] );
+        register_setting( 'helix_settings', 'helix_wa_enabled', [ 'sanitize_callback' => 'absint' ] );
+        register_setting( 'helix_settings', 'helix_wa_number', [ 'sanitize_callback' => 'sanitize_text_field' ] );
+        register_setting( 'helix_settings', 'helix_wa_message', [ 'sanitize_callback' => 'sanitize_textarea_field' ] );
     }
 
     public static function save_settings(): void {
@@ -37,6 +41,10 @@ class Helix_Admin {
         update_option( 'helix_provision_key', sanitize_text_field( $_POST['helix_provision_key'] ?? '' ) );
         update_option( 'helix_consumer_key', sanitize_text_field( $_POST['helix_consumer_key'] ?? '' ) );
         update_option( 'helix_consumer_secret', sanitize_text_field( $_POST['helix_consumer_secret'] ?? '' ) );
+        update_option( 'helix_widget_enabled', isset( $_POST['helix_widget_enabled'] ) ? 1 : 0 );
+        update_option( 'helix_wa_enabled', isset( $_POST['helix_wa_enabled'] ) ? 1 : 0 );
+        update_option( 'helix_wa_number', sanitize_text_field( $_POST['helix_wa_number'] ?? '' ) );
+        update_option( 'helix_wa_message', sanitize_textarea_field( $_POST['helix_wa_message'] ?? '' ) );
 
         if ( ! get_option( 'helix_tenant_id' ) ) {
             $client = new Helix_API_Client( get_option( 'helix_api_url', '' ) );
@@ -110,6 +118,39 @@ class Helix_Admin {
                     <tr><th>Provision Key</th><td><input type="password" name="helix_provision_key" value="<?php echo esc_attr( get_option( 'helix_provision_key' ) ); ?>" class="regular-text"></td></tr>
                     <tr><th>WC Consumer Key</th><td><input type="text" name="helix_consumer_key" value="<?php echo esc_attr( get_option( 'helix_consumer_key' ) ); ?>" class="regular-text"></td></tr>
                     <tr><th>WC Consumer Secret</th><td><input type="password" name="helix_consumer_secret" value="" class="regular-text" placeholder="(unchanged)"></td></tr>
+                    <tr><th colspan="2"><strong>Widget</strong></th></tr>
+                    <tr>
+                        <th>Auto-inject widget</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="helix_widget_enabled" value="1" <?php checked( get_option( 'helix_widget_enabled', 0 ), 1 ); ?>>
+                                Automatically embed the Helix chat widget on all frontend pages
+                            </label>
+                        </td>
+                    </tr>
+                    <tr><th colspan="2"><strong>WhatsApp Button</strong></th></tr>
+                    <tr>
+                        <th>Enable WhatsApp button</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="helix_wa_enabled" value="1" <?php checked( get_option( 'helix_wa_enabled', 0 ), 1 ); ?>>
+                                Show a WhatsApp chat button inside the AI widget
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>WhatsApp number</th>
+                        <td>
+                            <input type="text" name="helix_wa_number" value="<?php echo esc_attr( get_option( 'helix_wa_number', '' ) ); ?>" class="regular-text" placeholder="e.g. 27831234567 (no + or spaces)">
+                            <p class="description">International format without + sign or spaces.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>WhatsApp pre-filled message</th>
+                        <td>
+                            <textarea name="helix_wa_message" rows="3" class="large-text"><?php echo esc_textarea( get_option( 'helix_wa_message', "Hi! I'd like some skincare advice." ) ); ?></textarea>
+                        </td>
+                    </tr>
                 </table>
                 <?php submit_button( 'Save &amp; Connect' ); ?>
             </form>

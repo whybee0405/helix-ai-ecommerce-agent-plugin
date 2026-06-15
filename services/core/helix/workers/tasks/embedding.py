@@ -9,7 +9,7 @@ from helix.workers.celery_app import celery_app
 logger = structlog.get_logger(__name__)
 
 _VOYAGE_URL = "https://api.voyageai.com/v1/embeddings"
-_VOYAGE_MODEL = "voyage-3-lite"
+_VOYAGE_MODEL = "voyage-3"
 _VOYAGE_BATCH_SIZE = 128
 
 
