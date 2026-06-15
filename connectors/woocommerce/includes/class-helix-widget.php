@@ -2,8 +2,16 @@
 defined( 'ABSPATH' ) || exit;
 
 class Helix_Widget {
+    private static bool $has_search_bar = false;
+
     public static function init(): void {
         add_action( 'wp_footer', [ self::class, 'inject' ] );
+        add_shortcode( 'helix_search', [ self::class, 'shortcode' ] );
+    }
+
+    public static function shortcode(): string {
+        self::$has_search_bar = true;
+        return '<div id="hx-sb-target"></div>';
     }
 
     public static function inject(): void {
@@ -25,7 +33,9 @@ class Helix_Widget {
         ] );
         ?>
         <script>window.helixConfig = <?php echo $config; ?>;</script>
+        <?php if ( self::$has_search_bar ) : ?>
         <script src="<?php echo esc_url( $api_url . '/v1/widget/searchbar.js' ); ?>?key=<?php echo esc_attr( $public_key ); ?>" defer></script>
+        <?php endif; ?>
         <script src="<?php echo esc_url( $api_url . '/v1/widget/embed.js' ); ?>?key=<?php echo esc_attr( $public_key ); ?>" defer></script>
         <?php
     }

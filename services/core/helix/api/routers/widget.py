@@ -934,9 +934,18 @@ _SEARCH_BAR_JS = r"""
   /* ── Styles ──────────────────────────────────────────────────────────── */
   var S = document.createElement('style');
   S.textContent = [
-    '#hx-sb{position:relative;width:100%;max-width:800px;margin:28px auto 4px;',
-    'padding:0 20px;box-sizing:border-box;',
-    'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;z-index:500;}',
+    /* Section wrapper — no z-index so nav menus and sticky header layer above it */
+    '#hx-sb-section{width:100%;box-sizing:border-box;padding:32px 20px 24px;',
+    'background:linear-gradient(180deg,transparent 0%,rgba(124,58,237,.05) 50%,transparent 100%);',
+    'position:relative;}',
+
+    /* Bar container — no z-index, avoids creating a stacking context */
+    '#hx-sb{position:relative;width:100%;max-width:860px;margin:0 auto;',
+    'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}',
+
+    '#hx-sb-headline{text-align:center;margin:0 0 18px;',
+    'font:600 15px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
+    'color:#6B6B6F;letter-spacing:-.01em;}',
 
     '#hx-sb-outer{position:relative;border-radius:50px;}',
 
@@ -990,12 +999,14 @@ _SEARCH_BAR_JS = r"""
     '#hx-sb-go:active{transform:scale(.92);}',
     '#hx-sb-go svg{width:20px;height:20px;fill:#fff;pointer-events:none;}',
 
-    '#hx-sb-panel{position:absolute;top:calc(100% + 14px);left:20px;right:20px;',
+    /* Panel at high z-index so it overlaps content, but no z-index on ancestors
+       so the WP sticky nav and mobile menu overlays still sit above the section */
+    '#hx-sb-panel{position:absolute;top:calc(100% + 14px);left:0;right:0;',
     'background:rgba(255,255,255,.97);backdrop-filter:blur(24px) saturate(180%);',
     '-webkit-backdrop-filter:blur(24px) saturate(180%);',
     'border-radius:20px;border:1px solid rgba(0,0,0,.08);',
     'box-shadow:0 24px 64px rgba(0,0,0,.15),0 0 0 1px rgba(0,0,0,.04);',
-    'display:none;z-index:600;overflow:hidden;',
+    'display:none;z-index:9999;overflow:hidden;',
     'animation:hx-sb-din .32s cubic-bezier(.175,.885,.32,1.275) both;}',
     '@keyframes hx-sb-din{from{opacity:0;transform:translateY(-10px)scale(.98);}',
     'to{opacity:1;transform:translateY(0)scale(1);}}',
@@ -1068,63 +1079,126 @@ _SEARCH_BAR_JS = r"""
     '#hx-sb-fc svg{width:13px;height:13px;stroke:#7C3AED;fill:none;',
     'stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}',
 
-    '@media(max-width:620px){',
-    '#hx-sb{padding:0 12px;margin-top:20px;}',
-    '#hx-sb-panel{left:12px;right:12px;}',
+    /* Suggestion chips */
+    '#hx-sb-chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px;}',
+    '.hx-sb-chip{all:unset;cursor:pointer;padding:7px 16px;border-radius:20px;',
+    'font:500 12.5px/1 -apple-system,sans-serif;color:#6B6B6F;',
+    'background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.15);',
+    'transition:all .2s;white-space:nowrap;}',
+    '.hx-sb-chip:hover{background:rgba(124,58,237,.12);color:#7C3AED;',
+    'border-color:rgba(124,58,237,.3);}',
+
+    /* Dark mode */
+    '@media(prefers-color-scheme:dark){',
+    '#hx-sb-section{background:linear-gradient(180deg,transparent 0%,rgba(124,58,237,.08) 50%,transparent 100%);}',
+    '#hx-sb-inner{background:#1C1C1E;border-color:rgba(255,255,255,.1);}',
+    '#hx-sb-inner.ai{border-color:transparent;}',
+    '#hx-sb-inp{color:#F2F2F7;}',
+    '#hx-sb-inp::placeholder{color:#636366;}',
+    '#hx-sb-headline{color:#8E8E93;}',
+    '#hx-sb-toggle{border-right-color:rgba(255,255,255,.08);}',
+    '#hx-sb-ai:not(.on){color:#8E8E93;}',
+    '#hx-sb-ai:not(.on):hover{background:rgba(255,255,255,.08);color:#F2F2F7;}',
+    '#hx-sb-norm{color:#8E8E93;}',
+    '#hx-sb-norm.on{background:rgba(255,255,255,.08);color:#F2F2F7;}',
+    '#hx-sb-norm:hover{background:rgba(255,255,255,.08);color:#F2F2F7;}',
+    '.hx-sb-chip{background:rgba(124,58,237,.12);border-color:rgba(124,58,237,.25);color:#8E8E93;}',
+    '.hx-sb-chip:hover{color:#C9B1FF;background:rgba(124,58,237,.2);}',
+    '#hx-sb-panel{background:rgba(28,28,30,.97);border-color:rgba(255,255,255,.1);}',
+    '#hx-sb-ph{border-bottom-color:rgba(255,255,255,.06);}',
+    '#hx-sb-ph strong{color:#F2F2F7;}',
+    '#hx-sb-pclose{background:rgba(255,255,255,.1);color:#8E8E93;}',
+    '#hx-sb-pclose:hover{background:rgba(255,255,255,.18);}',
+    '.hx-sb-blk{background:rgba(44,44,46,.9);color:#F2F2F7;}',
+    '.hx-sb-card{background:#2C2C2E;border-color:rgba(255,255,255,.08);}',
+    '.hx-sb-ct{color:#F2F2F7;}',
+    '#hx-sb-pf{border-top-color:rgba(255,255,255,.06);}',
+    '}',
+
+    /* Mobile (<480px) */
+    '@media(max-width:480px){',
+    '#hx-sb-section{padding:20px 12px 16px;}',
+    '#hx-sb{max-width:100%;}',
+    '#hx-sb-inner{height:50px;}',
+    '#hx-sb-inp{font-size:14px;}',
+    '#hx-sb-go{width:38px;height:38px;margin:6px;}',
+    '#hx-sb-go svg{width:17px;height:17px;}',
+    '#hx-sb-ai{padding:7px 10px;}',
     '#hx-sb-ai .hx-sb-label{display:none;}',
-    '.hx-sb-grid{grid-template-columns:repeat(2,1fr);}}',
+    '#hx-sb-headline{font-size:13px;margin-bottom:14px;}',
+    '.hx-sb-chip{font-size:11.5px;padding:6px 11px;}',
+    '.hx-sb-grid{grid-template-columns:repeat(2,1fr);}',
+    '#hx-sb-panel{left:0;right:0;}',
+    '}',
+
+    /* Tablet (481–900px) */
+    '@media(min-width:481px) and (max-width:900px){',
+    '#hx-sb-section{padding:24px 24px 18px;}',
+    '#hx-sb{max-width:600px;}',
+    '#hx-sb-inner{height:56px;}',
+    '#hx-sb-inp{font-size:15px;}',
+    '}',
   ].join('');
   document.head.appendChild(S);
 
   /* ── DOM ─────────────────────────────────────────────────────────────── */
   var root = document.createElement('div');
-  root.id = 'hx-sb';
+  root.id = 'hx-sb-section';
   root.innerHTML = [
-    '<div id="hx-sb-outer">',
-      '<div id="hx-sb-ring"></div>',
-      '<div id="hx-sb-glow"></div>',
-      '<div id="hx-sb-inner" class="ai">',
-        '<div id="hx-sb-toggle">',
-          '<button id="hx-sb-ai" class="on" aria-label="AI mode">',
-            '<span class="hx-sb-spark">✶</span>',
-            '<span class="hx-sb-label">AI</span>',
-          '</button>',
-          '<button id="hx-sb-norm" aria-label="Normal search">',
-            '<svg viewBox="0 0 24 24">',
-              '<path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16',
-              'c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 5L20.49 19l-5-5z',
-              'm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>',
+    '<p id="hx-sb-headline">Ask Helix AI anything about our products</p>',
+    '<div id="hx-sb">',
+      '<div id="hx-sb-outer">',
+        '<div id="hx-sb-ring"></div>',
+        '<div id="hx-sb-glow"></div>',
+        '<div id="hx-sb-inner" class="ai">',
+          '<div id="hx-sb-toggle">',
+            '<button id="hx-sb-ai" class="on" aria-label="AI mode">',
+              '<span class="hx-sb-spark">&#10022;</span>',
+              '<span class="hx-sb-label">AI</span>',
+            '</button>',
+            '<button id="hx-sb-norm" aria-label="Normal search">',
+              '<svg viewBox="0 0 24 24">',
+                '<path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16',
+                'c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 5L20.49 19l-5-5z',
+                'm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>',
+              '</svg>',
+            '</button>',
+          '</div>',
+          '<input id="hx-sb-inp" type="search" autocomplete="off" autocorrect="off"',
+          ' placeholder="Ask AI about any product…">',
+          '<button id="hx-sb-go" aria-label="Send">',
+            '<svg id="hx-sb-go-icon" viewBox="0 0 24 24">',
+              '<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>',
             '</svg>',
           '</button>',
         '</div>',
-        '<input id="hx-sb-inp" type="search" autocomplete="off" autocorrect="off"',
-        ' placeholder="Ask AI about any product…">',
-        '<button id="hx-sb-go" aria-label="Send">',
-          '<svg id="hx-sb-go-icon" viewBox="0 0 24 24">',
-            '<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>',
-          '</svg>',
-        '</button>',
+      '</div>',
+      '<div id="hx-sb-panel">',
+        '<div id="hx-sb-ph">',
+          '<div class="hx-sb-pav">',
+            '<svg viewBox="0 0 24 24">',
+              '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z',
+              'm-2 14.5v-9l6 4.5-6 4.5z"/>',
+            '</svg>',
+          '</div>',
+          '<strong>Helix AI</strong>',
+          '<div class="hx-sb-live"></div>',
+          '<button id="hx-sb-pclose" aria-label="Close">\xd7</button>',
+        '</div>',
+        '<div id="hx-sb-body"></div>',
+        '<div id="hx-sb-pf">',
+          '<button id="hx-sb-fc">',
+            'Open in chat',
+            '<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>',
+          '</button>',
+        '</div>',
       '</div>',
     '</div>',
-    '<div id="hx-sb-panel">',
-      '<div id="hx-sb-ph">',
-        '<div class="hx-sb-pav">',
-          '<svg viewBox="0 0 24 24">',
-            '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z',
-            'm-2 14.5v-9l6 4.5-6 4.5z"/>',
-          '</svg>',
-        '</div>',
-        '<strong>Helix AI</strong>',
-        '<div class="hx-sb-live"></div>',
-        '<button id="hx-sb-pclose" aria-label="Close">\xd7</button>',
-      '</div>',
-      '<div id="hx-sb-body"></div>',
-      '<div id="hx-sb-pf">',
-        '<button id="hx-sb-fc">',
-          'Open in chat',
-          '<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>',
-        '</button>',
-      '</div>',
+    '<div id="hx-sb-chips">',
+      '<button class="hx-sb-chip">Show me moisturisers</button>',
+      '<button class="hx-sb-chip">What&apos;s on sale?</button>',
+      '<button class="hx-sb-chip">Help me pick a serum</button>',
+      '<button class="hx-sb-chip">Best sellers</button>',
     '</div>',
   ].join('');
 
@@ -1141,14 +1215,23 @@ _SEARCH_BAR_JS = r"""
   var body  = root.querySelector('#hx-sb-body');
   var pcls  = root.querySelector('#hx-sb-pclose');
   var fcBtn = root.querySelector('#hx-sb-fc');
+  var chips = root.querySelectorAll('.hx-sb-chip');
+
+  /* ── Chip click handlers ──────────────────────────────────────────────── */
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      inp.value = chip.textContent;
+      setMode(true);
+      inp.focus();
+      doSearch();
+    });
+  });
 
   /* ── Inject into page ─────────────────────────────────────────────────── */
   function inject() {
-    var main = document.querySelector('main,#main,.site-main,[role="main"],.main-content,#content,.content-area');
-    if (main) { main.insertBefore(root, main.firstChild); return; }
-    var hdr = document.querySelector('header,#header,.site-header');
-    if (hdr && hdr.parentNode) { hdr.parentNode.insertBefore(root, hdr.nextSibling); return; }
-    document.body.appendChild(root);
+    var target = document.getElementById('hx-sb-target');
+    if (!target) return;
+    target.parentNode.replaceChild(root, target);
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', inject);
@@ -1156,12 +1239,12 @@ _SEARCH_BAR_JS = r"""
     inject();
   }
 
-  /* ── Rainbow animation ────────────────────────────────────────────────── */
+  /* ── Pastel rainbow animation ─────────────────────────────────────────── */
   function tick() {
     angle = (angle + 0.5) % 360;
     pulseVal += 0.0025 * pulseDir;
     if (pulseVal > 0.65 || pulseVal < 0.28) pulseDir *= -1;
-    var g = 'conic-gradient(from ' + angle + 'deg,#ff0080,#ff4500,#ffcc00,#00ff88,#0066ff,#8833ff,#ff0080)';
+    var g = 'conic-gradient(from ' + angle + 'deg,#ff6eb4,#ffb347,#ffe066,#7fffd4,#87cefa,#c9b1ff,#ff6eb4)';
     ring.style.background = g;
     glow.style.background = g;
     glow.style.opacity = String(pulseVal);
