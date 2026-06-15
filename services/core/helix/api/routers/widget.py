@@ -1152,20 +1152,10 @@ _SEARCH_BAR_JS = r"""
     '.hx-sb-chip:hover{background:rgba(124,58,237,.12);color:#7C3AED;',
     'border-color:rgba(124,58,237,.3);}',
 
-    /* Dark mode */
+    /* Dark mode — bar stays white on dark sites; only chips + panel adapt */
     '@media(prefers-color-scheme:dark){',
     '#hx-sb-section{background:linear-gradient(180deg,transparent 0%,rgba(124,58,237,.08) 50%,transparent 100%);}',
-    '#hx-sb-inner{background:#1C1C1E;border-color:rgba(255,255,255,.1);}',
-    '#hx-sb-inner.ai{border-color:transparent;}',
-    '#hx-sb-inp{color:#F2F2F7;}',
-    '#hx-sb-inp::placeholder{color:#636366;}',
     '#hx-sb-headline{color:#8E8E93;}',
-    '#hx-sb-toggle{border-right-color:rgba(255,255,255,.08);}',
-    '#hx-sb-ai:not(.on){color:#8E8E93;}',
-    '#hx-sb-ai:not(.on):hover{background:rgba(255,255,255,.08);color:#F2F2F7;}',
-    '#hx-sb-norm{color:#8E8E93;}',
-    '#hx-sb-norm.on{background:rgba(255,255,255,.08);color:#F2F2F7;}',
-    '#hx-sb-norm:hover{background:rgba(255,255,255,.08);color:#F2F2F7;}',
     '.hx-sb-chip{background:rgba(124,58,237,.12);border-color:rgba(124,58,237,.25);color:#8E8E93;}',
     '.hx-sb-chip:hover{color:#C9B1FF;background:rgba(124,58,237,.2);}',
     '#hx-sb-panel{background:rgba(28,28,30,.97);border-color:rgba(255,255,255,.1);}',
