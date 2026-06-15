@@ -25,6 +25,7 @@ class Helix_Widget {
         ] );
         ?>
         <script>window.helixConfig = <?php echo $config; ?>;</script>
+        <script src="<?php echo esc_url( $api_url . '/v1/widget/searchbar.js' ); ?>?key=<?php echo esc_attr( $public_key ); ?>" defer></script>
         <script src="<?php echo esc_url( $api_url . '/v1/widget/embed.js' ); ?>?key=<?php echo esc_attr( $public_key ); ?>" defer></script>
         <?php
     }
