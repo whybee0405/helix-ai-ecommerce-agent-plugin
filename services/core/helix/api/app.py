@@ -79,6 +79,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from helix.api.routers import plugin as plugin_router
     app.include_router(plugin_router.router)
 
+    from helix.api.routers import branding
+    app.include_router(branding.router)
+
     from helix.packs.registry import load_all_packs
     load_all_packs(s.packs_dir)
 
@@ -94,7 +97,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_origins=s.cors_allowed_origins,
         allow_methods=["GET", "POST", "PATCH"],
         allow_headers=["Authorization", "Content-Type", "X-Helix-Tenant-Key",
-                       "X-Helix-Provision-Key", "X-Request-Id"],
+                       "X-Helix-Provision-Key", "X-Helix-Tenant-Id",
+                       "X-Helix-Timestamp", "X-Helix-Signature", "X-Request-Id"],
         expose_headers=["X-Request-Id"],
     )
 

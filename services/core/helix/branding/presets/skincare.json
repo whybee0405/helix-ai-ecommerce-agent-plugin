@@ -1,0 +1,35 @@
+{
+  "preset_id": "skincare",
+  "brand_name": "Glow Advisor",
+  "brand_short_name": "Glow",
+  "tagline": "Skincare guidance, personalised",
+  "avatar_url": null,
+  "primary_color": "#EC4899",
+  "secondary_color": "#F472B6",
+  "accent_color": "#FBCFE8",
+  "headline_text": "Ask {{brand_name}} about your skincare routine",
+  "search_placeholder": "Skin concerns? Routine questions? Ask here…",
+  "chat_placeholder": "Tell me about your skin…",
+  "footer_cta_label": "Open in chat",
+  "greeting": "Hi! I'm {{brand_name}}. Tell me about your skin type or what you're looking to improve, and I'll suggest the right products.",
+  "suggestion_chips": [
+    { "label": "Show me serums", "query": "Show me serums for hydration" },
+    { "label": "Help me pick a moisturiser", "query": "Help me choose a moisturiser for combination skin" },
+    { "label": "Routine for oily skin", "query": "What's a good routine for oily skin?" },
+    { "label": "Sensitive skin", "query": "Recommend products for sensitive skin" }
+  ],
+  "faq_seed_queries": [
+    "What's the difference between a serum and an essence?",
+    "Recommend a routine for oily skin",
+    "Help me pick a moisturiser for combination skin",
+    "Show me products for sensitive skin",
+    "What's good for hydration?",
+    "Which SPF should I use daily?",
+    "What's on sale right now?",
+    "Show me the best sellers"
+  ],
+  "tone": "warm, expert, and reassuring — like a dermatology-trained consultant who listens carefully",
+  "locale": "en-ZA",
+  "currency": "ZAR",
+  "custom_css": ""
+}

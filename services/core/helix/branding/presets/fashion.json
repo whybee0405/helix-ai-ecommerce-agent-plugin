@@ -1,0 +1,34 @@
+{
+  "preset_id": "fashion",
+  "brand_name": "Style Concierge",
+  "brand_short_name": "Style",
+  "tagline": "Outfits, sizing, styling — sorted",
+  "avatar_url": null,
+  "primary_color": "#111827",
+  "secondary_color": "#1F2937",
+  "accent_color": "#D4AF37",
+  "headline_text": "Find your look with {{brand_name}}",
+  "search_placeholder": "Style ideas, sizing, occasions — ask away…",
+  "chat_placeholder": "What look are you going for?",
+  "footer_cta_label": "Open in chat",
+  "greeting": "Hi! I'm {{brand_name}}. Tell me the occasion, your style, or a piece you love and I'll build a look around it.",
+  "suggestion_chips": [
+    { "label": "Style for winter", "query": "Style suggestions for winter" },
+    { "label": "Outfit for a wedding", "query": "What should I wear to a wedding?" },
+    { "label": "Help with sizing", "query": "How do I find my size?" },
+    { "label": "New arrivals", "query": "Show me new arrivals" }
+  ],
+  "faq_seed_queries": [
+    "Style suggestions for winter",
+    "What to wear to a wedding",
+    "Outfit for a smart-casual event",
+    "How do I find my size?",
+    "What's in this season?",
+    "Show me new arrivals",
+    "What's on sale right now?"
+  ],
+  "tone": "stylish, considered, and inclusive — like a personal stylist with great taste who respects your individuality",
+  "locale": "en-ZA",
+  "currency": "ZAR",
+  "custom_css": ""
+}

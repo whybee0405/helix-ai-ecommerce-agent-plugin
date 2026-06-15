@@ -5,7 +5,7 @@ from typing import Literal
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -237,7 +237,7 @@ _EMBED_JS = r"""
   panel.innerHTML = [
     '<div id="hx-header">',
     '<div class="hx-av"><svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9zm0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7zm1-11h-2v3H8v2h3v3h2v-3h3v-2h-3z"/></svg></div>',
-    '<div class="hx-ht"><strong>Helix AI Advisor</strong><span>K-Beauty specialist</span></div>',
+    '<div class="hx-ht"><strong id="hx-brand-name">Helix AI</strong><span id="hx-brand-tagline">Your AI shopping assistant</span></div>',
     '<div class="hx-dot-live"></div>',
     '<button id="hx-newchat" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg></button>',
     '<button id="hx-close" aria-label="Close">\xd7</button>',
@@ -245,14 +245,14 @@ _EMBED_JS = r"""
     '<div id="hx-msgs">',
     '<div class="hx-welcome">',
     '<div class="hx-wi"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg></div>',
-    '<h3>Hi! I\'m your K-Beauty advisor</h3>',
-    '<p>Tell me your skin type and concerns — I\'ll find your perfect products.</p>',
+    '<h3 id="hx-greeting-h">Hi!</h3>',
+    '<p id="hx-greeting-p">Tell me what you\'re looking for.</p>',
     '</div>',
     '</div>',
     '<div id="hx-typing"><div class="hx-tb"><div class="hx-d"></div><div class="hx-d"></div><div class="hx-d"></div></div></div>',
     '<div id="hx-footer">',
     '<form id="hx-form">',
-    '<textarea id="hx-inp" placeholder="Ask about your skin..." rows="1"></textarea>',
+    '<textarea id="hx-inp" placeholder="Ask anything…" rows="1"></textarea>',
     '<button type="submit" id="hx-send" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>',
     '</form>',
     '<div id="hx-wa-wrap" style="display:none">',
@@ -270,6 +270,25 @@ _EMBED_JS = r"""
   var typing = panel.querySelector('#hx-typing');
   var form   = panel.querySelector('#hx-form');
   var inp    = panel.querySelector('#hx-inp');
+
+  /* ── Branding application ───────────────────────────────────────────── */
+  function applyEmbedBranding(B) {
+    if (!B) return;
+    var nm = panel.querySelector('#hx-brand-name');
+    var tg = panel.querySelector('#hx-brand-tagline');
+    var gh = panel.querySelector('#hx-greeting-h');
+    var gp = panel.querySelector('#hx-greeting-p');
+    if (nm && B.brand_name) nm.textContent = B.brand_name;
+    if (tg && B.tagline) tg.textContent = B.tagline;
+    if (B.greeting && (gh || gp)) {
+      var sub = window.HelixBranding.substitute(B.greeting, B);
+      var parts = sub.split(/\n+/);
+      if (gh) gh.textContent = parts[0] || 'Hi!';
+      if (gp) gp.textContent = parts.slice(1).join(' ') || sub;
+    }
+    if (inp && B.chat_placeholder) inp.placeholder = B.chat_placeholder;
+  }
+  window.HelixBranding.load(BASE, KEY).then(applyEmbedBranding);
 
   /* ── WooCommerce nonce ──────────────────────────────────────────────── */
   function ensureNonce() {
@@ -538,7 +557,7 @@ _EMBED_JS = r"""
       })
       .catch(function () {
         hideTyping();
-        appendMsg('Could not reach Helix. Please try again.', 'bot', []);
+        appendMsg('Could not reach ' + window.HelixBranding.substitute('{{brand_short_name}}') + '. Please try again.', 'bot', []);
       });
   }
 
@@ -664,6 +683,21 @@ async def _run_chat_pipeline(
 ) -> PipelineResult:
     settings = get_settings()
     pack = get_pack_for_tenant(tenant)
+    from helix.branding import get_effective_branding
+    branding = await get_effective_branding(tenant)
+
+    # ── Budget / rate-limit guard ─────────────────────────────────────────
+    import redis.asyncio as _aioredis
+    from helix.llm.budget import BudgetMode, acquire_token, check_budget
+    _redis = _aioredis.from_url(str(settings.redis_url), decode_responses=True)
+    try:
+        if not await acquire_token(_redis, tenant.id):
+            raise HTTPException(status_code=429, detail="Rate limit exceeded; please slow down.")
+        budget = await check_budget(
+            db, _redis, tenant.id, tenant.tier, tenant.daily_budget_usd
+        )
+    finally:
+        await _redis.aclose()
 
     query_vector = await embed_query(body.query, settings)
     product_rows = await vector_search_products(db, tenant.id, query_vector, limit=5)
@@ -715,10 +749,16 @@ async def _run_chat_pipeline(
         conversation = await create_conversation(db, tenant.id, customer_uuid)
 
     prior_messages = await get_messages(db, conversation.id, tenant.id)
-    conversation_history = [
+    raw_history = [
         {"role": msg.role, "content": msg.content}
-        for msg in prior_messages[-10:]
+        for msg in prior_messages
     ]
+    from helix.llm.history import HistoryCompressor
+    compressor = HistoryCompressor(settings)
+    try:
+        conversation_history = await compressor.compress(conversation.id, raw_history)
+    finally:
+        await compressor.aclose()
 
     result = await handle_query(
         query=body.query,
@@ -729,6 +769,9 @@ async def _run_chat_pipeline(
         settings=settings,
         db_session=db,
         conversation_history=conversation_history,
+        branding=branding,
+        branding_version=tenant.branding_version,
+        budget_mode=budget.mode.value,
     )
 
     if result.cost_usd > 0:
@@ -777,14 +820,35 @@ async def widget_chat(
 @router.post("/chat/stream")
 async def widget_chat_stream(
     body: ChatRequest,
+    request: Request,
     tenant: Tenant = Depends(get_widget_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
     pipeline = await _run_chat_pipeline(body, tenant, db, "/v1/widget/chat/stream")
 
     async def _events() -> AsyncGenerator[str, None]:
-        yield f"data: {json.dumps({'type': 'token', 'content': pipeline.route.response})}\n\n"
-        yield f"data: {json.dumps({'type': 'done', 'source': pipeline.route.source, 'conversation_id': str(pipeline.conversation_id), 'assistant_message_id': str(pipeline.assistant_message_id)})}\n\n"
+        text = pipeline.route.response
+        # naive chunking on word boundaries — replace with real Anthropic stream when
+        # the gateway returns mid-token deltas (see LLMGateway.stream_text).
+        idx = 0
+        chunk = 40
+        while idx < len(text):
+            if await request.is_disconnected():
+                return
+            piece = text[idx : idx + chunk]
+            yield f"data: {json.dumps({'type': 'token', 'content': piece})}\n\n"
+            idx += chunk
+        yield "data: " + json.dumps({
+            "type": "products",
+            "items": pipeline.product_cards,
+            "referenced": pipeline.route.products_referenced,
+        }) + "\n\n"
+        yield "data: " + json.dumps({
+            "type": "done",
+            "source": pipeline.route.source,
+            "conversation_id": str(pipeline.conversation_id),
+            "assistant_message_id": str(pipeline.assistant_message_id),
+        }) + "\n\n"
 
     return StreamingResponse(_events(), media_type="text/event-stream")
 
@@ -1194,12 +1258,7 @@ _SEARCH_BAR_JS = r"""
         '</div>',
       '</div>',
     '</div>',
-    '<div id="hx-sb-chips">',
-      '<button class="hx-sb-chip">Show me moisturisers</button>',
-      '<button class="hx-sb-chip">What&apos;s on sale?</button>',
-      '<button class="hx-sb-chip">Help me pick a serum</button>',
-      '<button class="hx-sb-chip">Best sellers</button>',
-    '</div>',
+    '<div id="hx-sb-chips"></div>',
   ].join('');
 
   /* ── Refs ─────────────────────────────────────────────────────────────── */
@@ -1215,17 +1274,37 @@ _SEARCH_BAR_JS = r"""
   var body  = root.querySelector('#hx-sb-body');
   var pcls  = root.querySelector('#hx-sb-pclose');
   var fcBtn = root.querySelector('#hx-sb-fc');
-  var chips = root.querySelectorAll('.hx-sb-chip');
+  var chipsBox = root.querySelector('#hx-sb-chips');
+  var headline = root.querySelector('#hx-sb-headline');
+  var panelTitle = root.querySelector('#hx-sb-ph strong');
 
-  /* ── Chip click handlers ──────────────────────────────────────────────── */
-  chips.forEach(function (chip) {
-    chip.addEventListener('click', function () {
-      inp.value = chip.textContent;
-      setMode(true);
-      inp.focus();
-      doSearch();
+  /* ── Branding application ─────────────────────────────────────────────── */
+  function applyBranding(B) {
+    if (!B) return;
+    if (headline) headline.textContent = window.HelixBranding.substitute(B.headline_text || '', B);
+    if (B.search_placeholder) inp.placeholder = B.search_placeholder;
+    if (panelTitle && B.brand_name) panelTitle.textContent = B.brand_name;
+    if (fcBtn && B.footer_cta_label) {
+      var icon = fcBtn.querySelector('svg');
+      fcBtn.textContent = B.footer_cta_label + ' ';
+      if (icon) fcBtn.appendChild(icon);
+    }
+    chipsBox.innerHTML = '';
+    (B.suggestion_chips || []).forEach(function (chip) {
+      var btn = document.createElement('button');
+      btn.className = 'hx-sb-chip';
+      btn.textContent = chip.label;
+      btn.dataset.query = chip.query || chip.label;
+      btn.addEventListener('click', function () {
+        inp.value = btn.dataset.query;
+        setMode(true);
+        inp.focus();
+        doSearch();
+      });
+      chipsBox.appendChild(btn);
     });
-  });
+  }
+  window.HelixBranding.load(BASE, KEY).then(applyBranding);
 
   /* ── Inject into page ─────────────────────────────────────────────────── */
   function inject() {
@@ -1286,7 +1365,7 @@ _SEARCH_BAR_JS = r"""
 
   /* ── Panel ────────────────────────────────────────────────────────────── */
   function openPanel() { panel.style.display = 'block'; }
-  function closePanel() { panel.style.display = 'none'; }
+  function closePanel() { panel.style.display = 'none'; if (typeof abortInFlight === 'function') abortInFlight(); }
 
   pcls.addEventListener('click', closePanel);
   document.addEventListener('click', function (e) {
@@ -1438,6 +1517,10 @@ _SEARCH_BAR_JS = r"""
   }
 
   /* ── Search / Send ────────────────────────────────────────────────────── */
+  var _ac = null;
+  function abortInFlight() {
+    if (_ac) { try { _ac.abort(); } catch (e) {} _ac = null; isLoading = false; }
+  }
   function doSearch() {
     var q = inp.value.trim();
     if (!q) { inp.focus(); return; }
@@ -1445,8 +1528,10 @@ _SEARCH_BAR_JS = r"""
       window.location.href = STORE_BASE + '/?s=' + encodeURIComponent(q) + '&post_type=product';
       return;
     }
-    if (isLoading) return;
+    abortInFlight();
     isLoading = true;
+    _ac = new AbortController();
+    var signal = _ac.signal;
     body.innerHTML = '<div id="hx-sb-typing"><div class="hx-sbd"></div><div class="hx-sbd"></div><div class="hx-sbd"></div></div>';
     openPanel();
     getToken()
@@ -1455,11 +1540,12 @@ _SEARCH_BAR_JS = r"""
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: q, customer_profile: {}, conversation_id: convId || undefined }),
+          signal: signal,
         });
       })
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        isLoading = false;
+        isLoading = false; _ac = null;
         if (d.response) {
           convId = d.conversation_id;
           localStorage.setItem(LS_CONV, convId);
@@ -1468,16 +1554,17 @@ _SEARCH_BAR_JS = r"""
           renderResults(d.detail || 'Something went wrong. Please try again.', []);
         }
       })
-      .catch(function () {
-        isLoading = false;
-        renderResults('Could not reach Helix. Please try again.', []);
+      .catch(function (err) {
+        isLoading = false; _ac = null;
+        if (err && err.name === 'AbortError') return;  // user moved on; no error UI
+        renderResults('Could not reach ' + window.HelixBranding.substitute('{{brand_short_name}}') + '. Please try again.', []);
       });
   }
 
   goBtn.addEventListener('click', doSearch);
   inp.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
-    if (e.key === 'Escape') { closePanel(); inp.blur(); }
+    if (e.key === 'Escape') { abortInFlight(); closePanel(); inp.blur(); }
   });
 
   /* ── "Open in chat" — forwards query to the main Helix chat panel ─────── */
@@ -1497,14 +1584,87 @@ _SEARCH_BAR_JS = r"""
 """.strip()
 
 
+_BRANDING_BOOTSTRAP_JS = r"""
+(function () {
+  if (window.HelixBranding) return;
+  window.HelixBranding = {
+    _p: null,
+    _applied: null,
+    load: function (BASE, KEY) {
+      if (this._p) return this._p;
+      var lsKey = 'hx_brand_' + KEY;
+      var stored = null;
+      try { stored = JSON.parse(localStorage.getItem(lsKey) || 'null'); } catch (e) {}
+      if (stored) {
+        this._applied = stored;
+        this._applyCSS(stored);
+      }
+      var headers = stored && stored.version
+        ? { 'If-None-Match': 'W/"branding-' + stored.version + '"' }
+        : {};
+      var self = this;
+      this._p = fetch(BASE + '/v1/widget/branding?key=' + encodeURIComponent(KEY), { headers: headers })
+        .then(function (r) {
+          if (r.status === 304 && stored) return stored;
+          if (!r.ok) return stored;
+          return r.json();
+        })
+        .then(function (b) {
+          if (b && b.version) {
+            try { localStorage.setItem(lsKey, JSON.stringify(b)); } catch (e) {}
+            self._applied = b;
+            self._applyCSS(b);
+          }
+          return b || stored;
+        })
+        .catch(function () { return stored; });
+      return this._p;
+    },
+    substitute: function (s, b) {
+      b = b || this._applied || {};
+      return String(s == null ? '' : s)
+        .replace(/\{\{brand_name\}\}/g, b.brand_name || 'Helix AI')
+        .replace(/\{\{brand_short_name\}\}/g, b.brand_short_name || 'Helix');
+    },
+    _applyCSS: function (b) {
+      if (!b) return;
+      var r = document.documentElement;
+      if (b.primary_color)   r.style.setProperty('--hx-primary',   b.primary_color);
+      if (b.secondary_color) r.style.setProperty('--hx-secondary', b.secondary_color);
+      if (b.accent_color)    r.style.setProperty('--hx-accent',    b.accent_color);
+      if (b.primary_color && b.secondary_color) {
+        r.style.setProperty('--hx-gradient',
+          'linear-gradient(135deg,' + b.primary_color + ',' + b.secondary_color + ')');
+      }
+      if (b.custom_css) {
+        var ex = document.getElementById('hx-custom-css');
+        if (!ex) {
+          ex = document.createElement('style');
+          ex.id = 'hx-custom-css';
+          document.head.appendChild(ex);
+        }
+        ex.textContent = b.custom_css;
+      }
+    }
+  };
+})();
+""".strip()
+
+
 @router.get("/embed.js", include_in_schema=False)
 async def widget_embed_js() -> Response:
-    return Response(content=_EMBED_JS, media_type="application/javascript")
+    return Response(
+        content=_BRANDING_BOOTSTRAP_JS + "\n" + _EMBED_JS,
+        media_type="application/javascript",
+    )
 
 
 @router.get("/searchbar.js", include_in_schema=False)
 async def widget_searchbar_js() -> Response:
-    return Response(content=_SEARCH_BAR_JS, media_type="application/javascript")
+    return Response(
+        content=_BRANDING_BOOTSTRAP_JS + "\n" + _SEARCH_BAR_JS,
+        media_type="application/javascript",
+    )
 
 
 @router.get("/demo.html", include_in_schema=False)

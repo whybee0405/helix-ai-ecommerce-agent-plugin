@@ -3,6 +3,8 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from pgvector.sqlalchemy import Vector
+from decimal import Decimal
+
 from sqlalchemy import (
     Boolean,
     ForeignKey,
@@ -38,6 +40,10 @@ class Tenant(Base):
         TIMESTAMP(timezone=True), nullable=False, default=_now
     )
     pack_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    branding: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    branding_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    tier: Mapped[str] = mapped_column(String(32), nullable=False, default="free")
+    daily_budget_usd: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
 
 
 class Product(Base):

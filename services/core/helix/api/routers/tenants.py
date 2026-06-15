@@ -1,3 +1,4 @@
+import secrets
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.auth.crypto import encrypt_credentials
 from helix.api.deps import get_db
+from helix.branding.presets import get_preset
 from helix.config import get_settings
 from helix.db.crud.tenants import create_tenant, get_tenant_by_id, update_tenant
 from helix.db.models import Tenant
@@ -20,11 +22,13 @@ class ProvisionRequest(BaseModel):
     store_url: str
     credentials: dict[str, Any]
     pack_id: str = "kbeauty"
+    preset_id: str = "general"
 
 
 class ProvisionResponse(BaseModel):
     tenant_id: str
     public_key: str
+    admin_secret: str
 
 
 class TenantDetail(BaseModel):
@@ -59,20 +63,37 @@ async def provision_tenant(
 ) -> ProvisionResponse:
     settings = get_settings()
 
-    enc = encrypt_credentials(body.credentials, settings.credential_encryption_key.get_secret_value())
+    admin_secret = secrets.token_hex(32)
+    creds_with_admin = {**body.credentials, "admin_secret": admin_secret}
+    enc = encrypt_credentials(
+        creds_with_admin, settings.credential_encryption_key.get_secret_value()
+    )
+
+    preset = get_preset(body.preset_id)
+    branding_payload = preset.model_dump(mode="json")
+
     tenant = Tenant(
         name=body.name,
         platform=body.platform,
         store_url=body.store_url,
         credentials_enc=enc,
         pack_id=body.pack_id,
+        branding=branding_payload,
+        branding_version=1,
     )
     tenant = await create_tenant(db, tenant)
     await db.commit()
 
+    try:
+        from helix.workers.tasks.faq_warm import warm_tenant_faq
+        warm_tenant_faq.delay(str(tenant.id))
+    except Exception:  # noqa: BLE001
+        pass
+
     return ProvisionResponse(
         tenant_id=str(tenant.id),
         public_key=str(tenant.public_key),
+        admin_secret=admin_secret,
     )
 
 

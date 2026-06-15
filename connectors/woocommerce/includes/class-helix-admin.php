@@ -59,6 +59,9 @@ class Helix_Admin {
             if ( ! is_wp_error( $result ) ) {
                 update_option( 'helix_tenant_id', $result['tenant_id'] );
                 update_option( 'helix_public_key', $result['public_key'] );
+                if ( ! empty( $result['admin_secret'] ) ) {
+                    update_option( 'helix_admin_secret', $result['admin_secret'] );
+                }
                 Helix_Webhooks::register_webhooks( get_option( 'helix_api_url' ), $result['tenant_id'] );
             } else {
                 wp_safe_redirect( admin_url( 'admin.php?page=helix-connector&connect_error=' . urlencode( $result->get_error_message() ) ) );

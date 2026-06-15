@@ -130,6 +130,37 @@ class LLMGateway:
         self._log_usage(message, model_id, "primary")
         return result
 
+    async def stream_text(
+        self,
+        tier: ModelTier,
+        system: str,
+        user: str,
+        *,
+        max_tokens: int = 768,
+        message_history: list[dict] | None = None,
+    ):
+        """Yields text chunks from a streaming Anthropic call. Caller can abort by
+        cancelling the surrounding task — the underlying HTTP request is cancelled
+        and Anthropic stops generating, so output tokens are billed up to abort only."""
+        if message_history is None:
+            message_history = []
+        model_id = self._tier_to_model[tier]
+        client = anthropic.AsyncAnthropic(
+            api_key=self._settings.anthropic_api_key.get_secret_value()
+        )
+        accumulated = ""
+        async with client.messages.stream(
+            model=model_id,
+            max_tokens=max_tokens,
+            system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+            messages=[*message_history, {"role": "user", "content": user}],
+        ) as stream:
+            async for delta in stream.text_stream:
+                accumulated += delta
+                yield delta
+            final = await stream.get_final_message()
+            self._log_usage(final, model_id, "stream")
+
     @staticmethod
     def _parse(text: str, schema: Type[T]) -> T | None:
         try:
@@ -162,15 +193,37 @@ class LLMGateway:
             tenant_id=str(self._tenant_id),
         )
 
+    def _pick_model_for_intent(
+        self,
+        intent: "QueryIntent | None",
+        context_products: list[dict],
+    ) -> ModelTier:
+        """Win 8: route the GENERATE call to the smallest model that fits the intent."""
+        if intent is None:
+            return ModelTier.GENERATE
+        if intent.intent in ("faq", "other"):
+            return ModelTier.CLASSIFY  # Haiku is plenty for FAQ-style answers
+        if intent.intent == "product_search" and len(context_products) <= 3:
+            return ModelTier.CLASSIFY  # short candidate set = Haiku can summarise it well
+        if intent.intent in ("compatibility", "routine"):
+            return ModelTier.GENERATE
+        return ModelTier.GENERATE
+
     async def classify_intent(
         self,
         query: str,
         cache: "LLMCache | None" = None,
+        cache_namespace: str = "",
     ) -> QueryIntent:
         _CLASSIFY_SYS = "Classify user query intent. Return only JSON."
 
         if cache:
-            cached = await cache.get(self._tier_to_model[ModelTier.CLASSIFY], _CLASSIFY_SYS, query)
+            cached = await cache.get(
+                self._tier_to_model[ModelTier.CLASSIFY],
+                _CLASSIFY_SYS,
+                query,
+                namespace=cache_namespace,
+            )
             if cached:
                 return QueryIntent.model_validate(json.loads(cached))
 
@@ -189,6 +242,7 @@ class LLMGateway:
                 query,
                 result.model_dump_json(),
                 ttl=86400,
+                namespace=cache_namespace,
             )
         return result
 
@@ -201,7 +255,10 @@ class LLMGateway:
         pack_rules: list[dict],
         pack_templates: dict[str, str],
         cache: "LLMCache | None" = None,
+        cache_namespace: str = "",
         conversation_history: list[dict] | None = None,
+        semantic_cache: "SemanticCache | None" = None,
+        budget_mode: str = "normal",
     ) -> RouteResult:
         if conversation_history is None:
             conversation_history = []
@@ -214,13 +271,39 @@ class LLMGateway:
             "cost_usd": 0.0,
         }
 
-        await self.classify_intent(query, cache)
+        intent = await self.classify_intent(query, cache, cache_namespace=cache_namespace)
         self._last_usage = {
             "model": "",
             "tokens_in": 0,
             "tokens_out": 0,
             "cost_usd": 0.0,
         }  # track only generate tokens
+
+        # Semantic cache — embed the query once, look up similar prior responses.
+        # Intent-aware TTL controls freshness.
+        if semantic_cache is not None and conversation_history is None:
+            from helix.llm.semantic_cache import ttl_for_intent
+            hit = await semantic_cache.lookup(
+                namespace=cache_namespace or "global",
+                model_id=self._tier_to_model[ModelTier.GENERATE],
+                query=query,
+            )
+            if hit:
+                return RouteResult(
+                    response=hit["response"],
+                    source="semantic_cache",
+                    products_referenced=hit.get("products_referenced") or [],
+                )
+
+        # Budget circuit breaker: at hard cap return a graceful fallback
+        if budget_mode == "blocked":
+            return RouteResult(
+                response=(
+                    "We're seeing a lot of traffic right now and have hit our daily limit. "
+                    "Please try again shortly or browse our catalogue directly."
+                ),
+                source="budget_blocked",
+            )
 
         template_layer = TemplateLayer()
         template_result = await template_layer.query(query, pack_templates)
@@ -234,27 +317,32 @@ class LLMGateway:
 
         if context_products:
             product_list = "\n".join(
-                f"- {p['title']} ({p.get('currency','?')} {p.get('price_minor',0)/100:.0f}): "
-                f"{p.get('domain_attributes', {})}"
+                f"- [{p.get('platform_id','?')}] {p['title']} "
+                f"({p.get('currency','?')} {p.get('price_minor',0)/100:.0f})"
                 for p in context_products[:5]
             )
             grounded_user = (
                 f"Customer profile: {customer_profile}\n\n"
-                f"Available products:\n{product_list}\n\n"
-                f"Customer question: {query}"
+                f"Available products (cite by id):\n{product_list}\n\n"
+                f"Customer question: {query}\n\n"
+                f"Reply concisely. Reference at most 3 products by id in product_ids_referenced; "
+                f"do not restate full product details — the UI renders cards from the ids."
             )
         else:
             grounded_user = f"Customer profile: {customer_profile}\n\nCustomer question: {query}"
 
+        chosen_tier = self._pick_model_for_intent(intent, context_products)
+        if budget_mode == "degraded":
+            chosen_tier = ModelTier.CLASSIFY  # force Haiku
         llm_result = await self.complete(
-            tier=ModelTier.GENERATE,
+            tier=chosen_tier,
             system=system_prompt,
             user=grounded_user,
             response_schema=ConsultantResponse,
-            max_tokens=1024,
+            max_tokens=768,
             message_history=conversation_history,
         )
-        return RouteResult(
+        result = RouteResult(
             response=llm_result.response,
             source="llm",
             products_referenced=llm_result.product_ids_referenced,
@@ -263,6 +351,24 @@ class LLMGateway:
             tokens_out=self._last_usage["tokens_out"],
             cost_usd=self._last_usage["cost_usd"],
         )
+
+        # Store in semantic cache for future similar queries (only for stateless turns).
+        if semantic_cache is not None and conversation_history is None:
+            from helix.llm.semantic_cache import ttl_for_intent
+            try:
+                await semantic_cache.store(
+                    namespace=cache_namespace or "global",
+                    model_id=self._tier_to_model[ModelTier.GENERATE],
+                    query=query,
+                    response=result.response,
+                    products_referenced=result.products_referenced,
+                    source=result.source,
+                    ttl=ttl_for_intent(intent.intent if intent else "other"),
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.warning("semantic_cache_store_failed", error=str(e))
+
+        return result
 
 
 # Defer import to avoid circular reference at module level
