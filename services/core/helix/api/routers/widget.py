@@ -984,6 +984,9 @@ _SEARCH_BAR_JS = r"""
   var rafId      = null;
   var pulseVal   = 0.5;
   var pulseDir   = 1;
+  var _lsTimer   = null;
+  var _lsCtrl    = null;
+  var AJAX_URL   = (window.helixConfig && window.helixConfig.ajaxUrl) || null;
 
   var _wcp = window.wc_add_to_cart_params || window.woocommerce_params || window.wc_cart_fragments_params || {};
   var _wcAjaxBase = _wcp.wc_ajax_url || (STORE_BASE + '/?wc-ajax=%%endpoint%%');
@@ -1152,6 +1155,23 @@ _SEARCH_BAR_JS = r"""
     '.hx-sb-chip:hover{background:rgba(124,58,237,.12);color:#7C3AED;',
     'border-color:rgba(124,58,237,.3);}',
 
+    /* Normal-mode live search result rows */
+    '.hx-sb-live-row{display:flex;align-items:center;gap:10px;padding:10px 14px;',
+    'text-decoration:none;color:inherit;border-bottom:1px solid rgba(0,0,0,.05);',
+    'transition:background .12s;outline:none;}',
+    '.hx-sb-live-row:hover,.hx-sb-live-row:focus{background:rgba(124,58,237,.04);}',
+    '.hx-sb-limg{width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;background:#f0edff;}',
+    '.hx-sb-linfo{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;}',
+    '.hx-sb-lname{font:500 13px/1.3 -apple-system,sans-serif;color:#1C1C1E;',
+    'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    '.hx-sb-lcat{font:400 11px/1 -apple-system,sans-serif;color:#8E8E93;}',
+    '.hx-sb-lprice{font:700 12px/1 -apple-system,sans-serif;color:#7C3AED;margin-top:2px;}',
+    '.hx-sb-lall{display:block;padding:8px 14px;font:500 12px/1 -apple-system,sans-serif;',
+    'color:#7C3AED;text-align:center;text-decoration:none;',
+    'border-top:1px solid rgba(0,0,0,.06);background:rgba(0,0,0,.02);',
+    'transition:background .12s;}',
+    '.hx-sb-lall:hover{background:rgba(124,58,237,.06);}',
+
     /* Dark mode — bar stays white on dark sites; only chips + panel adapt */
     '@media(prefers-color-scheme:dark){',
     '#hx-sb-section{background:linear-gradient(180deg,transparent 0%,rgba(124,58,237,.08) 50%,transparent 100%);}',
@@ -1167,6 +1187,8 @@ _SEARCH_BAR_JS = r"""
     '.hx-sb-card{background:#2C2C2E;border-color:rgba(255,255,255,.08);}',
     '.hx-sb-ct{color:#F2F2F7;}',
     '#hx-sb-pf{border-top-color:rgba(255,255,255,.06);}',
+    '.hx-sb-live-row:hover,.hx-sb-live-row:focus{background:rgba(124,58,237,.08);}',
+    '.hx-sb-lname{color:#F2F2F7;}',
     '}',
 
     /* Mobile (<480px) */
@@ -1343,11 +1365,61 @@ _SEARCH_BAR_JS = r"""
     if (ai) {
       goIco.innerHTML = '<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
       startRainbow();
+      if (panelTitle) panelTitle.textContent = window.HelixBranding.substitute('{{brand_name}}');
     } else {
       goIco.innerHTML = '<path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 5L20.49 19l-5-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>';
       stopRainbow();
       closePanel();
+      if (panelTitle) panelTitle.textContent = 'Products';
     }
+  }
+
+  /* ── Normal-mode live search ──────────────────────────────────────────── */
+  function renderLiveResults(products) {
+    body.innerHTML = '';
+    if (!products || !products.length) {
+      body.innerHTML = '<p style="padding:18px;text-align:center;font:13px -apple-system,sans-serif;color:#8E8E93;">No products found.</p>';
+      return;
+    }
+    products.forEach(function (p) {
+      var a = document.createElement('a');
+      a.className = 'hx-sb-live-row';
+      a.href = p.url;
+      var img = document.createElement('img');
+      img.className = 'hx-sb-limg'; img.src = p.img; img.alt = ''; img.loading = 'lazy';
+      a.appendChild(img);
+      var info = document.createElement('span');
+      info.className = 'hx-sb-linfo';
+      var nm = document.createElement('span'); nm.className = 'hx-sb-lname'; nm.textContent = p.name;
+      info.appendChild(nm);
+      if (p.cat) {
+        var ct = document.createElement('span'); ct.className = 'hx-sb-lcat'; ct.textContent = p.cat;
+        info.appendChild(ct);
+      }
+      var pr = document.createElement('span'); pr.className = 'hx-sb-lprice'; pr.textContent = p.price;
+      info.appendChild(pr);
+      a.appendChild(info);
+      body.appendChild(a);
+    });
+    var allA = document.createElement('a');
+    allA.className = 'hx-sb-lall';
+    allA.href = STORE_BASE + '/?s=' + encodeURIComponent(inp.value.trim()) + '&post_type=product';
+    allA.textContent = 'See all results →';
+    body.appendChild(allA);
+  }
+
+  function doLiveSearch() {
+    if (!AJAX_URL) return;
+    var q = inp.value.trim();
+    if (q.length < 2) { closePanel(); return; }
+    if (_lsCtrl) { try { _lsCtrl.abort(); } catch (e) {} }
+    _lsCtrl = new AbortController();
+    body.innerHTML = '<div id="hx-sb-typing"><div class="hx-sbd"></div><div class="hx-sbd"></div><div class="hx-sbd"></div></div>';
+    openPanel();
+    fetch(AJAX_URL + '?action=helix_live_search&q=' + encodeURIComponent(q), { signal: _lsCtrl.signal })
+      .then(function (r) { return r.json(); })
+      .then(function (data) { renderLiveResults(data); })
+      .catch(function (e) { if (e && e.name !== 'AbortError') closePanel(); });
   }
 
   aiBt.addEventListener('click', function () { setMode(true); inp.focus(); });
@@ -1555,6 +1627,11 @@ _SEARCH_BAR_JS = r"""
   inp.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
     if (e.key === 'Escape') { abortInFlight(); closePanel(); inp.blur(); }
+  });
+  inp.addEventListener('input', function () {
+    if (aiMode) return;
+    clearTimeout(_lsTimer);
+    _lsTimer = setTimeout(doLiveSearch, 300);
   });
 
   /* ── "Open in chat" — forwards query to the main Helix chat panel ─────── */

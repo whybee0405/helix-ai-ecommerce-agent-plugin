@@ -30,9 +30,10 @@ class Helix_Widget {
         $wa_message = get_option( 'helix_wa_message', "Hi! I'd like some skincare advice." );
 
         $config = wp_json_encode( [
-            'wa'    => (bool) $wa_enabled,
-            'waNum' => $wa_number,
-            'waMsg' => $wa_message,
+            'wa'      => (bool) $wa_enabled,
+            'waNum'   => $wa_number,
+            'waMsg'   => $wa_message,
+            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
         ] );
         ?>
         <script>window.helixConfig = <?php echo $config; ?>;</script>
