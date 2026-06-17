@@ -10,7 +10,7 @@ class Helix_API_Client {
         $this->tenant_key = $tenant_key;
     }
 
-    public function provision( string $name, string $store_url, array $credentials ): array|WP_Error {
+    public function provision( string $name, string $store_url, array $credentials, string $pack_id = 'kbeauty' ): array|WP_Error {
         $provision_key = get_option( 'helix_provision_key', '' );
         $response = wp_remote_post( $this->api_url . '/v1/tenants', [
             'headers' => [
@@ -22,6 +22,7 @@ class Helix_API_Client {
                 'platform'    => 'woocommerce',
                 'store_url'   => $store_url,
                 'credentials' => $credentials,
+                'pack_id'     => $pack_id,
             ] ),
             'timeout' => 15,
         ] );
@@ -34,6 +35,27 @@ class Helix_API_Client {
             return new WP_Error( 'helix_provision_failed', "Helix API returned HTTP {$code}" );
         }
         return json_decode( wp_remote_retrieve_body( $response ), true );
+    }
+
+    public function patch_tenant( string $tenant_id, array $patch ): array|WP_Error {
+        $provision_key = get_option( 'helix_provision_key', '' );
+        $response = wp_remote_request( $this->api_url . '/v1/tenants/' . $tenant_id, [
+            'method'  => 'PATCH',
+            'headers' => [
+                'Content-Type'          => 'application/json',
+                'X-Helix-Provision-Key' => $provision_key,
+            ],
+            'body'    => wp_json_encode( $patch ),
+            'timeout' => 15,
+        ] );
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+        $code = wp_remote_retrieve_response_code( $response );
+        if ( $code >= 400 ) {
+            return new WP_Error( 'helix_patch_tenant_failed', "Helix API returned HTTP {$code}" );
+        }
+        return json_decode( wp_remote_retrieve_body( $response ), true ) ?? [];
     }
 
     public function sync_products( array $products ): array|WP_Error {

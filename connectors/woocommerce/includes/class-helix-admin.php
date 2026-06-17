@@ -41,6 +41,7 @@ class Helix_Admin {
         register_setting( 'helix_settings', 'helix_sb_fly_to_cart', [ 'sanitize_callback' => 'absint' ] );
         register_setting( 'helix_settings', 'helix_sb_card_modal', [ 'sanitize_callback' => 'absint' ] );
         register_setting( 'helix_settings', 'helix_lead_webhook_url', [ 'sanitize_callback' => 'esc_url_raw' ] );
+        register_setting( 'helix_settings', 'helix_pack_id', [ 'sanitize_callback' => 'sanitize_text_field' ] );
     }
 
     public static function save_settings(): void {
@@ -62,6 +63,13 @@ class Helix_Admin {
         update_option( 'helix_sb_card_modal', isset( $_POST['helix_sb_card_modal'] ) ? 1 : 0 );
         update_option( 'helix_lead_webhook_url', esc_url_raw( $_POST['helix_lead_webhook_url'] ?? '' ) );
 
+        $allowed_packs = [ 'kbeauty', 'automotive' ];
+        $pack_id       = sanitize_text_field( $_POST['helix_pack_id'] ?? 'kbeauty' );
+        if ( ! in_array( $pack_id, $allowed_packs, true ) ) {
+            $pack_id = 'kbeauty';
+        }
+        update_option( 'helix_pack_id', $pack_id );
+
         /* Sync operational settings to backend if already connected */
         if ( get_option( 'helix_tenant_id' ) && get_option( 'helix_admin_secret' ) ) {
             $client = new Helix_API_Client(
@@ -71,6 +79,8 @@ class Helix_Admin {
             $client->update_branding( [
                 'lead_webhook_url' => get_option( 'helix_lead_webhook_url', '' ) ?: null,
             ] );
+            // Keep pack_id in sync if it changed.
+            $client->patch_tenant( get_option( 'helix_tenant_id' ), [ 'pack_id' => $pack_id ] );
         }
 
         if ( ! get_option( 'helix_tenant_id' ) ) {
@@ -81,7 +91,8 @@ class Helix_Admin {
                 [
                     'consumer_key'    => get_option( 'helix_consumer_key' ),
                     'consumer_secret' => get_option( 'helix_consumer_secret' ),
-                ]
+                ],
+                $pack_id
             );
             if ( ! is_wp_error( $result ) ) {
                 update_option( 'helix_tenant_id', $result['tenant_id'] );
@@ -144,6 +155,29 @@ class Helix_Admin {
                 <?php wp_nonce_field( 'helix_save_settings' ); ?>
                 <input type="hidden" name="action" value="helix_save_settings">
                 <table class="form-table">
+                    <tr>
+                        <th>Industry / Pack</th>
+                        <td>
+                            <select name="helix_pack_id">
+                                <?php
+                                $current_pack = get_option( 'helix_pack_id', 'kbeauty' );
+                                $packs = [
+                                    'kbeauty'    => 'K-Beauty / Skincare',
+                                    'automotive' => 'Automotive / Car Dealership',
+                                ];
+                                foreach ( $packs as $value => $label ) {
+                                    printf(
+                                        '<option value="%s"%s>%s</option>',
+                                        esc_attr( $value ),
+                                        selected( $current_pack, $value, false ),
+                                        esc_html( $label )
+                                    );
+                                }
+                                ?>
+                            </select>
+                            <p class="description">Determines which product schema and AI behaviour your store uses. Changing this after connecting will update the backend immediately.</p>
+                        </td>
+                    </tr>
                     <tr><th>API URL</th><td><input type="url" name="helix_api_url" value="<?php echo esc_attr( get_option( 'helix_api_url' ) ); ?>" class="regular-text"></td></tr>
                     <tr><th>Provision Key</th><td><input type="password" name="helix_provision_key" value="<?php echo esc_attr( get_option( 'helix_provision_key' ) ); ?>" class="regular-text"></td></tr>
                     <tr><th>WC Consumer Key</th><td><input type="text" name="helix_consumer_key" value="<?php echo esc_attr( get_option( 'helix_consumer_key' ) ); ?>" class="regular-text"></td></tr>
