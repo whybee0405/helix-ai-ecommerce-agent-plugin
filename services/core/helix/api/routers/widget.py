@@ -1216,12 +1216,94 @@ _SEARCH_BAR_JS = r"""
     /* The magic: cards start at search-bar position (above, tiny, blurred) */
     /* and fly down into their grid slots one by one */
     '@keyframes hx-sr-fly{',
-    '0%{opacity:0;transform:translateY(-90px) scale(0.12) rotate(6deg);filter:blur(10px);}',
-    '50%{opacity:1;filter:blur(0);}',
-    '72%{transform:translateY(7px) scale(1.05) rotate(-0.6deg);}',
+    '0%{opacity:0;transform:translateY(-140px) scale(0.04) rotate(22deg);filter:blur(18px);}',
+    '42%{opacity:1;filter:blur(0);}',
+    '64%{transform:translateY(14px) scale(1.12) rotate(-2deg);}',
+    '82%{transform:translateY(-5px) scale(0.97) rotate(0.8deg);}',
     '100%{opacity:1;transform:translateY(0) scale(1) rotate(0deg);filter:blur(0);}}',
+    /* Label above product grid */
+    '.hx-sr-label{font:600 11px/1 -apple-system,sans-serif;color:#AEAEB2;',
+    'letter-spacing:.08em;text-transform:uppercase;margin:16px 0 10px;}',
     /* Loading dots inside inline results */
     '.hx-sr-dots{display:flex;gap:6px;align-items:center;padding:24px;justify-content:center;}',
+    /* Flying cart dot */
+    '.hx-fly-dot{position:fixed;z-index:1000002;pointer-events:none;border-radius:50%;',
+    'overflow:hidden;box-shadow:0 4px 20px rgba(124,58,237,.6);will-change:transform;}',
+    /* Cart icon bounce when item lands */
+    '@keyframes hx-cart-bounce{',
+    '0%,100%{transform:scale(1)rotate(0deg);}',
+    '20%{transform:scale(1.4)rotate(-14deg);}',
+    '45%{transform:scale(1.2)rotate(10deg);}',
+    '65%{transform:scale(1.08)rotate(-5deg);}',
+    '82%{transform:scale(1.03)rotate(2deg);}}',
+    '.hx-cart-pulse{animation:hx-cart-bounce .58s cubic-bezier(.175,.885,.32,1.275)!important;',
+    'display:inline-block!important;}',
+    /* ── Product detail modal ──────────────────────────────────────────── */
+    '#hx-pm-ov{position:fixed;inset:0;z-index:1000001;display:flex;',
+    'align-items:center;justify-content:center;padding:16px;',
+    'background:rgba(0,0,0,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);',
+    'animation:hx-pm-bg .22s ease both;}',
+    '@keyframes hx-pm-bg{from{opacity:0;}to{opacity:1;}}',
+    '#hx-pm{position:relative;background:#fff;border-radius:22px;',
+    'width:100%;max-width:500px;max-height:88vh;overflow-y:auto;',
+    'box-shadow:0 40px 100px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.06);',
+    'animation:hx-pm-up .35s cubic-bezier(.175,.885,.32,1.275) both;',
+    'scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.1) transparent;}',
+    '@keyframes hx-pm-up{from{transform:translateY(40px) scale(.93);}to{transform:translateY(0) scale(1);}}',
+    '#hx-pm::-webkit-scrollbar{width:4px;}',
+    '#hx-pm::-webkit-scrollbar-thumb{background:rgba(0,0,0,.1);border-radius:2px;}',
+    '#hx-pm-img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;',
+    'background:linear-gradient(135deg,#f0edff,#ede9fe);}',
+    '#hx-pm-iph{width:100%;aspect-ratio:4/3;background:linear-gradient(135deg,#f0edff,#ede9fe);',
+    'display:flex;align-items:center;justify-content:center;}',
+    '#hx-pm-iph svg{width:56px;height:56px;opacity:.18;}',
+    '#hx-pm-body{padding:22px 24px 28px;}',
+    '#hx-pm-close{position:absolute;top:14px;right:14px;all:unset;cursor:pointer;',
+    'width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.38);',
+    'backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;',
+    'font-size:19px;color:#fff;line-height:1;transition:background .15s;}',
+    '#hx-pm-close:hover{background:rgba(0,0,0,.58);}',
+    '#hx-pm-cat{font:500 11px/1 -apple-system,sans-serif;color:#8E8E93;',
+    'letter-spacing:.05em;text-transform:uppercase;margin:0 0 6px;}',
+    '#hx-pm-name{font:700 19px/1.25 -apple-system,BlinkMacSystemFont,sans-serif;',
+    'color:#1C1C1E;margin:0 0 10px;}',
+    '#hx-pm-price{font:800 22px/1 -apple-system,sans-serif;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);',
+    '-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;',
+    'margin:0 0 16px;}',
+    '#hx-pm-desc{font:400 14px/1.65 -apple-system,sans-serif;color:#3C3C43;',
+    'margin:0 0 22px;}',
+    '#hx-pm-desc p{margin:0 0 8px;}.#hx-pm-desc p:last-child{margin:0;}',
+    '#hx-pm-atc{all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;',
+    'padding:15px;border-radius:13px;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;',
+    'font:700 15px/1 -apple-system,sans-serif;text-align:center;',
+    'box-shadow:0 4px 20px rgba(124,58,237,.42);',
+    'transition:all .22s cubic-bezier(.175,.885,.32,1.275);margin-bottom:12px;}',
+    '#hx-pm-atc:hover{transform:scale(1.02);box-shadow:0 8px 28px rgba(124,58,237,.6);}',
+    '#hx-pm-atc.adding{opacity:.65;pointer-events:none;}',
+    '#hx-pm-atc.added{background:linear-gradient(135deg,#34C759,#30D158)!important;',
+    '-webkit-text-fill-color:#fff!important;',
+    'box-shadow:0 4px 20px rgba(52,199,89,.4)!important;}',
+    '#hx-pm-link{display:block;text-align:center;',
+    'font:500 13px/1 -apple-system,sans-serif;color:#7C3AED;',
+    'text-decoration:none;padding:7px;transition:opacity .15s;}',
+    '#hx-pm-link:hover{opacity:.65;}',
+    '#hx-pm-spin{display:flex;gap:5px;justify-content:center;padding:32px;}',
+    /* Responsive inline grid */
+    '@media(max-width:480px){',
+    '#hx-sb-results{padding:0 12px 20px;}',
+    '.hx-sr-grid{grid-template-columns:repeat(2,1fr);gap:10px;}',
+    '.hx-sr-ci{padding:9px;}',
+    '.hx-sr-ct{font-size:11.5px;}',
+    '.hx-sr-atc{padding:8px 0;font-size:11px;}',
+    /* Mobile modal: bottom sheet */
+    '#hx-pm-ov{align-items:flex-end;padding:0;}',
+    '#hx-pm{border-radius:22px 22px 0 0;max-width:100%;max-height:88vh;',
+    'animation:hx-pm-sheet .35s cubic-bezier(.175,.885,.32,1.275) both;}',
+    '@keyframes hx-pm-sheet{from{transform:translateY(100%);}to{transform:translateY(0);}}}',
+    '@media(min-width:481px) and (max-width:768px){',
+    '.hx-sr-grid{grid-template-columns:repeat(3,1fr);gap:12px;}}',
 
     /* Dark mode — bar stays white on dark sites; only chips + panel adapt */
     '@media(prefers-color-scheme:dark){',
@@ -1568,8 +1650,14 @@ _SEARCH_BAR_JS = r"""
       });
   }
 
-  function addToCart(pid, btn) {
+  function addToCart(pid, btn, imgEl) {
     btn.classList.add('adding'); btn.textContent = 'Adding…';
+    var imgSrc = (imgEl && imgEl.tagName === 'IMG') ? imgEl.src : null;
+    function onAdded() {
+      btn.classList.remove('adding'); btn.classList.add('added');
+      btn.textContent = '✓ Added';
+      flyToCart(imgEl || btn, imgSrc);
+    }
     ensureNonce().then(function (n) {
       if (!n) return null;
       return fetch(_restRoot + 'wc/store/v1/cart/add-item', {
@@ -1581,24 +1669,135 @@ _SEARCH_BAR_JS = r"""
     }).then(function (r) {
       if (r && r.ok) {
         var n2 = r.headers.get('Nonce') || r.headers.get('nonce'); if (n2) wcNonce = n2;
-        btn.classList.remove('adding'); btn.classList.add('added');
-        btn.textContent = '✓ Added';
-        _refreshFragments(); return;
+        onAdded(); _refreshFragments(); return;
       }
       return _classicAtc(pid, btn).then(function (ok) {
-        if (!ok) { btn.classList.remove('adding'); btn.textContent = 'Add to Cart'; }
+        if (ok) { onAdded(); } else { btn.classList.remove('adding'); btn.textContent = 'Add to Cart'; }
       });
     }).catch(function () {
-      _classicAtc(pid, btn).catch(function () {
+      _classicAtc(pid, btn).then(function (ok) {
+        if (ok) { onAdded(); } else { btn.classList.remove('adding'); btn.textContent = 'Add to Cart'; }
+      }).catch(function () {
         btn.classList.remove('adding'); btn.textContent = 'Add to Cart';
       });
     });
+  }
+
+  /* ── Cart fly animation ───────────────────────────────────────────────── */
+  function findCartEl() {
+    var sels = [
+      'a.cart-contents','a[class*="cart-icon"]','.site-header-cart a',
+      '.header-cart a','.nav-cart-link','a[data-cart-fragments]',
+      '.woocommerce-mini-cart__total','[class*="header"][class*="cart"] a',
+      'a[href*="/cart"]:not([href*="remove_item"])',
+    ];
+    for (var i = 0; i < sels.length; i++) {
+      var el = document.querySelector(sels[i]);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function flyToCart(fromEl, imgSrc) {
+    var cartEl = findCartEl();
+    if (!cartEl) return;
+    var fR = fromEl.getBoundingClientRect();
+    var tR = cartEl.getBoundingClientRect();
+    var dot = document.createElement('div');
+    dot.className = 'hx-fly-dot';
+    var sz = 48;
+    dot.style.cssText = 'width:'+sz+'px;height:'+sz+'px;'
+      + 'left:'+(fR.left+fR.width/2-sz/2)+'px;'
+      + 'top:'+(fR.top+fR.height/2-sz/2)+'px;';
+    if (imgSrc) dot.innerHTML = '<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;">';
+    else dot.style.background = 'linear-gradient(135deg,#7C3AED,#4F46E5)';
+    document.body.appendChild(dot);
+    var dx = (tR.left + tR.width/2 - sz/2) - (fR.left + fR.width/2 - sz/2);
+    var dy = (tR.top  + tR.height/2 - sz/2) - (fR.top  + fR.height/2 - sz/2);
+    requestAnimationFrame(function () {
+      dot.style.transition = 'transform .72s cubic-bezier(.55,.06,.68,.19),opacity .72s ease';
+      dot.style.transform  = 'translate('+dx+'px,'+dy+'px) scale(0.08)';
+      dot.style.opacity    = '0';
+      setTimeout(function () {
+        dot.remove();
+        cartEl.classList.add('hx-cart-pulse');
+        setTimeout(function () { cartEl.classList.remove('hx-cart-pulse'); }, 600);
+      }, 730);
+    });
+  }
+
+  /* ── Product detail modal ─────────────────────────────────────────────── */
+  function closeProductModal() {
+    var ov = document.getElementById('hx-pm-ov');
+    if (ov) {
+      ov.style.animation = 'hx-pm-bg .18s ease reverse both';
+      setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 180);
+    }
+    document.body.style.overflow = '';
+  }
+
+  function openProductModal(p) {
+    closeProductModal();
+    document.body.style.overflow = 'hidden';
+    var ov = document.createElement('div');
+    ov.id = 'hx-pm-ov';
+    ov.innerHTML = [
+      '<div id="hx-pm">',
+        p.image_url
+          ? '<img id="hx-pm-img" src="'+esc(p.image_url)+'" alt="">'
+          : '<div id="hx-pm-iph"><svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>',
+        '<button id="hx-pm-close" aria-label="Close">\xd7</button>',
+        '<div id="hx-pm-body">',
+          '<div id="hx-pm-name">'+esc(p.title)+'</div>',
+          '<div id="hx-pm-price">'+fmt(p.price_minor, p.currency)+'</div>',
+          '<div id="hx-pm-desc"><div id="hx-pm-spin"><div class="hx-sbd"></div><div class="hx-sbd"></div><div class="hx-sbd"></div></div></div>',
+          '<button id="hx-pm-atc">Add to Cart</button>',
+          '<a id="hx-pm-link" href="'+esc(p.permalink||'#')+'" target="_blank" rel="noopener">View full product page ↗</a>',
+        '</div>',
+      '</div>',
+    ].join('');
+    document.body.appendChild(ov);
+    var pmAtc = ov.querySelector('#hx-pm-atc');
+    pmAtc.addEventListener('click', function () {
+      var imgEl = ov.querySelector('#hx-pm-img') || pmAtc;
+      addToCart(p.platform_id, pmAtc, imgEl);
+    });
+    ov.querySelector('#hx-pm-close').addEventListener('click', closeProductModal);
+    ov.addEventListener('click', function (e) { if (e.target === ov) closeProductModal(); });
+    /* Fetch short description from WC Store API */
+    fetch(_restRoot + 'wc/store/v1/products/' + p.platform_id, { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        var descEl = document.getElementById('hx-pm-desc');
+        if (!descEl) return;
+        var text = (d && (d.short_description || d.description)) || '';
+        /* strip tags to plain text for safety */
+        var tmp = document.createElement('div');
+        tmp.innerHTML = text;
+        var plain = tmp.textContent || tmp.innerText || '';
+        descEl.textContent = plain.trim() || '';
+        /* fill in permalink if we didn't have it */
+        if (d && d.permalink) {
+          var lk = document.getElementById('hx-pm-link');
+          if (lk) lk.href = d.permalink;
+        }
+        /* fill in category */
+        if (d && d.categories && d.categories.length) {
+          var catEl = document.getElementById('hx-pm-cat');
+          if (catEl) catEl.textContent = d.categories[0].name;
+        }
+      })
+      .catch(function () {
+        var descEl = document.getElementById('hx-pm-desc');
+        if (descEl) descEl.textContent = '';
+      });
   }
 
   /* ── Render results (inline, in page flow) ────────────────────────────── */
   function renderResults(text, products) {
     inlineResults.innerHTML = '';
     inlineResults.classList.add('hx-sr-show');
+    /* Recommendation text blocks appear first */
     if (text) {
       text.split(/\n+/).filter(function (s) { return s.trim(); }).forEach(function (para) {
         var d = document.createElement('div');
@@ -1607,14 +1806,20 @@ _SEARCH_BAR_JS = r"""
         inlineResults.appendChild(d);
       });
     }
+    /* Product grid below the recommendation text */
     if (products && products.length) {
+      var lbl = document.createElement('div');
+      lbl.className = 'hx-sr-label';
+      lbl.textContent = 'Recommended Products';
+      inlineResults.appendChild(lbl);
       var grid = document.createElement('div');
       grid.className = 'hx-sr-grid';
       products.forEach(function (p, i) {
         var card = document.createElement('div');
         card.className = 'hx-sr-card';
-        /* stagger each card so they fly in one after another */
-        card.style.animationDelay = (i * 90) + 'ms';
+        card.style.cursor = 'pointer';
+        /* stagger so each card flies in one after another */
+        card.style.animationDelay = (i * 100) + 'ms';
         card.innerHTML = (p.image_url
           ? '<img class="hx-sr-cimg" src="' + esc(p.image_url) + '" alt="" loading="lazy">'
           : '<div class="hx-sr-cph"><svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>') +
@@ -1623,9 +1828,16 @@ _SEARCH_BAR_JS = r"""
             '<div class="hx-sr-cp">' + fmt(p.price_minor, p.currency) + '</div>' +
             '<button class="hx-sr-atc">Add to Cart</button>' +
           '</div>';
-        card.querySelector('.hx-sr-atc').addEventListener('click', function (e) {
+        var atcBtn = card.querySelector('.hx-sr-atc');
+        var imgEl  = card.querySelector('.hx-sr-cimg');
+        /* ATC: fly image to cart icon, then confirm */
+        atcBtn.addEventListener('click', function (e) {
           e.stopPropagation();
-          addToCart(p.platform_id, this);
+          addToCart(p.platform_id, atcBtn, imgEl);
+        });
+        /* Anywhere else on card: open product detail modal */
+        card.addEventListener('click', function (e) {
+          if (!e.target.closest('.hx-sr-atc')) openProductModal(p);
         });
         grid.appendChild(card);
       });
