@@ -76,11 +76,30 @@ class Helix_Sync {
         ];
     }
 
-    // Attributes whose value should be a single string rather than an array.
-    private const SCALAR_ATTRIBUTES = [ 'step', 'spf', 'ph_level' ];
+    // Single-value string attributes (first term only, no array wrapping).
+    private const SCALAR_ATTRIBUTES = [
+        // k-beauty
+        'step', 'spf', 'ph_level',
+        // automotive — identity fields that are always singular
+        'make', 'model', 'condition', 'fuel_type', 'transmission',
+        'body_type', 'colour', 'stock_number', 'vin',
+    ];
+
+    // Single-value integer attributes.
+    private const INT_ATTRIBUTES = [
+        'year', 'mileage_km', 'engine_cc', 'doors',
+        'ncap_stars', 'price_zar', 'finance_from_zar',
+    ];
+
+    // Single-value float attributes.
+    private const FLOAT_ATTRIBUTES = [ 'safety_rating' ];
+
+    // Single-value boolean attributes ('yes'/'true'/'1' → true, else false).
+    private const BOOL_ATTRIBUTES = [ 'certified_used' ];
 
     private static function extract_domain_attributes( WC_Product $wc_product ): array {
         $attrs = [];
+
         foreach ( $wc_product->get_attributes() as $slug => $attribute ) {
             $key     = str_replace( [ 'pa_', '-' ], [ '', '_' ], $slug );
             $options = $attribute->get_options();
@@ -89,10 +108,10 @@ class Helix_Sync {
                 continue;
             }
 
-            // Taxonomy attributes return term IDs — resolve to lowercase names.
+            // Taxonomy attributes: resolve term IDs to human-readable names.
             if ( $attribute->is_taxonomy() ) {
                 $options = array_values( array_filter( array_map(
-                    fn( $id ) => strtolower( get_term_field( 'name', $id, $slug ) ),
+                    fn( $id ) => get_term_field( 'name', $id, $slug ),
                     $options
                 ), fn( $v ) => is_string( $v ) && $v !== '' ) );
             }
@@ -101,11 +120,27 @@ class Helix_Sync {
                 continue;
             }
 
-            // Scalar attributes are always a single string; everything else is an array.
-            $attrs[ $key ] = in_array( $key, self::SCALAR_ATTRIBUTES, true )
-                ? (string) $options[0]
-                : $options;
+            if ( in_array( $key, self::INT_ATTRIBUTES, true ) ) {
+                $attrs[ $key ] = (int) $options[0];
+            } elseif ( in_array( $key, self::FLOAT_ATTRIBUTES, true ) ) {
+                $attrs[ $key ] = (float) $options[0];
+            } elseif ( in_array( $key, self::BOOL_ATTRIBUTES, true ) ) {
+                $v = strtolower( (string) $options[0] );
+                $attrs[ $key ] = in_array( $v, [ 'yes', 'true', '1' ], true );
+            } elseif ( in_array( $key, self::SCALAR_ATTRIBUTES, true ) ) {
+                $attrs[ $key ] = (string) $options[0];
+            } else {
+                // Multi-value attribute — return as lowercase array.
+                $attrs[ $key ] = array_map( 'strtolower', $options );
+            }
         }
+
+        // Map WC SKU → stock_number if not already set via attribute.
+        $sku = $wc_product->get_sku();
+        if ( $sku && ! isset( $attrs['stock_number'] ) ) {
+            $attrs['stock_number'] = $sku;
+        }
+
         return $attrs;
     }
 }
