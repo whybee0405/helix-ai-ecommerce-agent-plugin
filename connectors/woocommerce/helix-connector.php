@@ -21,6 +21,7 @@ require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-dashboard.php';
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-updater.php';
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-branding.php';
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-cost-dashboard.php';
+require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-migrator.php';
 
 function helix_connector_init(): void {
     Helix_Admin::init();
@@ -30,6 +31,7 @@ function helix_connector_init(): void {
     Helix_Updater::init();
     Helix_Branding::init();
     Helix_Cost_Dashboard::init();
+    Helix_Migrator::init();
 }
 add_action( 'plugins_loaded', 'helix_connector_init' );
 
