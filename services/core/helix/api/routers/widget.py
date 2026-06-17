@@ -987,6 +987,9 @@ _SEARCH_BAR_JS = r"""
   var _lsTimer   = null;
   var _lsCtrl    = null;
   var AJAX_URL   = (window.helixConfig && window.helixConfig.ajaxUrl) || null;
+  var _sbAnim    = !(window.helixConfig && window.helixConfig.sbAnim    === false);
+  var _flyCart   = !(window.helixConfig && window.helixConfig.flyCart   === false);
+  var _cardModal = !(window.helixConfig && window.helixConfig.cardModal === false);
 
   var _wcp = window.wc_add_to_cart_params || window.woocommerce_params || window.wc_cart_fragments_params || {};
   var _wcAjaxBase = _wcp.wc_ajax_url || (STORE_BASE + '/?wc-ajax=%%endpoint%%');
@@ -1172,6 +1175,184 @@ _SEARCH_BAR_JS = r"""
     'transition:background .12s;}',
     '.hx-sb-lall:hover{background:rgba(124,58,237,.06);}',
 
+    /* ── Inline AI results — rendered in page flow, not in dropdown ───── */
+    '#hx-sb-results{width:100%;max-width:860px;margin:0 auto;',
+    'padding:0 20px 32px;display:none;box-sizing:border-box;}',
+    '#hx-sb-results.hx-sr-show{display:block;}',
+    '.hx-sr-blk{background:rgba(242,242,247,.9);padding:10px 14px;border-radius:14px;',
+    'margin-bottom:10px;font:400 13.5px/1.65 -apple-system,sans-serif;color:#1C1C1E;}',
+    '.hx-sr-blk strong{font-weight:600;}.hx-sr-blk em{font-style:italic;}',
+    '.hx-sr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));',
+    'gap:16px;margin-top:10px;}',
+    '.hx-sr-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;',
+    'overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07);',
+    'transition:transform .22s cubic-bezier(.175,.885,.32,1.275),box-shadow .22s;',
+    'animation:hx-sr-fly .58s cubic-bezier(.175,.885,.32,1.275) both,',
+    'hx-sr-rainbow-ring 1.8s ease-out both;}',
+    '.hx-sr-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.12);}',
+    '.hx-sr-cimg{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;',
+    'background:linear-gradient(135deg,#f0edff,#ede9fe);}',
+    '.hx-sr-cph{width:100%;aspect-ratio:1/1;background:linear-gradient(135deg,#f0edff,#ede9fe);',
+    'display:flex;align-items:center;justify-content:center;}',
+    '.hx-sr-cph svg{width:36px;height:36px;opacity:.18;}',
+    '.hx-sr-ci{padding:12px;}',
+    '.hx-sr-ct{font:500 13px/1.35 -apple-system,sans-serif;color:#1C1C1E;',
+    'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px;}',
+    '.hx-sr-cp{font:700 13.5px/1 -apple-system,sans-serif;margin-bottom:10px;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);',
+    '-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}',
+    '.hx-sr-atc{display:block;border:none;width:100%;box-sizing:border-box;',
+    'padding:9px 0;border-radius:10px;cursor:pointer;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;',
+    'font:600 12px/1 -apple-system,sans-serif;text-align:center;',
+    'transition:all .2s;box-shadow:0 2px 8px rgba(124,58,237,.3);}',
+    '.hx-sr-atc:hover{transform:scale(1.03);box-shadow:0 4px 16px rgba(124,58,237,.48);}',
+    '.hx-sr-atc.adding{opacity:.6;pointer-events:none;}',
+    '.hx-sr-atc.added{background:linear-gradient(135deg,#34C759,#30D158)!important;',
+    '-webkit-text-fill-color:#fff!important;}',
+    '.hx-sr-footer{display:flex;justify-content:flex-end;margin-top:10px;}',
+    '.hx-sr-oc{all:unset;cursor:pointer;font:500 12px/1 -apple-system,sans-serif;',
+    'color:#7C3AED;padding:6px 12px;border-radius:8px;',
+    'display:inline-flex;align-items:center;gap:5px;transition:background .15s;}',
+    '.hx-sr-oc:hover{background:rgba(124,58,237,.08);}',
+    '.hx-sr-oc svg{width:13px;height:13px;stroke:#7C3AED;fill:none;',
+    'stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}',
+    /* The magic: cards start at search-bar position (above, tiny, blurred) */
+    /* and fly down into their grid slots one by one */
+    '@keyframes hx-sr-fly{',
+    '0%{opacity:0;transform:translateY(-140px) scale(0.04) rotate(22deg);filter:blur(18px);}',
+    '42%{opacity:1;filter:blur(0);}',
+    '64%{transform:translateY(14px) scale(1.12) rotate(-2deg);}',
+    '82%{transform:translateY(-5px) scale(0.97) rotate(0.8deg);}',
+    '100%{opacity:1;transform:translateY(0) scale(1) rotate(0deg);filter:blur(0);}}',
+    /* Rainbow ring sweeps through card border as it lands — matches search-bar ring palette */
+    '@keyframes hx-sr-rainbow-ring{',
+    '0%  {box-shadow:0 0 0 3px rgba(255,110,180,.95),0 6px 32px rgba(255,110,180,.4);}',
+    '16% {box-shadow:0 0 0 3px rgba(255,214,66,.95), 0 6px 32px rgba(255,214,66,.4);}',
+    '33% {box-shadow:0 0 0 3px rgba(127,255,212,.95),0 6px 32px rgba(127,255,212,.35);}',
+    '50% {box-shadow:0 0 0 3px rgba(135,206,250,.95),0 6px 32px rgba(135,206,250,.4);}',
+    '66% {box-shadow:0 0 0 3px rgba(201,177,255,.95),0 6px 32px rgba(201,177,255,.4);}',
+    '82% {box-shadow:0 0 0 3px rgba(255,110,180,.95),0 6px 32px rgba(255,110,180,.4);}',
+    '100%{box-shadow:0 2px 12px rgba(0,0,0,.07);}}',
+    /* Inline row card — horizontal, sits directly below matched recommendation text */
+    '.hx-sr-row{display:flex;gap:0;background:#fff;border:1px solid rgba(0,0,0,.08);',
+    'border-radius:16px;overflow:hidden;margin-bottom:10px;cursor:pointer;',
+    'box-shadow:0 2px 12px rgba(0,0,0,.07);',
+    'transition:transform .22s cubic-bezier(.175,.885,.32,1.275),box-shadow .22s;',
+    'animation:hx-sr-fly .58s cubic-bezier(.175,.885,.32,1.275) both,',
+    'hx-sr-rainbow-ring 1.8s ease-out both;}',
+    '.hx-sr-row:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.1);}',
+    '.hx-sr-row-img{width:88px;height:88px;object-fit:cover;flex-shrink:0;display:block;',
+    'background:linear-gradient(135deg,#f0edff,#ede9fe);}',
+    '.hx-sr-row-iph{width:88px;height:88px;flex-shrink:0;',
+    'background:linear-gradient(135deg,#f0edff,#ede9fe);',
+    'display:flex;align-items:center;justify-content:center;}',
+    '.hx-sr-row-iph svg{width:28px;height:28px;opacity:.18;}',
+    '.hx-sr-row-ci{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:12px 14px;}',
+    '.hx-sr-row-info{flex:1;min-width:0;}',
+    '.hx-sr-row-ct{font:500 13.5px/1.3 -apple-system,sans-serif;color:#1C1C1E;',
+    'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;}',
+    '.hx-sr-row-cp{font:700 13px/1 -apple-system,sans-serif;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);',
+    '-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}',
+    '.hx-sr-row-atc{all:unset;cursor:pointer;flex-shrink:0;padding:9px 14px;border-radius:10px;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;',
+    'font:600 12px/1 -apple-system,sans-serif;text-align:center;',
+    'transition:all .2s;box-shadow:0 2px 8px rgba(124,58,237,.3);}',
+    '.hx-sr-row-atc:hover{transform:scale(1.05);box-shadow:0 4px 16px rgba(124,58,237,.48);}',
+    '.hx-sr-row-atc.adding{opacity:.6;pointer-events:none;}',
+    '.hx-sr-row-atc.added{background:linear-gradient(135deg,#34C759,#30D158)!important;',
+    '-webkit-text-fill-color:#fff!important;}',
+    /* Label above remaining grid */
+    '.hx-sr-label{font:600 11px/1 -apple-system,sans-serif;color:#AEAEB2;',
+    'letter-spacing:.08em;text-transform:uppercase;margin:16px 0 10px;}',
+    /* Loading dots inside inline results */
+    '.hx-sr-dots{display:flex;gap:6px;align-items:center;padding:24px;justify-content:center;}',
+    /* Flying cart dot — contains a spinning rainbow child */
+    '.hx-fly-dot{position:fixed;z-index:1000002;pointer-events:none;border-radius:50%;',
+    'overflow:hidden;will-change:transform;}',
+    '@keyframes hx-fly-spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}',
+    '.hx-fly-inner{width:100%;height:100%;',
+    'background:conic-gradient(from 0deg,#ff6eb4,#ffb347,#ffe066,#7fffd4,#87cefa,#c9b1ff,#ff6eb4);',
+    'animation:hx-fly-spin .5s linear infinite;}',
+    /* Cart icon bounce when item lands */
+    '@keyframes hx-cart-bounce{',
+    '0%,100%{transform:scale(1)rotate(0deg);}',
+    '20%{transform:scale(1.4)rotate(-14deg);}',
+    '45%{transform:scale(1.2)rotate(10deg);}',
+    '65%{transform:scale(1.08)rotate(-5deg);}',
+    '82%{transform:scale(1.03)rotate(2deg);}}',
+    '.hx-cart-pulse{animation:hx-cart-bounce .58s cubic-bezier(.175,.885,.32,1.275)!important;',
+    'display:inline-block!important;}',
+    /* ── Product detail modal ──────────────────────────────────────────── */
+    '#hx-pm-ov{position:fixed;inset:0;z-index:1000001;display:flex;',
+    'align-items:center;justify-content:center;padding:16px;cursor:default;',
+    'background:rgba(0,0,0,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);',
+    'animation:hx-pm-bg .22s ease both;}',
+    '@keyframes hx-pm-bg{from{opacity:0;}to{opacity:1;}}',
+    '#hx-pm{position:relative;background:#fff;border-radius:22px;cursor:default;',
+    'width:100%;max-width:500px;max-height:88vh;overflow-y:auto;',
+    'box-shadow:0 40px 100px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.06);',
+    'animation:hx-pm-up .35s cubic-bezier(.175,.885,.32,1.275) both;',
+    'scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.1) transparent;}',
+    '#hx-pm *{cursor:default;}',
+    '#hx-pm button,#hx-pm a{cursor:pointer !important;}',
+    '@keyframes hx-pm-up{from{transform:translateY(40px) scale(.93);}to{transform:translateY(0) scale(1);}}',
+    '#hx-pm::-webkit-scrollbar{width:4px;}',
+    '#hx-pm::-webkit-scrollbar-thumb{background:rgba(0,0,0,.1);border-radius:2px;}',
+    '#hx-pm-img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;',
+    'background:linear-gradient(135deg,#f0edff,#ede9fe);}',
+    '#hx-pm-iph{width:100%;aspect-ratio:4/3;background:linear-gradient(135deg,#f0edff,#ede9fe);',
+    'display:flex;align-items:center;justify-content:center;}',
+    '#hx-pm-iph svg{width:56px;height:56px;opacity:.18;}',
+    '#hx-pm-body{padding:22px 24px 28px;}',
+    '#hx-pm-close{position:absolute;top:14px;right:14px;all:unset;cursor:pointer;',
+    'width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.38);',
+    'backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;',
+    'font-size:19px;color:#fff;line-height:1;transition:background .15s;}',
+    '#hx-pm-close:hover{background:rgba(0,0,0,.58);}',
+    '#hx-pm-cat{font:500 11px/1 -apple-system,sans-serif;color:#8E8E93;',
+    'letter-spacing:.05em;text-transform:uppercase;margin:0 0 6px;}',
+    '#hx-pm-name{font:700 19px/1.25 -apple-system,BlinkMacSystemFont,sans-serif;',
+    'color:#1C1C1E;margin:0 0 10px;}',
+    '#hx-pm-price{font:800 22px/1 -apple-system,sans-serif;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);',
+    '-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;',
+    'margin:0 0 16px;}',
+    '#hx-pm-desc{font:400 14px/1.65 -apple-system,sans-serif;color:#3C3C43;',
+    'margin:0 0 22px;}',
+    '#hx-pm-desc p{margin:0 0 8px;}.#hx-pm-desc p:last-child{margin:0;}',
+    '#hx-pm-atc{all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;',
+    'padding:15px;border-radius:13px;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;',
+    'font:700 15px/1 -apple-system,sans-serif;text-align:center;',
+    'box-shadow:0 4px 20px rgba(124,58,237,.42);',
+    'transition:all .22s cubic-bezier(.175,.885,.32,1.275);margin-bottom:12px;}',
+    '#hx-pm-atc:hover{transform:scale(1.02);box-shadow:0 8px 28px rgba(124,58,237,.6);}',
+    '#hx-pm-atc.adding{opacity:.65;pointer-events:none;}',
+    '#hx-pm-atc.added{background:linear-gradient(135deg,#34C759,#30D158)!important;',
+    '-webkit-text-fill-color:#fff!important;',
+    'box-shadow:0 4px 20px rgba(52,199,89,.4)!important;}',
+    '#hx-pm-link{display:block;text-align:center;',
+    'font:500 13px/1 -apple-system,sans-serif;color:#7C3AED;',
+    'text-decoration:none;padding:7px;transition:opacity .15s;}',
+    '#hx-pm-link:hover{opacity:.65;}',
+    '#hx-pm-spin{display:flex;gap:5px;justify-content:center;padding:32px;}',
+    /* Responsive inline grid */
+    '@media(max-width:480px){',
+    '#hx-sb-results{padding:0 12px 20px;}',
+    '.hx-sr-grid{grid-template-columns:repeat(2,1fr);gap:10px;}',
+    '.hx-sr-ci{padding:9px;}',
+    '.hx-sr-ct{font-size:11.5px;}',
+    '.hx-sr-atc{padding:8px 0;font-size:11px;}',
+    /* Mobile modal: bottom sheet */
+    '#hx-pm-ov{align-items:flex-end;padding:0;}',
+    '#hx-pm{border-radius:22px 22px 0 0;max-width:100%;max-height:88vh;',
+    'animation:hx-pm-sheet .35s cubic-bezier(.175,.885,.32,1.275) both;}',
+    '@keyframes hx-pm-sheet{from{transform:translateY(100%);}to{transform:translateY(0);}}}',
+    '@media(min-width:481px) and (max-width:768px){',
+    '.hx-sr-grid{grid-template-columns:repeat(3,1fr);gap:12px;}}',
+
     /* Dark mode — bar stays white on dark sites; only chips + panel adapt */
     '@media(prefers-color-scheme:dark){',
     '#hx-sb-section{background:linear-gradient(180deg,transparent 0%,rgba(124,58,237,.08) 50%,transparent 100%);}',
@@ -1271,6 +1452,7 @@ _SEARCH_BAR_JS = r"""
       '</div>',
     '</div>',
     '<div id="hx-sb-chips"></div>',
+    '<div id="hx-sb-results"></div>',
   ].join('');
 
   /* ── Refs ─────────────────────────────────────────────────────────────── */
@@ -1287,6 +1469,7 @@ _SEARCH_BAR_JS = r"""
   var pcls  = root.querySelector('#hx-sb-pclose');
   var fcBtn = root.querySelector('#hx-sb-fc');
   var chipsBox = root.querySelector('#hx-sb-chips');
+  var inlineResults = root.querySelector('#hx-sb-results');
   var headline = root.querySelector('#hx-sb-headline');
   var panelTitle = root.querySelector('#hx-sb-ph strong');
 
@@ -1515,8 +1698,25 @@ _SEARCH_BAR_JS = r"""
       });
   }
 
-  function addToCart(pid, btn) {
+  /* Track which product IDs have been added so all buttons stay in sync */
+  var _addedPids = {};
+
+  function markAllAdded(pid) {
+    _addedPids[pid] = true;
+    document.querySelectorAll('[data-hx-pid="' + pid + '"]').forEach(function (b) {
+      b.classList.remove('adding');
+      b.classList.add('added');
+      b.textContent = '✓ Added';
+    });
+  }
+
+  function addToCart(pid, btn, imgEl) {
     btn.classList.add('adding'); btn.textContent = 'Adding…';
+    var imgSrc = (imgEl && imgEl.tagName === 'IMG') ? imgEl.src : null;
+    function onAdded() {
+      markAllAdded(pid);
+      flyToCart(imgEl || btn, imgSrc);
+    }
     ensureNonce().then(function (n) {
       if (!n) return null;
       return fetch(_restRoot + 'wc/store/v1/cart/add-item', {
@@ -1528,54 +1728,247 @@ _SEARCH_BAR_JS = r"""
     }).then(function (r) {
       if (r && r.ok) {
         var n2 = r.headers.get('Nonce') || r.headers.get('nonce'); if (n2) wcNonce = n2;
-        btn.classList.remove('adding'); btn.classList.add('added');
-        btn.textContent = '✓ Added';
-        _refreshFragments(); return;
+        onAdded(); _refreshFragments(); return;
       }
       return _classicAtc(pid, btn).then(function (ok) {
-        if (!ok) { btn.classList.remove('adding'); btn.textContent = 'Add to Cart'; }
+        if (ok) { onAdded(); } else { btn.classList.remove('adding'); btn.textContent = 'Add to Cart'; }
       });
     }).catch(function () {
-      _classicAtc(pid, btn).catch(function () {
+      _classicAtc(pid, btn).then(function (ok) {
+        if (ok) { onAdded(); } else { btn.classList.remove('adding'); btn.textContent = 'Add to Cart'; }
+      }).catch(function () {
         btn.classList.remove('adding'); btn.textContent = 'Add to Cart';
       });
     });
   }
 
-  /* ── Render results ───────────────────────────────────────────────────── */
+  /* ── Cart fly animation ───────────────────────────────────────────────── */
+  function findCartEl() {
+    var sels = [
+      'a.cart-contents','a[class*="cart-icon"]','.site-header-cart a',
+      '.header-cart a','.nav-cart-link','a[data-cart-fragments]',
+      '.woocommerce-mini-cart__total','[class*="header"][class*="cart"] a',
+      'a[href*="/cart"]:not([href*="remove_item"])',
+    ];
+    for (var i = 0; i < sels.length; i++) {
+      var el = document.querySelector(sels[i]);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function flyToCart(fromEl, imgSrc) {
+    var cartEl = findCartEl();
+    if (!cartEl) return;
+    var fR = fromEl.getBoundingClientRect();
+    var tR = cartEl.getBoundingClientRect();
+    var dot = document.createElement('div');
+    dot.className = 'hx-fly-dot';
+    var sz = 48;
+    dot.style.cssText = 'width:'+sz+'px;height:'+sz+'px;border-radius:50%;overflow:hidden;'
+      + 'left:'+(fR.left+fR.width/2-sz/2)+'px;'
+      + 'top:'+(fR.top+fR.height/2-sz/2)+'px;'
+      + 'box-shadow:0 4px 20px rgba(124,58,237,.6);';
+    /* Rainbow spinning inner — outer element moves via JS transform, inner spins freely */
+    dot.innerHTML = imgSrc
+      ? '<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;z-index:1;">'
+        + '<div class="hx-fly-inner" style="position:absolute;inset:0;opacity:.5;"></div>'
+      : '<div class="hx-fly-inner"></div>';
+    document.body.appendChild(dot);
+    var dx = (tR.left + tR.width/2 - sz/2) - (fR.left + fR.width/2 - sz/2);
+    var dy = (tR.top  + tR.height/2 - sz/2) - (fR.top  + fR.height/2 - sz/2);
+    requestAnimationFrame(function () {
+      dot.style.transition = 'transform .72s cubic-bezier(.55,.06,.68,.19),opacity .72s ease';
+      dot.style.transform  = 'translate('+dx+'px,'+dy+'px) scale(0.08)';
+      dot.style.opacity    = '0';
+      setTimeout(function () {
+        dot.remove();
+        cartEl.classList.add('hx-cart-pulse');
+        setTimeout(function () { cartEl.classList.remove('hx-cart-pulse'); }, 600);
+      }, 730);
+    });
+  }
+
+  /* ── Product detail modal ─────────────────────────────────────────────── */
+  function closeProductModal() {
+    var ov = document.getElementById('hx-pm-ov');
+    if (ov) {
+      ov.style.animation = 'hx-pm-bg .18s ease reverse both';
+      setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 180);
+    }
+    document.body.style.overflow = '';
+  }
+
+  function openProductModal(p) {
+    closeProductModal();
+    document.body.style.overflow = 'hidden';
+    var ov = document.createElement('div');
+    ov.id = 'hx-pm-ov';
+    ov.innerHTML = [
+      '<div id="hx-pm">',
+        p.image_url
+          ? '<img id="hx-pm-img" src="'+esc(p.image_url)+'" alt="">'
+          : '<div id="hx-pm-iph"><svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>',
+        '<button id="hx-pm-close" aria-label="Close">\xd7</button>',
+        '<div id="hx-pm-body">',
+          '<div id="hx-pm-name">'+esc(p.title)+'</div>',
+          '<div id="hx-pm-price">'+fmt(p.price_minor, p.currency)+'</div>',
+          '<div id="hx-pm-desc"><div id="hx-pm-spin"><div class="hx-sbd"></div><div class="hx-sbd"></div><div class="hx-sbd"></div></div></div>',
+          '<button id="hx-pm-atc">Add to Cart</button>',
+          '<a id="hx-pm-link" href="'+esc(p.permalink||'#')+'" target="_blank" rel="noopener">View full product page ↗</a>',
+        '</div>',
+      '</div>',
+    ].join('');
+    document.body.appendChild(ov);
+    var pmAtc = ov.querySelector('#hx-pm-atc');
+    pmAtc.dataset.hxPid = p.platform_id;
+    /* Reflect already-added state immediately */
+    if (_addedPids[p.platform_id]) {
+      pmAtc.classList.add('added'); pmAtc.textContent = '✓ Added';
+    }
+    pmAtc.addEventListener('click', function () {
+      var imgEl = ov.querySelector('#hx-pm-img') || pmAtc;
+      addToCart(p.platform_id, pmAtc, imgEl);
+    });
+    ov.querySelector('#hx-pm-close').addEventListener('click', closeProductModal);
+    ov.addEventListener('click', function (e) { if (e.target === ov) closeProductModal(); });
+    /* Fetch short description from WC Store API */
+    fetch(_restRoot + 'wc/store/v1/products/' + p.platform_id, { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        var descEl = document.getElementById('hx-pm-desc');
+        if (!descEl) return;
+        var text = (d && (d.short_description || d.description)) || '';
+        /* strip tags to plain text for safety */
+        var tmp = document.createElement('div');
+        tmp.innerHTML = text;
+        var plain = tmp.textContent || tmp.innerText || '';
+        descEl.textContent = plain.trim() || '';
+        /* fill in permalink if we didn't have it */
+        if (d && d.permalink) {
+          var lk = document.getElementById('hx-pm-link');
+          if (lk) lk.href = d.permalink;
+        }
+        /* fill in category */
+        if (d && d.categories && d.categories.length) {
+          var catEl = document.getElementById('hx-pm-cat');
+          if (catEl) catEl.textContent = d.categories[0].name;
+        }
+      })
+      .catch(function () {
+        var descEl = document.getElementById('hx-pm-desc');
+        if (descEl) descEl.textContent = '';
+      });
+  }
+
+  /* ── Card factory ─────────────────────────────────────────────────────── */
+  function makeCard(p, idx, isRow) {
+    var card = document.createElement('div');
+    card.className = isRow ? 'hx-sr-row' : 'hx-sr-card';
+    card.style.cursor = 'pointer';
+    if (_sbAnim) {
+      card.style.animationDelay = (idx * 100) + 'ms';
+    } else {
+      card.style.animation = 'none';
+    }
+    var PHsvg = '<svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
+    if (isRow) {
+      card.innerHTML = (p.image_url
+        ? '<img class="hx-sr-row-img" src="' + esc(p.image_url) + '" alt="" loading="lazy">'
+        : '<div class="hx-sr-row-iph">' + PHsvg + '</div>') +
+        '<div class="hx-sr-row-ci">' +
+          '<div class="hx-sr-row-info">' +
+            '<div class="hx-sr-row-ct">' + esc(p.title) + '</div>' +
+            '<div class="hx-sr-row-cp">' + fmt(p.price_minor, p.currency) + '</div>' +
+          '</div>' +
+          '<button class="hx-sr-row-atc">Add to Cart</button>' +
+        '</div>';
+    } else {
+      card.innerHTML = (p.image_url
+        ? '<img class="hx-sr-cimg" src="' + esc(p.image_url) + '" alt="" loading="lazy">'
+        : '<div class="hx-sr-cph">' + PHsvg + '</div>') +
+        '<div class="hx-sr-ci">' +
+          '<div class="hx-sr-ct">' + esc(p.title) + '</div>' +
+          '<div class="hx-sr-cp">' + fmt(p.price_minor, p.currency) + '</div>' +
+          '<button class="hx-sr-atc">Add to Cart</button>' +
+        '</div>';
+    }
+    var atcSel = isRow ? '.hx-sr-row-atc' : '.hx-sr-atc';
+    var atcBtn = card.querySelector(atcSel);
+    var imgEl  = card.querySelector('img');
+    atcBtn.dataset.hxPid = p.platform_id;
+    /* Pre-fill Added state if this product was already added this session */
+    if (_addedPids[p.platform_id]) {
+      atcBtn.classList.add('added'); atcBtn.textContent = '✓ Added';
+    }
+    atcBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      addToCart(p.platform_id, atcBtn, _flyCart ? imgEl : null);
+    });
+    if (_cardModal) {
+      card.addEventListener('click', function (e) {
+        if (!e.target.closest(atcSel)) openProductModal(p);
+      });
+    }
+    return card;
+  }
+
+  /* ── Render results (inline, interleaved with recommendation text) ─────── */
   function renderResults(text, products) {
-    body.innerHTML = '';
-    if (text) {
-      text.split(/\n+/).filter(function (s) { return s.trim(); }).forEach(function (para) {
-        var d = document.createElement('div');
-        d.className = 'hx-sb-blk';
-        d.innerHTML = md(para.trim());
-        body.appendChild(d);
-      });
-    }
-    if (products && products.length) {
-      var grid = document.createElement('div');
-      grid.className = 'hx-sb-grid';
-      products.forEach(function (p, i) {
-        var card = document.createElement('div');
-        card.className = 'hx-sb-card';
-        card.style.animationDelay = (i * 60) + 'ms';
-        card.innerHTML = (p.image_url
-          ? '<img class="hx-sb-cimg" src="' + esc(p.image_url) + '" alt="" loading="lazy">'
-          : '<div class="hx-sb-cph"><svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>') +
-          '<div class="hx-sb-ci">' +
-            '<div class="hx-sb-ct">' + esc(p.title) + '</div>' +
-            '<div class="hx-sb-cp">' + fmt(p.price_minor, p.currency) + '</div>' +
-            '<button class="hx-sb-atc">Add to Cart</button>' +
-          '</div>';
-        card.querySelector('.hx-sb-atc').addEventListener('click', function (e) {
-          e.stopPropagation();
-          addToCart(p.platform_id, this);
+    inlineResults.innerHTML = '';
+    inlineResults.classList.add('hx-sr-show');
+    var paragraphs = text ? text.split(/\n+/).filter(function (s) { return s.trim(); }) : [];
+    var usedIdx = [];
+    var cardCounter = 0;
+    /* Render each paragraph; insert matched product card immediately after it */
+    paragraphs.forEach(function (para) {
+      var d = document.createElement('div');
+      d.className = 'hx-sr-blk';
+      d.innerHTML = md(para.trim());
+      inlineResults.appendChild(d);
+      if (products && products.length) {
+        var paraLow = para.toLowerCase();
+        products.forEach(function (p, pi) {
+          if (usedIdx.indexOf(pi) !== -1) return;
+          /* Match by first 3 words of title (minimum 5 chars) */
+          var words = p.title.trim().toLowerCase().split(/\s+/);
+          var key = words.slice(0, Math.min(3, words.length)).join(' ');
+          if (key.length >= 5 && paraLow.indexOf(key) !== -1) {
+            usedIdx.push(pi);
+            inlineResults.appendChild(makeCard(p, cardCounter++, true));
+          }
         });
-        grid.appendChild(card);
+      }
+    });
+    /* Any unmatched products fall into a grid below */
+    var unmatched = (products || []).filter(function (_, i) { return usedIdx.indexOf(i) === -1; });
+    if (unmatched.length) {
+      var lbl = document.createElement('div');
+      lbl.className = 'hx-sr-label';
+      lbl.textContent = usedIdx.length ? 'More recommendations' : 'Recommended Products';
+      inlineResults.appendChild(lbl);
+      var grid = document.createElement('div');
+      grid.className = 'hx-sr-grid';
+      unmatched.forEach(function (p) {
+        grid.appendChild(makeCard(p, cardCounter++, false));
       });
-      body.appendChild(grid);
+      inlineResults.appendChild(grid);
     }
+    /* "Open in full chat" link */
+    var footer = document.createElement('div');
+    footer.className = 'hx-sr-footer';
+    footer.innerHTML = '<button class="hx-sr-oc">Open in chat<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>';
+    footer.querySelector('.hx-sr-oc').addEventListener('click', function () {
+      var hxBtn = document.getElementById('hx-btn');
+      if (hxBtn) {
+        hxBtn.click();
+        setTimeout(function () {
+          var ci = document.getElementById('hx-inp');
+          if (ci && inp.value.trim()) { ci.value = inp.value.trim(); ci.focus(); }
+        }, 400);
+      }
+    });
+    inlineResults.appendChild(footer);
   }
 
   /* ── Search / Send ────────────────────────────────────────────────────── */
@@ -1594,8 +1987,9 @@ _SEARCH_BAR_JS = r"""
     isLoading = true;
     _ac = new AbortController();
     var signal = _ac.signal;
-    body.innerHTML = '<div id="hx-sb-typing"><div class="hx-sbd"></div><div class="hx-sbd"></div><div class="hx-sbd"></div></div>';
-    openPanel();
+    /* Show loading spinner in the inline results area */
+    inlineResults.innerHTML = '<div class="hx-sr-dots"><div class="hx-sbd"></div><div class="hx-sbd"></div><div class="hx-sbd"></div></div>';
+    inlineResults.classList.add('hx-sr-show');
     getToken()
       .then(function (tok) {
         return fetch(BASE + '/v1/widget/chat', {
@@ -1626,7 +2020,7 @@ _SEARCH_BAR_JS = r"""
   goBtn.addEventListener('click', doSearch);
   inp.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
-    if (e.key === 'Escape') { abortInFlight(); closePanel(); inp.blur(); }
+    if (e.key === 'Escape') { abortInFlight(); closePanel(); inlineResults.classList.remove('hx-sr-show'); inlineResults.innerHTML = ''; inp.blur(); }
   });
   inp.addEventListener('input', function () {
     if (aiMode) return;
