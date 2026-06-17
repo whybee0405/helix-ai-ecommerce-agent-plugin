@@ -15,6 +15,7 @@ class LoadedPack:
     id: str
     version: str
     display_name: str
+    cta_type: str
     profile_schema: dict
     product_schema: dict
     taxonomy: dict
@@ -57,6 +58,7 @@ class PackLoader:
             id=meta["id"],
             version=str(meta["version"]),
             display_name=meta["display_name"],
+            cta_type=str(meta.get("cta_type", "cart")),
             profile_schema=profile_schema,
             product_schema=product_schema,
             taxonomy=taxonomy,

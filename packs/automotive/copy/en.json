@@ -1,0 +1,20 @@
+{
+  "widget": {
+    "greeting": "Hi! I'm your vehicle consultant. Tell me what you're looking for and I'll find the best match in our current stock.",
+    "ask_budget": "What's your budget range?",
+    "ask_use_case": "How will you mainly be using the vehicle?",
+    "no_match": "I couldn't find a vehicle that matches your exact criteria. Let me connect you with one of our consultants who can help further.",
+    "enquire_title": "Enquire about this vehicle",
+    "enquire_placeholder_name": "Your name",
+    "enquire_placeholder_phone": "Phone number",
+    "enquire_placeholder_email": "Email address",
+    "enquire_placeholder_contact_time": "Best time to call (optional)",
+    "enquire_submit": "Send Enquiry",
+    "enquire_sending": "Sending…",
+    "enquire_success": "Thanks {name}! One of our consultants will be in touch shortly.",
+    "enquire_error": "Something went wrong. Please try again.",
+    "enquire_validation": "Please enter your name and at least a phone number or email address.",
+    "cta_label": "Enquire Now",
+    "search_placeholder": "Ask about make, model, budget, or features…"
+  }
+}

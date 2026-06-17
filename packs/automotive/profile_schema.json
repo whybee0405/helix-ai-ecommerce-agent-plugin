@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "budget_max_zar":         { "type": "integer", "minimum": 0 },
+    "budget_min_zar":         { "type": "integer", "minimum": 0 },
+    "use_case":               { "type": "string", "enum": ["family", "commuter", "off-road", "luxury", "first-car", "towing", "city"] },
+    "preferred_fuel":         { "type": "string", "enum": ["petrol", "diesel", "hybrid", "electric", "plug-in-hybrid", "any"] },
+    "preferred_transmission": { "type": "string", "enum": ["manual", "automatic", "any"] },
+    "preferred_body_type":    { "type": "array", "items": { "type": "string" } },
+    "condition_preference":   { "type": "string", "enum": ["new", "used", "demo", "any"] },
+    "family_size":            { "type": "integer", "minimum": 1 },
+    "must_have_features":     { "type": "array", "items": { "type": "string" } },
+    "safety_priority":        { "type": "boolean" }
+  }
+}

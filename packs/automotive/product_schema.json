@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "make":             { "type": "string" },
+    "model":            { "type": "string" },
+    "year":             { "type": "integer", "minimum": 1980 },
+    "condition":        { "type": "string", "enum": ["new", "used", "demo"] },
+    "mileage_km":       { "type": "integer", "minimum": 0 },
+    "fuel_type":        { "type": "string", "enum": ["petrol", "diesel", "hybrid", "electric", "plug-in-hybrid"] },
+    "transmission":     { "type": "string", "enum": ["manual", "automatic", "semi-automatic"] },
+    "body_type":        { "type": "string", "enum": ["sedan", "suv", "hatchback", "bakkie", "coupe", "convertible", "minivan", "wagon"] },
+    "engine_cc":        { "type": "integer" },
+    "colour":           { "type": "string" },
+    "doors":            { "type": "integer", "enum": [2, 3, 4, 5] },
+    "safety_rating":    { "type": "number", "minimum": 0, "maximum": 5 },
+    "ncap_stars":       { "type": "integer", "minimum": 0, "maximum": 5 },
+    "features":         { "type": "array", "items": { "type": "string" } },
+    "price_zar":        { "type": "integer" },
+    "finance_from_zar": { "type": "integer", "description": "Estimated monthly instalment" },
+    "vin":              { "type": "string" },
+    "stock_number":     { "type": "string" },
+    "certified_used":   { "type": "boolean" }
+  },
+  "required": ["make", "model", "year", "condition", "fuel_type", "transmission", "body_type"]
+}

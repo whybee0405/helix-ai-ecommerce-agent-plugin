@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from helix.api.auth.tokens import issue_widget_token
 from helix.api.deps import get_db, get_tenant, get_widget_tenant
 from helix.config import get_settings
+from helix.db.models import Lead
 from helix.db.crud.conversations import (
     append_messages,
     create_conversation,
@@ -963,6 +964,79 @@ async def track_event(
     )
 
 
+class LeadCaptureRequest(BaseModel):
+    session_id: str | None = None
+    product_platform_id: str | None = None
+    name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    preferred_contact_time: str | None = None
+    source: str = "car_enquiry"
+
+
+class LeadCaptureResponse(BaseModel):
+    lead_id: str
+    message: str
+
+
+@router.post("/capture-lead", response_model=LeadCaptureResponse)
+async def capture_lead(
+    body: LeadCaptureRequest,
+    tenant: Tenant = Depends(get_widget_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> LeadCaptureResponse:
+    if not body.email and not body.phone:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="At least one of email or phone is required.",
+        )
+    from uuid import uuid4 as _uuid4
+
+    lead = Lead(
+        tenant_id=tenant.id,
+        session_id=body.session_id,
+        product_platform_id=body.product_platform_id,
+        name=body.name,
+        email=body.email,
+        phone=body.phone,
+        preferred_contact_time=body.preferred_contact_time,
+        source=body.source,
+    )
+    db.add(lead)
+    await db.commit()
+    await db.refresh(lead)
+
+    settings = get_settings()
+    webhook_url = (
+        getattr(settings, "lead_webhook_url", None)
+        or None
+    )
+    if webhook_url:
+        import httpx as _httpx
+
+        payload = {
+            "lead_id": str(lead.id),
+            "tenant_id": str(tenant.id),
+            "source": lead.source,
+            "name": lead.name,
+            "email": lead.email,
+            "phone": lead.phone,
+            "preferred_contact_time": lead.preferred_contact_time,
+            "product_platform_id": lead.product_platform_id,
+            "session_id": lead.session_id,
+        }
+        try:
+            async with _httpx.AsyncClient(timeout=5.0) as client:
+                await client.post(webhook_url, json=payload)
+        except Exception:
+            pass
+
+    return LeadCaptureResponse(
+        lead_id=str(lead.id),
+        message="Enquiry received.",
+    )
+
+
 _SEARCH_BAR_JS = r"""
 (function () {
   var script = document.currentScript;
@@ -990,6 +1064,7 @@ _SEARCH_BAR_JS = r"""
   var _sbAnim    = !(window.helixConfig && window.helixConfig.sbAnim    === false);
   var _flyCart   = !(window.helixConfig && window.helixConfig.flyCart   === false);
   var _cardModal = !(window.helixConfig && window.helixConfig.cardModal === false);
+  var _ctaType   = 'cart'; /* overridden to 'enquire' for automotive pack */
 
   var _wcp = window.wc_add_to_cart_params || window.woocommerce_params || window.wc_cart_fragments_params || {};
   var _wcAjaxBase = _wcp.wc_ajax_url || (STORE_BASE + '/?wc-ajax=%%endpoint%%');
@@ -1338,6 +1413,29 @@ _SEARCH_BAR_JS = r"""
     'text-decoration:none;padding:7px;transition:opacity .15s;}',
     '#hx-pm-link:hover{opacity:.65;}',
     '#hx-pm-spin{display:flex;gap:5px;justify-content:center;padding:32px;}',
+    /* Enquiry form (automotive / enquire CTA mode) */
+    '.hx-eq-title{font:600 14px/1.3 -apple-system,sans-serif;color:#3C3C43;margin:0 0 14px;',
+    'padding-top:8px;border-top:1px solid rgba(0,0,0,.06);}',
+    '.hx-eq-title strong{color:#1C1C1E;}',
+    '.hx-eq-inp{display:block;width:100%;box-sizing:border-box;margin-bottom:10px;',
+    'padding:11px 14px;border:1.5px solid rgba(0,0,0,.12);border-radius:10px;',
+    'font:400 14px/1 -apple-system,sans-serif;color:#1C1C1E;background:#fff;',
+    'outline:none;transition:border-color .15s;cursor:text !important;}',
+    '.hx-eq-inp:focus{border-color:#7C3AED;}',
+    '.hx-eq-inp::placeholder{color:#AEAEB2;}',
+    '.hx-eq-send{all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;',
+    'padding:14px;border-radius:12px;margin-top:4px;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;',
+    'font:700 14px/1 -apple-system,sans-serif;text-align:center;',
+    'box-shadow:0 4px 16px rgba(124,58,237,.4);',
+    'transition:all .22s cubic-bezier(.175,.885,.32,1.275);}',
+    '.hx-eq-send:hover{transform:scale(1.02);box-shadow:0 6px 22px rgba(124,58,237,.58);}',
+    '.hx-eq-send:disabled{opacity:.55;pointer-events:none;}',
+    '.hx-eq-msg{font:400 12px/1.4 -apple-system,sans-serif;color:#FF3B30;',
+    'margin-top:8px;min-height:16px;}',
+    '.hx-eq-ok{background:rgba(52,199,89,.08);border:1px solid rgba(52,199,89,.25);',
+    'border-radius:12px;padding:16px;text-align:center;',
+    'font:500 14px/1.4 -apple-system,sans-serif;color:#1C7A3A;}',
     /* Responsive inline grid */
     '@media(max-width:480px){',
     '#hx-sb-results{padding:0 12px 20px;}',
@@ -1499,7 +1597,10 @@ _SEARCH_BAR_JS = r"""
       chipsBox.appendChild(btn);
     });
   }
-  window.HelixBranding.load(BASE, KEY).then(applyBranding);
+  window.HelixBranding.load(BASE, KEY).then(function (B) {
+    applyBranding(B);
+    if (B && B.pack_cta_type) _ctaType = B.pack_cta_type;
+  });
 
   /* ── Inject into page ─────────────────────────────────────────────────── */
   function inject() {
@@ -1802,34 +1903,87 @@ _SEARCH_BAR_JS = r"""
   function openProductModal(p) {
     closeProductModal();
     document.body.style.overflow = 'hidden';
+    var PHsvgMod = '<svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
+    var bottomSection = _ctaType === 'enquire'
+      ? [
+          '<div class="hx-eq-title">Enquire about <strong>'+esc(p.title)+'</strong></div>',
+          '<input class="hx-eq-inp" id="hx-eq-name" type="text" placeholder="Your name" autocomplete="name">',
+          '<input class="hx-eq-inp" id="hx-eq-phone" type="tel" placeholder="Phone number" autocomplete="tel">',
+          '<input class="hx-eq-inp" id="hx-eq-email" type="email" placeholder="Email address" autocomplete="email">',
+          '<input class="hx-eq-inp" id="hx-eq-time" type="text" placeholder="Best time to call (optional)">',
+          '<button id="hx-pm-atc" class="hx-eq-send">Send Enquiry</button>',
+          '<div class="hx-eq-msg" id="hx-eq-msg"></div>',
+        ].join('')
+      : [
+          '<button id="hx-pm-atc">Add to Cart</button>',
+          '<a id="hx-pm-link" href="'+esc(p.permalink||'#')+'" target="_blank" rel="noopener">View full product page ↗</a>',
+        ].join('');
     var ov = document.createElement('div');
     ov.id = 'hx-pm-ov';
     ov.innerHTML = [
       '<div id="hx-pm">',
         p.image_url
           ? '<img id="hx-pm-img" src="'+esc(p.image_url)+'" alt="">'
-          : '<div id="hx-pm-iph"><svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>',
+          : '<div id="hx-pm-iph">'+PHsvgMod+'</div>',
         '<button id="hx-pm-close" aria-label="Close">\xd7</button>',
         '<div id="hx-pm-body">',
           '<div id="hx-pm-name">'+esc(p.title)+'</div>',
           '<div id="hx-pm-price">'+fmt(p.price_minor, p.currency)+'</div>',
           '<div id="hx-pm-desc"><div id="hx-pm-spin"><div class="hx-sbd"></div><div class="hx-sbd"></div><div class="hx-sbd"></div></div></div>',
-          '<button id="hx-pm-atc">Add to Cart</button>',
-          '<a id="hx-pm-link" href="'+esc(p.permalink||'#')+'" target="_blank" rel="noopener">View full product page ↗</a>',
+          bottomSection,
         '</div>',
       '</div>',
     ].join('');
     document.body.appendChild(ov);
     var pmAtc = ov.querySelector('#hx-pm-atc');
     pmAtc.dataset.hxPid = p.platform_id;
-    /* Reflect already-added state immediately */
-    if (_addedPids[p.platform_id]) {
-      pmAtc.classList.add('added'); pmAtc.textContent = '✓ Added';
+    if (_ctaType === 'enquire') {
+      pmAtc.addEventListener('click', function () {
+        var nameVal = (ov.querySelector('#hx-eq-name').value || '').trim();
+        var phoneVal = (ov.querySelector('#hx-eq-phone').value || '').trim();
+        var emailVal = (ov.querySelector('#hx-eq-email').value || '').trim();
+        var timeVal = (ov.querySelector('#hx-eq-time').value || '').trim();
+        var msgEl = ov.querySelector('#hx-eq-msg');
+        if (!nameVal || (!phoneVal && !emailVal)) {
+          msgEl.textContent = 'Please enter your name and at least a phone number or email.';
+          return;
+        }
+        pmAtc.disabled = true; pmAtc.textContent = 'Sending…';
+        getToken().then(function (tok) {
+          return fetch(BASE + '/v1/widget/capture-lead', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_id: convId,
+              product_platform_id: p.platform_id,
+              name: nameVal || null,
+              phone: phoneVal || null,
+              email: emailVal || null,
+              preferred_contact_time: timeVal || null,
+              source: 'car_enquiry',
+            }),
+          });
+        }).then(function (r) { return r.json(); }).then(function () {
+          var body = ov.querySelector('#hx-pm-body');
+          if (body) {
+            var inner = ov.querySelector('#hx-pm-img') || ov.querySelector('#hx-pm-iph');
+            body.innerHTML = '<div class="hx-eq-ok">Thanks'+(nameVal ? ', '+esc(nameVal) : '')+'! One of our consultants will be in touch shortly.</div>';
+          }
+        }).catch(function () {
+          pmAtc.disabled = false; pmAtc.textContent = 'Send Enquiry';
+          if (msgEl) msgEl.textContent = 'Something went wrong. Please try again.';
+        });
+      });
+    } else {
+      /* Reflect already-added state immediately */
+      if (_addedPids[p.platform_id]) {
+        pmAtc.classList.add('added'); pmAtc.textContent = '✓ Added';
+      }
+      pmAtc.addEventListener('click', function () {
+        var imgEl = ov.querySelector('#hx-pm-img') || pmAtc;
+        addToCart(p.platform_id, pmAtc, imgEl);
+      });
     }
-    pmAtc.addEventListener('click', function () {
-      var imgEl = ov.querySelector('#hx-pm-img') || pmAtc;
-      addToCart(p.platform_id, pmAtc, imgEl);
-    });
     ov.querySelector('#hx-pm-close').addEventListener('click', closeProductModal);
     ov.addEventListener('click', function (e) { if (e.target === ov) closeProductModal(); });
     /* Fetch short description from WC Store API */
@@ -1872,6 +2026,7 @@ _SEARCH_BAR_JS = r"""
       card.style.animation = 'none';
     }
     var PHsvg = '<svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
+    var ctaLabel = _ctaType === 'enquire' ? 'Enquire Now' : 'Add to Cart';
     if (isRow) {
       card.innerHTML = (p.image_url
         ? '<img class="hx-sr-row-img" src="' + esc(p.image_url) + '" alt="" loading="lazy">'
@@ -1881,7 +2036,7 @@ _SEARCH_BAR_JS = r"""
             '<div class="hx-sr-row-ct">' + esc(p.title) + '</div>' +
             '<div class="hx-sr-row-cp">' + fmt(p.price_minor, p.currency) + '</div>' +
           '</div>' +
-          '<button class="hx-sr-row-atc">Add to Cart</button>' +
+          '<button class="hx-sr-row-atc">' + ctaLabel + '</button>' +
         '</div>';
     } else {
       card.innerHTML = (p.image_url
@@ -1890,25 +2045,33 @@ _SEARCH_BAR_JS = r"""
         '<div class="hx-sr-ci">' +
           '<div class="hx-sr-ct">' + esc(p.title) + '</div>' +
           '<div class="hx-sr-cp">' + fmt(p.price_minor, p.currency) + '</div>' +
-          '<button class="hx-sr-atc">Add to Cart</button>' +
+          '<button class="hx-sr-atc">' + ctaLabel + '</button>' +
         '</div>';
     }
     var atcSel = isRow ? '.hx-sr-row-atc' : '.hx-sr-atc';
     var atcBtn = card.querySelector(atcSel);
     var imgEl  = card.querySelector('img');
     atcBtn.dataset.hxPid = p.platform_id;
-    /* Pre-fill Added state if this product was already added this session */
-    if (_addedPids[p.platform_id]) {
-      atcBtn.classList.add('added'); atcBtn.textContent = '✓ Added';
-    }
-    atcBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      addToCart(p.platform_id, atcBtn, _flyCart ? imgEl : null);
-    });
-    if (_cardModal) {
-      card.addEventListener('click', function (e) {
-        if (!e.target.closest(atcSel)) openProductModal(p);
+    if (_ctaType === 'enquire') {
+      atcBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openProductModal(p);
       });
+      card.addEventListener('click', function () { openProductModal(p); });
+    } else {
+      /* Pre-fill Added state if this product was already added this session */
+      if (_addedPids[p.platform_id]) {
+        atcBtn.classList.add('added'); atcBtn.textContent = '✓ Added';
+      }
+      atcBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        addToCart(p.platform_id, atcBtn, _flyCart ? imgEl : null);
+      });
+      if (_cardModal) {
+        card.addEventListener('click', function (e) {
+          if (!e.target.closest(atcSel)) openProductModal(p);
+        });
+      }
     }
     return card;
   }

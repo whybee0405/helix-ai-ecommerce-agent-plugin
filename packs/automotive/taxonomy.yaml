@@ -1,0 +1,57 @@
+body_types:
+  - sedan
+  - suv
+  - hatchback
+  - bakkie
+  - coupe
+  - convertible
+  - minivan
+  - wagon
+
+fuel_types:
+  - petrol
+  - diesel
+  - hybrid
+  - electric
+  - plug-in-hybrid
+
+transmissions:
+  - manual
+  - automatic
+  - semi-automatic
+
+conditions:
+  - new
+  - used
+  - demo
+
+use_cases:
+  - family
+  - commuter
+  - off-road
+  - luxury
+  - first-car
+  - towing
+  - city
+
+budget_bands_zar:
+  - under_150k
+  - 150k_to_300k
+  - 300k_to_500k
+  - 500k_to_800k
+  - over_800k
+
+popular_makes:
+  - Toyota
+  - Volkswagen
+  - Ford
+  - Hyundai
+  - Kia
+  - BMW
+  - Mercedes-Benz
+  - Audi
+  - Nissan
+  - Suzuki
+  - Haval
+  - Mahindra
+  - Isuzu

@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.auth.crypto import decrypt_credentials, encrypt_credentials
 from helix.api.deps import get_db, get_tenant
+from helix.packs.registry import get_pack_for_tenant
 from helix.branding import (
     Branding,
     BrandingUpdate,
@@ -139,6 +140,8 @@ async def widget_branding(
 
     payload = branding.model_dump(mode="json")
     payload["version"] = tenant.branding_version
+    pack = get_pack_for_tenant(tenant)
+    payload["pack_cta_type"] = pack.cta_type
 
     return JSONResponse(
         content=payload,

@@ -227,3 +227,22 @@ class WidgetEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, default=_now
     )
+
+
+class Lead(Base):
+    __tablename__ = "lead"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(
+        ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    session_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    product_platform_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    preferred_contact_time: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    source: Mapped[str] = mapped_column(String(64), nullable=False, default="chat_capture")
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, default=_now
+    )

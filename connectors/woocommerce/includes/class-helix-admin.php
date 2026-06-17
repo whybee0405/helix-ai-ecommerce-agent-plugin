@@ -32,6 +32,7 @@ class Helix_Admin {
         register_setting( 'helix_settings', 'helix_sb_animations', [ 'sanitize_callback' => 'absint' ] );
         register_setting( 'helix_settings', 'helix_sb_fly_to_cart', [ 'sanitize_callback' => 'absint' ] );
         register_setting( 'helix_settings', 'helix_sb_card_modal', [ 'sanitize_callback' => 'absint' ] );
+        register_setting( 'helix_settings', 'helix_lead_webhook_url', [ 'sanitize_callback' => 'esc_url_raw' ] );
     }
 
     public static function save_settings(): void {
@@ -51,6 +52,7 @@ class Helix_Admin {
         update_option( 'helix_sb_animations', isset( $_POST['helix_sb_animations'] ) ? 1 : 0 );
         update_option( 'helix_sb_fly_to_cart', isset( $_POST['helix_sb_fly_to_cart'] ) ? 1 : 0 );
         update_option( 'helix_sb_card_modal', isset( $_POST['helix_sb_card_modal'] ) ? 1 : 0 );
+        update_option( 'helix_lead_webhook_url', esc_url_raw( $_POST['helix_lead_webhook_url'] ?? '' ) );
 
         if ( ! get_option( 'helix_tenant_id' ) ) {
             $client = new Helix_API_Client( get_option( 'helix_api_url', '' ) );
@@ -163,6 +165,14 @@ class Helix_Admin {
                                 <input type="checkbox" name="helix_sb_card_modal" value="1" <?php checked( get_option( 'helix_sb_card_modal', 1 ), 1 ); ?>>
                                 Open product details in a modal overlay instead of navigating to the product page
                             </label>
+                        </td>
+                    </tr>
+                    <tr><th colspan="2"><strong>Lead Capture</strong></th></tr>
+                    <tr>
+                        <th>Lead webhook URL</th>
+                        <td>
+                            <input type="url" name="helix_lead_webhook_url" value="<?php echo esc_attr( get_option( 'helix_lead_webhook_url', '' ) ); ?>" class="regular-text" placeholder="https://hook.make.com/...">
+                            <p class="description">POST new enquiries here (Zapier, Make.com, CRM). Leave blank to disable webhooks.</p>
                         </td>
                     </tr>
                     <tr><th colspan="2"><strong>WhatsApp Button</strong></th></tr>
