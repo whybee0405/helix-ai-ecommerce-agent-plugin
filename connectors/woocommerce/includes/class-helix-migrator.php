@@ -282,21 +282,12 @@ class Helix_Migrator {
                 continue;
             }
 
-            // Create term if it doesn't exist in this taxonomy.
-            if ( ! term_exists( $value, $tax ) ) {
-                wp_insert_term( $value, $tax );
-                clean_term_cache( 0, $tax );
-            }
-            $term = get_term_by( 'name', $value, $tax )
-                 ?: get_term_by( 'slug', sanitize_title( $value ), $tax );
-            if ( ! $term || is_wp_error( $term ) ) {
-                continue;
-            }
-
+            // Store as a local attribute with the string value directly.
+            // This avoids term-ID/taxonomy-registration ordering issues at sync time.
             $attr = new WC_Product_Attribute();
-            $attr->set_id( wc_attribute_taxonomy_id_by_name( $slug ) );
+            $attr->set_id( 0 );
             $attr->set_name( $tax );
-            $attr->set_options( [ $term->term_id ] );
+            $attr->set_options( [ (string) $value ] );
             $attr->set_visible( true );
             $attr->set_variation( false );
 

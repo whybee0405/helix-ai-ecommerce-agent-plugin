@@ -114,6 +114,20 @@ class Helix_Sync {
                     fn( $id ) => get_term_field( 'name', $id, $slug ),
                     $options
                 ), fn( $v ) => is_string( $v ) && $v !== '' ) );
+            } elseif ( str_starts_with( $slug, 'pa_' ) ) {
+                // pa_* attribute saved without a taxonomy ID — options may be raw term IDs
+                // (happens when taxonomy was not registered at migration time). Resolve to
+                // names; skip any ID that can't be resolved rather than passing it through.
+                $options = array_values( array_filter( array_map(
+                    function ( $opt ) use ( $slug ) {
+                        if ( ! is_numeric( $opt ) ) {
+                            return (string) $opt;
+                        }
+                        $name = get_term_field( 'name', (int) $opt, $slug );
+                        return ( is_string( $name ) && $name !== '' ) ? $name : null;
+                    },
+                    $options
+                ), fn( $v ) => $v !== null && $v !== '' ) );
             }
 
             if ( empty( $options ) ) {
