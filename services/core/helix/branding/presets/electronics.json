@@ -1,0 +1,34 @@
+{
+  "preset_id": "electronics",
+  "brand_name": "Tech Advisor",
+  "brand_short_name": "Tech",
+  "tagline": "Find the right gear, fast",
+  "avatar_url": null,
+  "primary_color": "#0EA5E9",
+  "secondary_color": "#0284C7",
+  "accent_color": "#7DD3FC",
+  "headline_text": "Find the right tech with {{brand_name}}",
+  "search_placeholder": "Compare specs, find deals, ask anything…",
+  "chat_placeholder": "What are you looking to buy?",
+  "footer_cta_label": "Open in chat",
+  "greeting": "Hi! I'm {{brand_name}}. Tell me your use case and budget, and I'll narrow it down to the right product.",
+  "suggestion_chips": [
+    { "label": "Best laptops under R15k", "query": "Show me laptops under R15,000" },
+    { "label": "Compare flagships", "query": "Compare the top flagship phones" },
+    { "label": "Headphones for travel", "query": "Recommend noise-cancelling headphones for travel" },
+    { "label": "What's on sale?", "query": "What electronics are on sale?" }
+  ],
+  "faq_seed_queries": [
+    "Best laptops under R15,000",
+    "Compare flagship phones",
+    "Recommend noise-cancelling headphones",
+    "What's the difference between OLED and QLED?",
+    "Gaming PC build recommendations",
+    "What's the warranty on this?",
+    "What's on sale right now?"
+  ],
+  "tone": "knowledgeable, direct, and spec-fluent — like a senior engineer who explains tradeoffs without jargon overload",
+  "locale": "en-ZA",
+  "currency": "ZAR",
+  "custom_css": ""
+}

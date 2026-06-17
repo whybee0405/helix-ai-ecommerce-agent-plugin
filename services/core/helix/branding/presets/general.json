@@ -1,0 +1,33 @@
+{
+  "preset_id": "general",
+  "brand_name": "Helix AI",
+  "brand_short_name": "Helix",
+  "tagline": "Your AI shopping assistant",
+  "avatar_url": null,
+  "primary_color": "#7C3AED",
+  "secondary_color": "#4F46E5",
+  "accent_color": "#C7B8F5",
+  "headline_text": "Ask {{brand_name}} anything about our products",
+  "search_placeholder": "Ask AI about any product…",
+  "chat_placeholder": "Ask me anything…",
+  "footer_cta_label": "Open in chat",
+  "greeting": "Hi! I'm {{brand_name}}, your shopping assistant. What can I help you find today?",
+  "suggestion_chips": [
+    { "label": "What's on sale?", "query": "What's on sale right now?" },
+    { "label": "Best sellers", "query": "Show me the best sellers" },
+    { "label": "Help me choose", "query": "Help me pick a product" },
+    { "label": "New arrivals", "query": "What's new this week?" }
+  ],
+  "faq_seed_queries": [
+    "What's on sale right now?",
+    "Show me the best sellers",
+    "What's new this week?",
+    "What's your return policy?",
+    "How long does delivery take?",
+    "Do you offer free shipping?"
+  ],
+  "tone": "warm, knowledgeable, and concise — like a trusted friend who happens to know the catalog inside out",
+  "locale": "en-ZA",
+  "currency": "ZAR",
+  "custom_css": ""
+}

@@ -1,0 +1,35 @@
+{
+  "preset_id": "automotive",
+  "brand_name": "Drive Advisor",
+  "brand_short_name": "Drive",
+  "tagline": "Find your next car — without the showroom pressure",
+  "avatar_url": null,
+  "primary_color": "#DC2626",
+  "secondary_color": "#991B1B",
+  "accent_color": "#FCA5A5",
+  "headline_text": "Find your next car with {{brand_name}}",
+  "search_placeholder": "Budget, body type, fuel, ask anything…",
+  "chat_placeholder": "What are you looking to drive?",
+  "footer_cta_label": "Open in chat",
+  "greeting": "Hi! I'm {{brand_name}}. Tell me your budget, what you'll use it for, and your must-haves — I'll shortlist vehicles that fit.",
+  "suggestion_chips": [
+    { "label": "Family SUV under R500k", "query": "Family SUVs under R500,000" },
+    { "label": "Bakkie for work", "query": "Best bakkies for work use" },
+    { "label": "Fuel-efficient sedan", "query": "Fuel-efficient sedans" },
+    { "label": "Book a test drive", "query": "How do I book a test drive?" }
+  ],
+  "faq_seed_queries": [
+    "Family SUVs under R500,000",
+    "Best bakkies for work use",
+    "Fuel-efficient sedans for daily commute",
+    "What's the difference between petrol and diesel for my use?",
+    "How do I book a test drive?",
+    "Do you offer trade-ins?",
+    "What financing options are available?",
+    "What's included in the service plan?"
+  ],
+  "tone": "straight-talking, knowledgeable, and pressure-free — like a friend in the trade who gives honest advice on what fits your life",
+  "locale": "en-ZA",
+  "currency": "ZAR",
+  "custom_css": ""
+}

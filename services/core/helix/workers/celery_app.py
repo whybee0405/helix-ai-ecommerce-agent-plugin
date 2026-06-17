@@ -15,7 +15,10 @@ celery_app = Celery(
     "helix",
     broker=_broker,
     backend=_backend,
-    include=["helix.workers.tasks.embedding"],
+    include=[
+        "helix.workers.tasks.embedding",
+        "helix.workers.tasks.faq_warm",
+    ],
 )
 celery_app.conf.update(
     task_serializer="json",
@@ -25,5 +28,12 @@ celery_app.conf.update(
     enable_utc=True,
     task_routes={
         "helix.workers.tasks.embedding.*": {"queue": "embedding"},
+        "helix.workers.tasks.faq_warm.*": {"queue": "embedding"},
+    },
+    beat_schedule={
+        "warm-faq-cache-weekly": {
+            "task": "helix.workers.tasks.faq_warm.warm_all_tenants",
+            "schedule": 7 * 24 * 60 * 60,  # weekly
+        },
     },
 )

@@ -11,6 +11,10 @@ class Helix_Updater {
         add_filter( 'pre_set_site_transient_update_plugins', [ self::class, 'check_update' ] );
         add_filter( 'plugins_api', [ self::class, 'plugin_info' ], 20, 3 );
         add_action( 'upgrader_process_complete', [ self::class, 'after_update' ], 10, 2 );
+        // Always fetch a fresh manifest when an admin opens the Updates screen.
+        add_action( 'load-update-core.php', function () {
+            delete_transient( 'helix_plugin_manifest' );
+        } );
     }
 
     private static function get_manifest(): array|false {
@@ -25,7 +29,7 @@ class Helix_Updater {
         $data = json_decode( wp_remote_retrieve_body( $response ), true );
         if ( empty( $data['version'] ) ) return false;
 
-        set_transient( 'helix_plugin_manifest', $data, HOUR_IN_SECONDS );
+        set_transient( 'helix_plugin_manifest', $data, 5 * MINUTE_IN_SECONDS );
         return $data;
     }
 

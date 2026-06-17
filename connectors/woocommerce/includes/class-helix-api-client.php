@@ -82,4 +82,114 @@ class Helix_API_Client {
     public function get_daily_events( int $days = 30 ): array|WP_Error {
         return $this->get( "/v1/dashboard/events/daily?days={$days}" );
     }
+
+    private function admin_headers( string $body ): array {
+        $tenant_id    = get_option( 'helix_tenant_id', '' );
+        $admin_secret = get_option( 'helix_admin_secret', '' );
+        $timestamp    = (string) time();
+        $payload      = $timestamp . '.' . $body;
+        $signature    = base64_encode( hash_hmac( 'sha256', $payload, $admin_secret, true ) );
+        return [
+            'Content-Type'      => 'application/json',
+            'X-Helix-Tenant-Id' => $tenant_id,
+            'X-Helix-Timestamp' => $timestamp,
+            'X-Helix-Signature' => $signature,
+        ];
+    }
+
+    public function bootstrap_admin_secret(): array|WP_Error {
+        $tenant_id     = get_option( 'helix_tenant_id', '' );
+        $provision_key = get_option( 'helix_provision_key', '' );
+        if ( ! $tenant_id || ! $provision_key ) {
+            return new WP_Error( 'helix_no_tenant', 'Tenant not provisioned' );
+        }
+        $response = wp_remote_post(
+            $this->api_url . '/v1/tenants/' . $tenant_id . '/admin-secret',
+            [
+                'headers' => [ 'X-Helix-Provision-Key' => $provision_key ],
+                'timeout' => 15,
+            ]
+        );
+        if ( is_wp_error( $response ) ) return $response;
+        $code = wp_remote_retrieve_response_code( $response );
+        if ( $code !== 200 ) return new WP_Error( 'helix_bootstrap_failed', "HTTP {$code}" );
+        return json_decode( wp_remote_retrieve_body( $response ), true ) ?? [];
+    }
+
+    public function get_branding(): array|WP_Error {
+        $body     = '';
+        $response = wp_remote_get(
+            $this->api_url . '/v1/admin/branding',
+            [
+                'headers' => $this->admin_headers( $body ),
+                'timeout' => 15,
+            ]
+        );
+        if ( is_wp_error( $response ) ) return $response;
+        $code = wp_remote_retrieve_response_code( $response );
+        if ( $code >= 400 ) return new WP_Error( 'helix_branding_get_failed', "HTTP {$code}" );
+        return json_decode( wp_remote_retrieve_body( $response ), true ) ?? [];
+    }
+
+    public function update_branding( array $patch ): array|WP_Error {
+        $body     = wp_json_encode( $patch );
+        $response = wp_remote_post(
+            $this->api_url . '/v1/admin/branding',
+            [
+                'headers' => $this->admin_headers( $body ),
+                'body'    => $body,
+                'timeout' => 15,
+            ]
+        );
+        if ( is_wp_error( $response ) ) return $response;
+        $code = wp_remote_retrieve_response_code( $response );
+        if ( $code >= 400 ) return new WP_Error( 'helix_branding_save_failed', "HTTP {$code}: " . wp_remote_retrieve_body( $response ) );
+        return json_decode( wp_remote_retrieve_body( $response ), true ) ?? [];
+    }
+
+    public function apply_branding_preset( string $preset_id ): array|WP_Error {
+        $body     = wp_json_encode( [ 'preset_id' => $preset_id ] );
+        $response = wp_remote_post(
+            $this->api_url . '/v1/admin/branding/apply-preset',
+            [
+                'headers' => $this->admin_headers( $body ),
+                'body'    => $body,
+                'timeout' => 15,
+            ]
+        );
+        if ( is_wp_error( $response ) ) return $response;
+        $code = wp_remote_retrieve_response_code( $response );
+        if ( $code >= 400 ) return new WP_Error( 'helix_preset_apply_failed', "HTTP {$code}" );
+        return json_decode( wp_remote_retrieve_body( $response ), true ) ?? [];
+    }
+
+    public function list_presets(): array|WP_Error {
+        $body     = '';
+        $response = wp_remote_get(
+            $this->api_url . '/v1/admin/presets',
+            [
+                'headers' => $this->admin_headers( $body ),
+                'timeout' => 15,
+            ]
+        );
+        if ( is_wp_error( $response ) ) return $response;
+        $code = wp_remote_retrieve_response_code( $response );
+        if ( $code >= 400 ) return new WP_Error( 'helix_presets_failed', "HTTP {$code}" );
+        return json_decode( wp_remote_retrieve_body( $response ), true ) ?? [];
+    }
+
+    public function get_usage_summary( int $days = 30 ): array|WP_Error {
+        $body     = '';
+        $response = wp_remote_get(
+            $this->api_url . "/v1/admin/usage?days={$days}",
+            [
+                'headers' => $this->admin_headers( $body ),
+                'timeout' => 15,
+            ]
+        );
+        if ( is_wp_error( $response ) ) return $response;
+        $code = wp_remote_retrieve_response_code( $response );
+        if ( $code >= 400 ) return new WP_Error( 'helix_usage_failed', "HTTP {$code}" );
+        return json_decode( wp_remote_retrieve_body( $response ), true ) ?? [];
+    }
 }

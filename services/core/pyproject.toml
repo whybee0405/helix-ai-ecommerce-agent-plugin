@@ -25,6 +25,8 @@ dependencies = [
     "structlog>=24.2.0",
     "jsonschema>=4.22.0",
     "pyyaml>=6.0.1",
+    "sentence-transformers>=3.0.0",
+    "numpy>=1.26.0",
 ]
 
 [project.optional-dependencies]
