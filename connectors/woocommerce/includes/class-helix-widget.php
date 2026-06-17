@@ -30,10 +30,13 @@ class Helix_Widget {
         $wa_message = get_option( 'helix_wa_message', "Hi! I'd like some skincare advice." );
 
         $config = wp_json_encode( [
-            'wa'      => (bool) $wa_enabled,
-            'waNum'   => $wa_number,
-            'waMsg'   => $wa_message,
-            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'wa'        => (bool) $wa_enabled,
+            'waNum'     => $wa_number,
+            'waMsg'     => $wa_message,
+            'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+            'sbAnim'    => (bool) get_option( 'helix_sb_animations', 1 ),
+            'flyCart'   => (bool) get_option( 'helix_sb_fly_to_cart', 1 ),
+            'cardModal' => (bool) get_option( 'helix_sb_card_modal', 1 ),
         ] );
         ?>
         <script>window.helixConfig = <?php echo $config; ?>;</script>

@@ -987,6 +987,9 @@ _SEARCH_BAR_JS = r"""
   var _lsTimer   = null;
   var _lsCtrl    = null;
   var AJAX_URL   = (window.helixConfig && window.helixConfig.ajaxUrl) || null;
+  var _sbAnim    = !(window.helixConfig && window.helixConfig.sbAnim    === false);
+  var _flyCart   = !(window.helixConfig && window.helixConfig.flyCart   === false);
+  var _cardModal = !(window.helixConfig && window.helixConfig.cardModal === false);
 
   var _wcp = window.wc_add_to_cart_params || window.woocommerce_params || window.wc_cart_fragments_params || {};
   var _wcAjaxBase = _wcp.wc_ajax_url || (STORE_BASE + '/?wc-ajax=%%endpoint%%');
@@ -1184,7 +1187,8 @@ _SEARCH_BAR_JS = r"""
     '.hx-sr-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;',
     'overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07);',
     'transition:transform .22s cubic-bezier(.175,.885,.32,1.275),box-shadow .22s;',
-    'animation:hx-sr-fly .58s cubic-bezier(.175,.885,.32,1.275) both;}',
+    'animation:hx-sr-fly .58s cubic-bezier(.175,.885,.32,1.275) both,',
+    'hx-sr-rainbow-ring 1.8s ease-out both;}',
     '.hx-sr-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.12);}',
     '.hx-sr-cimg{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;',
     'background:linear-gradient(135deg,#f0edff,#ede9fe);}',
@@ -1221,14 +1225,56 @@ _SEARCH_BAR_JS = r"""
     '64%{transform:translateY(14px) scale(1.12) rotate(-2deg);}',
     '82%{transform:translateY(-5px) scale(0.97) rotate(0.8deg);}',
     '100%{opacity:1;transform:translateY(0) scale(1) rotate(0deg);filter:blur(0);}}',
-    /* Label above product grid */
+    /* Rainbow ring sweeps through card border as it lands — matches search-bar ring palette */
+    '@keyframes hx-sr-rainbow-ring{',
+    '0%  {box-shadow:0 0 0 3px rgba(255,110,180,.95),0 6px 32px rgba(255,110,180,.4);}',
+    '16% {box-shadow:0 0 0 3px rgba(255,214,66,.95), 0 6px 32px rgba(255,214,66,.4);}',
+    '33% {box-shadow:0 0 0 3px rgba(127,255,212,.95),0 6px 32px rgba(127,255,212,.35);}',
+    '50% {box-shadow:0 0 0 3px rgba(135,206,250,.95),0 6px 32px rgba(135,206,250,.4);}',
+    '66% {box-shadow:0 0 0 3px rgba(201,177,255,.95),0 6px 32px rgba(201,177,255,.4);}',
+    '82% {box-shadow:0 0 0 3px rgba(255,110,180,.95),0 6px 32px rgba(255,110,180,.4);}',
+    '100%{box-shadow:0 2px 12px rgba(0,0,0,.07);}}',
+    /* Inline row card — horizontal, sits directly below matched recommendation text */
+    '.hx-sr-row{display:flex;gap:0;background:#fff;border:1px solid rgba(0,0,0,.08);',
+    'border-radius:16px;overflow:hidden;margin-bottom:10px;cursor:pointer;',
+    'box-shadow:0 2px 12px rgba(0,0,0,.07);',
+    'transition:transform .22s cubic-bezier(.175,.885,.32,1.275),box-shadow .22s;',
+    'animation:hx-sr-fly .58s cubic-bezier(.175,.885,.32,1.275) both,',
+    'hx-sr-rainbow-ring 1.8s ease-out both;}',
+    '.hx-sr-row:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.1);}',
+    '.hx-sr-row-img{width:88px;height:88px;object-fit:cover;flex-shrink:0;display:block;',
+    'background:linear-gradient(135deg,#f0edff,#ede9fe);}',
+    '.hx-sr-row-iph{width:88px;height:88px;flex-shrink:0;',
+    'background:linear-gradient(135deg,#f0edff,#ede9fe);',
+    'display:flex;align-items:center;justify-content:center;}',
+    '.hx-sr-row-iph svg{width:28px;height:28px;opacity:.18;}',
+    '.hx-sr-row-ci{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:12px 14px;}',
+    '.hx-sr-row-info{flex:1;min-width:0;}',
+    '.hx-sr-row-ct{font:500 13.5px/1.3 -apple-system,sans-serif;color:#1C1C1E;',
+    'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;}',
+    '.hx-sr-row-cp{font:700 13px/1 -apple-system,sans-serif;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);',
+    '-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}',
+    '.hx-sr-row-atc{all:unset;cursor:pointer;flex-shrink:0;padding:9px 14px;border-radius:10px;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;',
+    'font:600 12px/1 -apple-system,sans-serif;text-align:center;',
+    'transition:all .2s;box-shadow:0 2px 8px rgba(124,58,237,.3);}',
+    '.hx-sr-row-atc:hover{transform:scale(1.05);box-shadow:0 4px 16px rgba(124,58,237,.48);}',
+    '.hx-sr-row-atc.adding{opacity:.6;pointer-events:none;}',
+    '.hx-sr-row-atc.added{background:linear-gradient(135deg,#34C759,#30D158)!important;',
+    '-webkit-text-fill-color:#fff!important;}',
+    /* Label above remaining grid */
     '.hx-sr-label{font:600 11px/1 -apple-system,sans-serif;color:#AEAEB2;',
     'letter-spacing:.08em;text-transform:uppercase;margin:16px 0 10px;}',
     /* Loading dots inside inline results */
     '.hx-sr-dots{display:flex;gap:6px;align-items:center;padding:24px;justify-content:center;}',
-    /* Flying cart dot */
+    /* Flying cart dot — contains a spinning rainbow child */
     '.hx-fly-dot{position:fixed;z-index:1000002;pointer-events:none;border-radius:50%;',
-    'overflow:hidden;box-shadow:0 4px 20px rgba(124,58,237,.6);will-change:transform;}',
+    'overflow:hidden;will-change:transform;}',
+    '@keyframes hx-fly-spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}',
+    '.hx-fly-inner{width:100%;height:100%;',
+    'background:conic-gradient(from 0deg,#ff6eb4,#ffb347,#ffe066,#7fffd4,#87cefa,#c9b1ff,#ff6eb4);',
+    'animation:hx-fly-spin .5s linear infinite;}',
     /* Cart icon bounce when item lands */
     '@keyframes hx-cart-bounce{',
     '0%,100%{transform:scale(1)rotate(0deg);}',
@@ -1706,11 +1752,15 @@ _SEARCH_BAR_JS = r"""
     var dot = document.createElement('div');
     dot.className = 'hx-fly-dot';
     var sz = 48;
-    dot.style.cssText = 'width:'+sz+'px;height:'+sz+'px;'
+    dot.style.cssText = 'width:'+sz+'px;height:'+sz+'px;border-radius:50%;overflow:hidden;'
       + 'left:'+(fR.left+fR.width/2-sz/2)+'px;'
-      + 'top:'+(fR.top+fR.height/2-sz/2)+'px;';
-    if (imgSrc) dot.innerHTML = '<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;">';
-    else dot.style.background = 'linear-gradient(135deg,#7C3AED,#4F46E5)';
+      + 'top:'+(fR.top+fR.height/2-sz/2)+'px;'
+      + 'box-shadow:0 4px 20px rgba(124,58,237,.6);';
+    /* Rainbow spinning inner — outer element moves via JS transform, inner spins freely */
+    dot.innerHTML = imgSrc
+      ? '<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;z-index:1;">'
+        + '<div class="hx-fly-inner" style="position:absolute;inset:0;opacity:.5;"></div>'
+      : '<div class="hx-fly-inner"></div>';
     document.body.appendChild(dot);
     var dx = (tR.left + tR.width/2 - sz/2) - (fR.left + fR.width/2 - sz/2);
     var dy = (tR.top  + tR.height/2 - sz/2) - (fR.top  + fR.height/2 - sz/2);
@@ -1793,53 +1843,91 @@ _SEARCH_BAR_JS = r"""
       });
   }
 
-  /* ── Render results (inline, in page flow) ────────────────────────────── */
+  /* ── Card factory ─────────────────────────────────────────────────────── */
+  function makeCard(p, idx, isRow) {
+    var card = document.createElement('div');
+    card.className = isRow ? 'hx-sr-row' : 'hx-sr-card';
+    card.style.cursor = 'pointer';
+    if (_sbAnim) {
+      card.style.animationDelay = (idx * 100) + 'ms';
+    } else {
+      card.style.animation = 'none';
+    }
+    var PHsvg = '<svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
+    if (isRow) {
+      card.innerHTML = (p.image_url
+        ? '<img class="hx-sr-row-img" src="' + esc(p.image_url) + '" alt="" loading="lazy">'
+        : '<div class="hx-sr-row-iph">' + PHsvg + '</div>') +
+        '<div class="hx-sr-row-ci">' +
+          '<div class="hx-sr-row-info">' +
+            '<div class="hx-sr-row-ct">' + esc(p.title) + '</div>' +
+            '<div class="hx-sr-row-cp">' + fmt(p.price_minor, p.currency) + '</div>' +
+          '</div>' +
+          '<button class="hx-sr-row-atc">Add to Cart</button>' +
+        '</div>';
+    } else {
+      card.innerHTML = (p.image_url
+        ? '<img class="hx-sr-cimg" src="' + esc(p.image_url) + '" alt="" loading="lazy">'
+        : '<div class="hx-sr-cph">' + PHsvg + '</div>') +
+        '<div class="hx-sr-ci">' +
+          '<div class="hx-sr-ct">' + esc(p.title) + '</div>' +
+          '<div class="hx-sr-cp">' + fmt(p.price_minor, p.currency) + '</div>' +
+          '<button class="hx-sr-atc">Add to Cart</button>' +
+        '</div>';
+    }
+    var atcSel = isRow ? '.hx-sr-row-atc' : '.hx-sr-atc';
+    var atcBtn = card.querySelector(atcSel);
+    var imgEl  = card.querySelector('img');
+    atcBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      addToCart(p.platform_id, atcBtn, _flyCart ? imgEl : null);
+    });
+    if (_cardModal) {
+      card.addEventListener('click', function (e) {
+        if (!e.target.closest(atcSel)) openProductModal(p);
+      });
+    }
+    return card;
+  }
+
+  /* ── Render results (inline, interleaved with recommendation text) ─────── */
   function renderResults(text, products) {
     inlineResults.innerHTML = '';
     inlineResults.classList.add('hx-sr-show');
-    /* Recommendation text blocks appear first */
-    if (text) {
-      text.split(/\n+/).filter(function (s) { return s.trim(); }).forEach(function (para) {
-        var d = document.createElement('div');
-        d.className = 'hx-sr-blk';
-        d.innerHTML = md(para.trim());
-        inlineResults.appendChild(d);
-      });
-    }
-    /* Product grid below the recommendation text */
-    if (products && products.length) {
+    var paragraphs = text ? text.split(/\n+/).filter(function (s) { return s.trim(); }) : [];
+    var usedIdx = [];
+    var cardCounter = 0;
+    /* Render each paragraph; insert matched product card immediately after it */
+    paragraphs.forEach(function (para) {
+      var d = document.createElement('div');
+      d.className = 'hx-sr-blk';
+      d.innerHTML = md(para.trim());
+      inlineResults.appendChild(d);
+      if (products && products.length) {
+        var paraLow = para.toLowerCase();
+        products.forEach(function (p, pi) {
+          if (usedIdx.indexOf(pi) !== -1) return;
+          /* Match by first 3 words of title (minimum 5 chars) */
+          var words = p.title.trim().toLowerCase().split(/\s+/);
+          var key = words.slice(0, Math.min(3, words.length)).join(' ');
+          if (key.length >= 5 && paraLow.indexOf(key) !== -1) {
+            usedIdx.push(pi);
+            inlineResults.appendChild(makeCard(p, cardCounter++, true));
+          }
+        });
+      }
+    });
+    /* Any unmatched products fall into a grid below */
+    var unmatched = (products || []).filter(function (_, i) { return usedIdx.indexOf(i) === -1; });
+    if (unmatched.length) {
       var lbl = document.createElement('div');
       lbl.className = 'hx-sr-label';
-      lbl.textContent = 'Recommended Products';
+      lbl.textContent = usedIdx.length ? 'More recommendations' : 'Recommended Products';
       inlineResults.appendChild(lbl);
       var grid = document.createElement('div');
       grid.className = 'hx-sr-grid';
-      products.forEach(function (p, i) {
-        var card = document.createElement('div');
-        card.className = 'hx-sr-card';
-        card.style.cursor = 'pointer';
-        /* stagger so each card flies in one after another */
-        card.style.animationDelay = (i * 100) + 'ms';
-        card.innerHTML = (p.image_url
-          ? '<img class="hx-sr-cimg" src="' + esc(p.image_url) + '" alt="" loading="lazy">'
-          : '<div class="hx-sr-cph"><svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>') +
-          '<div class="hx-sr-ci">' +
-            '<div class="hx-sr-ct">' + esc(p.title) + '</div>' +
-            '<div class="hx-sr-cp">' + fmt(p.price_minor, p.currency) + '</div>' +
-            '<button class="hx-sr-atc">Add to Cart</button>' +
-          '</div>';
-        var atcBtn = card.querySelector('.hx-sr-atc');
-        var imgEl  = card.querySelector('.hx-sr-cimg');
-        /* ATC: fly image to cart icon, then confirm */
-        atcBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          addToCart(p.platform_id, atcBtn, imgEl);
-        });
-        /* Anywhere else on card: open product detail modal */
-        card.addEventListener('click', function (e) {
-          if (!e.target.closest('.hx-sr-atc')) openProductModal(p);
-        });
-        grid.appendChild(card);
+      unmatched.forEach(function (p) {
+        grid.appendChild(makeCard(p, cardCounter++, false));
       });
       inlineResults.appendChild(grid);
     }

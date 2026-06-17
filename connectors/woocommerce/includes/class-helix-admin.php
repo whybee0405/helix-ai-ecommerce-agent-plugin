@@ -29,6 +29,9 @@ class Helix_Admin {
         register_setting( 'helix_settings', 'helix_wa_enabled', [ 'sanitize_callback' => 'absint' ] );
         register_setting( 'helix_settings', 'helix_wa_number', [ 'sanitize_callback' => 'sanitize_text_field' ] );
         register_setting( 'helix_settings', 'helix_wa_message', [ 'sanitize_callback' => 'sanitize_textarea_field' ] );
+        register_setting( 'helix_settings', 'helix_sb_animations', [ 'sanitize_callback' => 'absint' ] );
+        register_setting( 'helix_settings', 'helix_sb_fly_to_cart', [ 'sanitize_callback' => 'absint' ] );
+        register_setting( 'helix_settings', 'helix_sb_card_modal', [ 'sanitize_callback' => 'absint' ] );
     }
 
     public static function save_settings(): void {
@@ -45,6 +48,9 @@ class Helix_Admin {
         update_option( 'helix_wa_enabled', isset( $_POST['helix_wa_enabled'] ) ? 1 : 0 );
         update_option( 'helix_wa_number', sanitize_text_field( $_POST['helix_wa_number'] ?? '' ) );
         update_option( 'helix_wa_message', sanitize_textarea_field( $_POST['helix_wa_message'] ?? '' ) );
+        update_option( 'helix_sb_animations', isset( $_POST['helix_sb_animations'] ) ? 1 : 0 );
+        update_option( 'helix_sb_fly_to_cart', isset( $_POST['helix_sb_fly_to_cart'] ) ? 1 : 0 );
+        update_option( 'helix_sb_card_modal', isset( $_POST['helix_sb_card_modal'] ) ? 1 : 0 );
 
         if ( ! get_option( 'helix_tenant_id' ) ) {
             $client = new Helix_API_Client( get_option( 'helix_api_url', '' ) );
@@ -128,6 +134,34 @@ class Helix_Admin {
                             <label>
                                 <input type="checkbox" name="helix_widget_enabled" value="1" <?php checked( get_option( 'helix_widget_enabled', 0 ), 1 ); ?>>
                                 Automatically embed the Helix chat widget on all frontend pages
+                            </label>
+                        </td>
+                    </tr>
+                    <tr><th colspan="2"><strong>Search Bar Animations</strong></th></tr>
+                    <tr>
+                        <th>Card fly-in animation</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="helix_sb_animations" value="1" <?php checked( get_option( 'helix_sb_animations', 1 ), 1 ); ?>>
+                                Animate product cards flying in from the search bar (rainbow sparkle effect)
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Fly-to-cart animation</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="helix_sb_fly_to_cart" value="1" <?php checked( get_option( 'helix_sb_fly_to_cart', 1 ), 1 ); ?>>
+                                Animate product thumbnail flying to the cart icon when adding to cart
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Product detail modal</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="helix_sb_card_modal" value="1" <?php checked( get_option( 'helix_sb_card_modal', 1 ), 1 ); ?>>
+                                Open product details in a modal overlay instead of navigating to the product page
                             </label>
                         </td>
                     </tr>
