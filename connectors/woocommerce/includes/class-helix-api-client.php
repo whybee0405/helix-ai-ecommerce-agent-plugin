@@ -178,6 +178,21 @@ class Helix_API_Client {
         return json_decode( wp_remote_retrieve_body( $response ), true ) ?? [];
     }
 
+    public function get_leads( int $page = 1, int $limit = 50 ): array|WP_Error {
+        $body     = '';
+        $response = wp_remote_get(
+            $this->api_url . "/v1/admin/leads?page={$page}&limit={$limit}",
+            [
+                'headers' => $this->admin_headers( $body ),
+                'timeout' => 15,
+            ]
+        );
+        if ( is_wp_error( $response ) ) return $response;
+        $code = wp_remote_retrieve_response_code( $response );
+        if ( $code >= 400 ) return new WP_Error( 'helix_leads_failed', "HTTP {$code}" );
+        return json_decode( wp_remote_retrieve_body( $response ), true ) ?? [];
+    }
+
     public function get_usage_summary( int $days = 30 ): array|WP_Error {
         $body     = '';
         $response = wp_remote_get(

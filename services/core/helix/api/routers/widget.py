@@ -1006,11 +1006,7 @@ async def capture_lead(
     await db.commit()
     await db.refresh(lead)
 
-    settings = get_settings()
-    webhook_url = (
-        getattr(settings, "lead_webhook_url", None)
-        or None
-    )
+    webhook_url = (tenant.branding or {}).get("lead_webhook_url") or None
     if webhook_url:
         import httpx as _httpx
 

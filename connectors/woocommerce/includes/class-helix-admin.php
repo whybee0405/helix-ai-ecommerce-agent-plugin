@@ -18,6 +18,14 @@ class Helix_Admin {
             'helix-connector',
             [ self::class, 'render_settings_page' ]
         );
+        add_submenu_page(
+            'woocommerce',
+            'Helix — Leads',
+            'Helix Leads',
+            'manage_woocommerce',
+            'helix-leads',
+            [ self::class, 'render_leads_page' ]
+        );
     }
 
     public static function register_settings(): void {
@@ -53,6 +61,17 @@ class Helix_Admin {
         update_option( 'helix_sb_fly_to_cart', isset( $_POST['helix_sb_fly_to_cart'] ) ? 1 : 0 );
         update_option( 'helix_sb_card_modal', isset( $_POST['helix_sb_card_modal'] ) ? 1 : 0 );
         update_option( 'helix_lead_webhook_url', esc_url_raw( $_POST['helix_lead_webhook_url'] ?? '' ) );
+
+        /* Sync operational settings to backend if already connected */
+        if ( get_option( 'helix_tenant_id' ) && get_option( 'helix_admin_secret' ) ) {
+            $client = new Helix_API_Client(
+                get_option( 'helix_api_url', '' ),
+                get_option( 'helix_public_key', '' )
+            );
+            $client->update_branding( [
+                'lead_webhook_url' => get_option( 'helix_lead_webhook_url', '' ) ?: null,
+            ] );
+        }
 
         if ( ! get_option( 'helix_tenant_id' ) ) {
             $client = new Helix_API_Client( get_option( 'helix_api_url', '' ) );
@@ -278,6 +297,76 @@ class Helix_Admin {
                     });
                 });
                 </script>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    public static function render_leads_page(): void {
+        $tenant_id = get_option( 'helix_tenant_id', '' );
+        if ( ! $tenant_id ) {
+            echo '<div class="wrap"><h1>Helix — Leads</h1><p>Connect your store first on the <a href="' . esc_url( admin_url( 'admin.php?page=helix-connector' ) ) . '">Helix settings</a> page.</p></div>';
+            return;
+        }
+
+        $api_url      = get_option( 'helix_api_url', '' );
+        $public_key   = get_option( 'helix_public_key', '' );
+        $client       = new Helix_API_Client( $api_url, $public_key );
+        $page_num     = max( 1, intval( $_GET['paged'] ?? 1 ) );
+        $result       = $client->get_leads( $page_num, 50 );
+        $error        = is_wp_error( $result ) ? $result->get_error_message() : null;
+        $leads        = $error ? [] : ( $result['leads'] ?? [] );
+        $total        = $error ? 0 : ( $result['total'] ?? 0 );
+        $total_pages  = $total ? (int) ceil( $total / 50 ) : 1;
+        ?>
+        <div class="wrap">
+            <h1>Helix — Enquiry Leads</h1>
+            <p><?php echo esc_html( $total ); ?> total lead<?php echo $total !== 1 ? 's' : ''; ?></p>
+
+            <?php if ( $error ) : ?>
+                <div class="notice notice-error"><p>Could not fetch leads: <?php echo esc_html( $error ); ?></p></div>
+            <?php elseif ( empty( $leads ) ) : ?>
+                <p>No leads yet. Once customers submit an enquiry, they will appear here.</p>
+            <?php else : ?>
+                <table class="wp-list-table widefat fixed striped" style="margin-top:16px;">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Vehicle (product ID)</th>
+                            <th>Best time to call</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ( $leads as $lead ) : ?>
+                            <tr>
+                                <td><?php echo esc_html( wp_date( 'd M Y H:i', strtotime( $lead['created_at'] ) ) ); ?></td>
+                                <td><?php echo esc_html( $lead['name'] ?? '—' ); ?></td>
+                                <td><?php echo esc_html( $lead['phone'] ?? '—' ); ?></td>
+                                <td><?php echo esc_html( $lead['email'] ?? '—' ); ?></td>
+                                <td><?php echo esc_html( $lead['product_platform_id'] ?? '—' ); ?></td>
+                                <td><?php echo esc_html( $lead['preferred_contact_time'] ?? '—' ); ?></td>
+                                <td><?php echo esc_html( $lead['source'] ?? '—' ); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+
+                <?php if ( $total_pages > 1 ) : ?>
+                    <div class="tablenav bottom" style="margin-top:12px;">
+                        <?php
+                        echo paginate_links( [
+                            'base'    => add_query_arg( 'paged', '%#%' ),
+                            'format'  => '',
+                            'current' => $page_num,
+                            'total'   => $total_pages,
+                        ] );
+                        ?>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
         <?php

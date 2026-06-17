@@ -54,9 +54,15 @@ async def apply_preset_to_tenant(
     tenant: Tenant,
     preset_id: str,
 ) -> Branding:
-    """Replace the tenant's branding with a fresh preset payload (overwrites all fields)."""
+    """Replace the tenant's branding with a fresh preset payload (overwrites all fields).
+    Operational settings (lead_webhook_url) are preserved across preset changes."""
+    stored = tenant.branding or {}
+    _PRESERVE = ("lead_webhook_url",)
+    preserved = {k: stored[k] for k in _PRESERVE if stored.get(k)}
     preset = get_preset(preset_id)
-    new = preset.model_copy(update={"preset_id": preset.preset_id})
+    new_data = preset.model_dump(mode="json")
+    new_data.update(preserved)
+    new = Branding.model_validate(new_data)
     await update_tenant(
         db,
         tenant,

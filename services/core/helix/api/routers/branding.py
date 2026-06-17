@@ -139,6 +139,7 @@ async def widget_branding(
         return JSONResponse(content=None, status_code=304, headers={"ETag": etag})
 
     payload = branding.model_dump(mode="json")
+    payload.pop("lead_webhook_url", None)  # operational field — never sent to public widget
     payload["version"] = tenant.branding_version
     pack = get_pack_for_tenant(tenant)
     payload["pack_cta_type"] = pack.cta_type
@@ -286,3 +287,55 @@ async def bootstrap_admin_secret(
         await update_tenant(db, tenant, credentials_enc=new_enc)
         await db.commit()
     return {"admin_secret": secret, "tenant_id": str(tenant.id)}
+
+
+# ─── Leads endpoint ───────────────────────────────────────────────────────────
+
+
+@router.get("/v1/admin/leads")
+async def admin_list_leads(
+    page: int = 1,
+    limit: int = 50,
+    tenant: Tenant = Depends(_auth_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    from sqlalchemy import select, func
+    from helix.db.models import Lead
+
+    limit = max(1, min(limit, 200))
+    page = max(1, page)
+    offset = (page - 1) * limit
+
+    total_row = await db.execute(
+        select(func.count()).select_from(Lead).where(Lead.tenant_id == tenant.id)
+    )
+    total = total_row.scalar_one()
+
+    rows = await db.execute(
+        select(Lead)
+        .where(Lead.tenant_id == tenant.id)
+        .order_by(Lead.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    leads = rows.scalars().all()
+
+    return {
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "leads": [
+            {
+                "id": str(lead.id),
+                "name": lead.name,
+                "email": lead.email,
+                "phone": lead.phone,
+                "preferred_contact_time": lead.preferred_contact_time,
+                "product_platform_id": lead.product_platform_id,
+                "source": lead.source,
+                "session_id": lead.session_id,
+                "created_at": lead.created_at.isoformat(),
+            }
+            for lead in leads
+        ],
+    }
