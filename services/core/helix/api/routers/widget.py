@@ -1172,6 +1172,57 @@ _SEARCH_BAR_JS = r"""
     'transition:background .12s;}',
     '.hx-sb-lall:hover{background:rgba(124,58,237,.06);}',
 
+    /* ── Inline AI results — rendered in page flow, not in dropdown ───── */
+    '#hx-sb-results{width:100%;max-width:860px;margin:0 auto;',
+    'padding:0 20px 32px;display:none;box-sizing:border-box;}',
+    '#hx-sb-results.hx-sr-show{display:block;}',
+    '.hx-sr-blk{background:rgba(242,242,247,.9);padding:10px 14px;border-radius:14px;',
+    'margin-bottom:10px;font:400 13.5px/1.65 -apple-system,sans-serif;color:#1C1C1E;}',
+    '.hx-sr-blk strong{font-weight:600;}.hx-sr-blk em{font-style:italic;}',
+    '.hx-sr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));',
+    'gap:16px;margin-top:10px;}',
+    '.hx-sr-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;',
+    'overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07);',
+    'transition:transform .22s cubic-bezier(.175,.885,.32,1.275),box-shadow .22s;',
+    'animation:hx-sr-fly .58s cubic-bezier(.175,.885,.32,1.275) both;}',
+    '.hx-sr-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.12);}',
+    '.hx-sr-cimg{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;',
+    'background:linear-gradient(135deg,#f0edff,#ede9fe);}',
+    '.hx-sr-cph{width:100%;aspect-ratio:1/1;background:linear-gradient(135deg,#f0edff,#ede9fe);',
+    'display:flex;align-items:center;justify-content:center;}',
+    '.hx-sr-cph svg{width:36px;height:36px;opacity:.18;}',
+    '.hx-sr-ci{padding:12px;}',
+    '.hx-sr-ct{font:500 13px/1.35 -apple-system,sans-serif;color:#1C1C1E;',
+    'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px;}',
+    '.hx-sr-cp{font:700 13.5px/1 -apple-system,sans-serif;margin-bottom:10px;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);',
+    '-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}',
+    '.hx-sr-atc{display:block;border:none;width:100%;box-sizing:border-box;',
+    'padding:9px 0;border-radius:10px;cursor:pointer;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;',
+    'font:600 12px/1 -apple-system,sans-serif;text-align:center;',
+    'transition:all .2s;box-shadow:0 2px 8px rgba(124,58,237,.3);}',
+    '.hx-sr-atc:hover{transform:scale(1.03);box-shadow:0 4px 16px rgba(124,58,237,.48);}',
+    '.hx-sr-atc.adding{opacity:.6;pointer-events:none;}',
+    '.hx-sr-atc.added{background:linear-gradient(135deg,#34C759,#30D158)!important;',
+    '-webkit-text-fill-color:#fff!important;}',
+    '.hx-sr-footer{display:flex;justify-content:flex-end;margin-top:10px;}',
+    '.hx-sr-oc{all:unset;cursor:pointer;font:500 12px/1 -apple-system,sans-serif;',
+    'color:#7C3AED;padding:6px 12px;border-radius:8px;',
+    'display:inline-flex;align-items:center;gap:5px;transition:background .15s;}',
+    '.hx-sr-oc:hover{background:rgba(124,58,237,.08);}',
+    '.hx-sr-oc svg{width:13px;height:13px;stroke:#7C3AED;fill:none;',
+    'stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}',
+    /* The magic: cards start at search-bar position (above, tiny, blurred) */
+    /* and fly down into their grid slots one by one */
+    '@keyframes hx-sr-fly{',
+    '0%{opacity:0;transform:translateY(-90px) scale(0.12) rotate(6deg);filter:blur(10px);}',
+    '50%{opacity:1;filter:blur(0);}',
+    '72%{transform:translateY(7px) scale(1.05) rotate(-0.6deg);}',
+    '100%{opacity:1;transform:translateY(0) scale(1) rotate(0deg);filter:blur(0);}}',
+    /* Loading dots inside inline results */
+    '.hx-sr-dots{display:flex;gap:6px;align-items:center;padding:24px;justify-content:center;}',
+
     /* Dark mode — bar stays white on dark sites; only chips + panel adapt */
     '@media(prefers-color-scheme:dark){',
     '#hx-sb-section{background:linear-gradient(180deg,transparent 0%,rgba(124,58,237,.08) 50%,transparent 100%);}',
@@ -1271,6 +1322,7 @@ _SEARCH_BAR_JS = r"""
       '</div>',
     '</div>',
     '<div id="hx-sb-chips"></div>',
+    '<div id="hx-sb-results"></div>',
   ].join('');
 
   /* ── Refs ─────────────────────────────────────────────────────────────── */
@@ -1287,6 +1339,7 @@ _SEARCH_BAR_JS = r"""
   var pcls  = root.querySelector('#hx-sb-pclose');
   var fcBtn = root.querySelector('#hx-sb-fc');
   var chipsBox = root.querySelector('#hx-sb-chips');
+  var inlineResults = root.querySelector('#hx-sb-results');
   var headline = root.querySelector('#hx-sb-headline');
   var panelTitle = root.querySelector('#hx-sb-ph strong');
 
@@ -1542,40 +1595,57 @@ _SEARCH_BAR_JS = r"""
     });
   }
 
-  /* ── Render results ───────────────────────────────────────────────────── */
+  /* ── Render results (inline, in page flow) ────────────────────────────── */
   function renderResults(text, products) {
-    body.innerHTML = '';
+    inlineResults.innerHTML = '';
+    inlineResults.classList.add('hx-sr-show');
     if (text) {
       text.split(/\n+/).filter(function (s) { return s.trim(); }).forEach(function (para) {
         var d = document.createElement('div');
-        d.className = 'hx-sb-blk';
+        d.className = 'hx-sr-blk';
         d.innerHTML = md(para.trim());
-        body.appendChild(d);
+        inlineResults.appendChild(d);
       });
     }
     if (products && products.length) {
       var grid = document.createElement('div');
-      grid.className = 'hx-sb-grid';
+      grid.className = 'hx-sr-grid';
       products.forEach(function (p, i) {
         var card = document.createElement('div');
-        card.className = 'hx-sb-card';
-        card.style.animationDelay = (i * 60) + 'ms';
+        card.className = 'hx-sr-card';
+        /* stagger each card so they fly in one after another */
+        card.style.animationDelay = (i * 90) + 'ms';
         card.innerHTML = (p.image_url
-          ? '<img class="hx-sb-cimg" src="' + esc(p.image_url) + '" alt="" loading="lazy">'
-          : '<div class="hx-sb-cph"><svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>') +
-          '<div class="hx-sb-ci">' +
-            '<div class="hx-sb-ct">' + esc(p.title) + '</div>' +
-            '<div class="hx-sb-cp">' + fmt(p.price_minor, p.currency) + '</div>' +
-            '<button class="hx-sb-atc">Add to Cart</button>' +
+          ? '<img class="hx-sr-cimg" src="' + esc(p.image_url) + '" alt="" loading="lazy">'
+          : '<div class="hx-sr-cph"><svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>') +
+          '<div class="hx-sr-ci">' +
+            '<div class="hx-sr-ct">' + esc(p.title) + '</div>' +
+            '<div class="hx-sr-cp">' + fmt(p.price_minor, p.currency) + '</div>' +
+            '<button class="hx-sr-atc">Add to Cart</button>' +
           '</div>';
-        card.querySelector('.hx-sb-atc').addEventListener('click', function (e) {
+        card.querySelector('.hx-sr-atc').addEventListener('click', function (e) {
           e.stopPropagation();
           addToCart(p.platform_id, this);
         });
         grid.appendChild(card);
       });
-      body.appendChild(grid);
+      inlineResults.appendChild(grid);
     }
+    /* "Open in full chat" link */
+    var footer = document.createElement('div');
+    footer.className = 'hx-sr-footer';
+    footer.innerHTML = '<button class="hx-sr-oc">Open in chat<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>';
+    footer.querySelector('.hx-sr-oc').addEventListener('click', function () {
+      var hxBtn = document.getElementById('hx-btn');
+      if (hxBtn) {
+        hxBtn.click();
+        setTimeout(function () {
+          var ci = document.getElementById('hx-inp');
+          if (ci && inp.value.trim()) { ci.value = inp.value.trim(); ci.focus(); }
+        }, 400);
+      }
+    });
+    inlineResults.appendChild(footer);
   }
 
   /* ── Search / Send ────────────────────────────────────────────────────── */
@@ -1594,8 +1664,9 @@ _SEARCH_BAR_JS = r"""
     isLoading = true;
     _ac = new AbortController();
     var signal = _ac.signal;
-    body.innerHTML = '<div id="hx-sb-typing"><div class="hx-sbd"></div><div class="hx-sbd"></div><div class="hx-sbd"></div></div>';
-    openPanel();
+    /* Show loading spinner in the inline results area */
+    inlineResults.innerHTML = '<div class="hx-sr-dots"><div class="hx-sbd"></div><div class="hx-sbd"></div><div class="hx-sbd"></div></div>';
+    inlineResults.classList.add('hx-sr-show');
     getToken()
       .then(function (tok) {
         return fetch(BASE + '/v1/widget/chat', {
@@ -1626,7 +1697,7 @@ _SEARCH_BAR_JS = r"""
   goBtn.addEventListener('click', doSearch);
   inp.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
-    if (e.key === 'Escape') { abortInFlight(); closePanel(); inp.blur(); }
+    if (e.key === 'Escape') { abortInFlight(); closePanel(); inlineResults.classList.remove('hx-sr-show'); inlineResults.innerHTML = ''; inp.blur(); }
   });
   inp.addEventListener('input', function () {
     if (aiMode) return;
