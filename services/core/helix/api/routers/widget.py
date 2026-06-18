@@ -219,6 +219,39 @@ _EMBED_JS = r"""
     '#hx-wa-btn:active{transform:scale(.97);}',
     '#hx-wa-btn svg{width:18px;height:18px;fill:#fff;flex-shrink:0;}',
     '@media(max-width:420px){#hx-panel{right:12px;left:12px;width:auto;bottom:90px;}}',
+    /* enquiry modal (mirrors search-bar widget styles) */
+    '#hx-pm-ov{position:fixed;inset:0;z-index:1000001;display:flex;align-items:center;justify-content:center;',
+    'padding:16px;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);',
+    'animation:hx-pm-bg .22s ease both;cursor:default;}',
+    '@keyframes hx-pm-bg{from{opacity:0;}to{opacity:1;}}',
+    '#hx-pm{position:relative;background:#fff;border-radius:22px;width:100%;max-width:500px;',
+    'max-height:88vh;overflow-y:auto;box-shadow:0 40px 100px rgba(0,0,0,.28);',
+    'animation:hx-pm-up .35s cubic-bezier(.175,.885,.32,1.275) both;}',
+    '@keyframes hx-pm-up{from{transform:translateY(40px) scale(.93);}to{transform:translateY(0) scale(1);}}',
+    '#hx-pm-img{width:100%;max-height:260px;object-fit:cover;border-radius:22px 22px 0 0;display:block;}',
+    '#hx-pm-iph{height:180px;display:flex;align-items:center;justify-content:center;',
+    'background:#F2F2F7;border-radius:22px 22px 0 0;}',
+    '#hx-pm-iph svg{width:56px;height:56px;opacity:.35;}',
+    '#hx-pm-close{position:absolute;top:12px;right:14px;background:rgba(0,0,0,.45);',
+    'border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer !important;',
+    'font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;}',
+    '#hx-pm-body{padding:20px;}',
+    '#hx-pm-name{font:700 18px/1.3 -apple-system,sans-serif;color:#1C1C1E;margin:0 0 6px;}',
+    '#hx-pm-price{font:600 16px/1 -apple-system,sans-serif;color:#7C3AED;margin:0 0 18px;}',
+    '.hx-eq-title{font:600 14px/1.3 -apple-system,sans-serif;color:#3C3C43;margin:0 0 14px;}',
+    '.hx-eq-title strong{color:#1C1C1E;}',
+    '.hx-eq-inp{display:block;width:100%;box-sizing:border-box;',
+    'border:1.5px solid rgba(0,0,0,.12);border-radius:10px;padding:9px 12px;',
+    'font:400 14px/1.4 -apple-system,sans-serif;color:#1C1C1E;margin-bottom:10px;outline:none;}',
+    '.hx-eq-inp:focus{border-color:#7C3AED;}',
+    '.hx-eq-send{width:100%;padding:13px;border:none;border-radius:12px;',
+    'background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;',
+    'font:600 15px/1 -apple-system,sans-serif;cursor:pointer;margin-top:4px;}',
+    '.hx-eq-send:disabled{opacity:.55;pointer-events:none;}',
+    '.hx-eq-msg{font:400 12px/1.4 -apple-system,sans-serif;color:#FF3B30;margin-top:8px;min-height:18px;}',
+    '.hx-eq-ok{background:rgba(52,199,89,.08);border:1px solid rgba(52,199,89,.25);',
+    'border-radius:10px;padding:12px;font:400 14px/1.4 -apple-system,sans-serif;',
+    'color:#1C1C1E;margin-top:12px;text-align:center;}',
   ].join('');
   document.head.appendChild(style);
 
@@ -466,49 +499,78 @@ _EMBED_JS = r"""
     return card;
   }
 
-  function openEnquiryForm(product) {
-    var formId = 'hx-eq-' + product.platform_id;
-    if (document.getElementById(formId)) return; /* already open */
-    var wrap = document.createElement('div');
-    wrap.id = formId;
-    wrap.className = 'hx-msg hx-bot';
-    wrap.innerHTML =
-      '<div class="hx-eq-title">Enquire about <strong>' + esc(product.title) + '</strong></div>' +
-      '<div class="hx-eq-fields">' +
-        '<input class="hx-eq-inp" name="name"  placeholder="Your name *" required>' +
-        '<input class="hx-eq-inp" name="phone" placeholder="Phone number *" type="tel">' +
-        '<input class="hx-eq-inp" name="email" placeholder="Email address" type="email">' +
-        '<input class="hx-eq-inp" name="time"  placeholder="Best time to call">' +
-      '</div>' +
-      '<button class="hx-eq-send">Send Enquiry</button>' +
-      '<div class="hx-eq-ok" style="display:none">Thanks! We\'ll be in touch shortly.</div>';
-    msgs.appendChild(wrap);
-    msgs.scrollTop = msgs.scrollHeight;
+  function _esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
 
-    wrap.querySelector('.hx-eq-send').addEventListener('click', function () {
-      var name  = wrap.querySelector('[name=name]').value.trim();
-      var phone = wrap.querySelector('[name=phone]').value.trim();
-      var email = wrap.querySelector('[name=email]').value.trim();
-      var time  = wrap.querySelector('[name=time]').value.trim();
-      if (!name) { wrap.querySelector('[name=name]').focus(); return; }
-      if (!phone && !email) { wrap.querySelector('[name=phone]').focus(); return; }
-      var btn = this; btn.disabled = true; btn.textContent = 'Sending…';
+  function _closeEnquiryModal() {
+    var ov = document.getElementById('hx-pm-ov');
+    if (ov) {
+      ov.style.animation = 'hx-pm-bg .18s ease reverse both';
+      setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 180);
+    }
+    document.body.style.overflow = '';
+  }
+
+  function openEnquiryForm(product) {
+    _closeEnquiryModal();
+    document.body.style.overflow = 'hidden';
+    var PHsvg = '<svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
+    var ov = document.createElement('div');
+    ov.id = 'hx-pm-ov';
+    ov.innerHTML = [
+      '<div id="hx-pm">',
+        product.image_url
+          ? '<img id="hx-pm-img" src="' + _esc(product.image_url) + '" alt="">'
+          : '<div id="hx-pm-iph">' + PHsvg + '</div>',
+        '<button id="hx-pm-close" aria-label="Close">\xd7</button>',
+        '<div id="hx-pm-body">',
+          '<div id="hx-pm-name">' + _esc(product.title) + '</div>',
+          '<div id="hx-pm-price">' + fmt(product.price_minor, product.currency) + '</div>',
+          '<div class="hx-eq-title">Enquire about <strong>' + _esc(product.title) + '</strong></div>',
+          '<input class="hx-eq-inp" id="hx-eq-name"  type="text"  placeholder="Your name" autocomplete="name">',
+          '<input class="hx-eq-inp" id="hx-eq-phone" type="tel"   placeholder="Phone number" autocomplete="tel">',
+          '<input class="hx-eq-inp" id="hx-eq-email" type="email" placeholder="Email address" autocomplete="email">',
+          '<input class="hx-eq-inp" id="hx-eq-time"  type="text"  placeholder="Best time to call (optional)">',
+          '<button id="hx-pm-atc" class="hx-eq-send">Send Enquiry</button>',
+          '<div class="hx-eq-msg" id="hx-eq-msg"></div>',
+        '</div>',
+      '</div>',
+    ].join('');
+    document.body.appendChild(ov);
+
+    ov.querySelector('#hx-pm-close').addEventListener('click', _closeEnquiryModal);
+    ov.addEventListener('click', function (e) { if (e.target === ov) _closeEnquiryModal(); });
+
+    var btn   = ov.querySelector('#hx-pm-atc');
+    var msgEl = ov.querySelector('#hx-eq-msg');
+    btn.addEventListener('click', function () {
+      var nameVal  = (ov.querySelector('#hx-eq-name').value  || '').trim();
+      var phoneVal = (ov.querySelector('#hx-eq-phone').value || '').trim();
+      var emailVal = (ov.querySelector('#hx-eq-email').value || '').trim();
+      var timeVal  = (ov.querySelector('#hx-eq-time').value  || '').trim();
+      msgEl.textContent = '';
+      if (!nameVal)              { msgEl.textContent = 'Please enter your name.';            return; }
+      if (!phoneVal && !emailVal){ msgEl.textContent = 'Please enter a phone or email.';     return; }
+      btn.disabled = true; btn.textContent = 'Sending…';
       getToken().then(function (tok) {
         return fetch(BASE + '/v1/widget/capture-lead', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
           body: JSON.stringify({
             product_platform_id: product.platform_id,
-            name: name, phone: phone || null,
-            email: email || null, preferred_contact_time: time || null,
+            name: nameVal, phone: phoneVal || null,
+            email: emailVal || null, preferred_contact_time: timeVal || null,
           }),
         });
-      }).then(function () {
-        wrap.querySelector('.hx-eq-fields').style.display = 'none';
-        btn.style.display = 'none';
-        wrap.querySelector('.hx-eq-ok').style.display = 'block';
+      }).then(function (r) {
+        if (!r.ok) throw new Error('error');
+        ov.querySelector('#hx-pm-body').innerHTML =
+          '<div class="hx-eq-ok">Thanks! We\'ll be in touch shortly.</div>';
       }).catch(function () {
         btn.disabled = false; btn.textContent = 'Send Enquiry';
+        msgEl.textContent = 'Something went wrong. Please try again.';
       });
     });
   }
