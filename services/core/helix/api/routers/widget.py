@@ -323,6 +323,12 @@ _EMBED_JS = r"""
     }
     if (inp && B.chat_placeholder) inp.placeholder = B.chat_placeholder;
   }
+  /* Apply cached branding synchronously so the correct name shows before the fetch resolves */
+  (function () {
+    var cached = null;
+    try { cached = JSON.parse(localStorage.getItem('hx_brand_' + KEY) || 'null'); } catch (e) {}
+    if (cached) { applyEmbedBranding(cached); if (cached.pack_cta_type) _ctaType = cached.pack_cta_type; }
+  })();
   window.HelixBranding.load(BASE, KEY).then(function (B) {
     applyEmbedBranding(B);
     if (B && B.pack_cta_type) _ctaType = B.pack_cta_type;
@@ -1711,6 +1717,12 @@ _SEARCH_BAR_JS = r"""
       chipsBox.appendChild(btn);
     });
   }
+  /* Apply cached branding synchronously so the correct name shows before the fetch resolves */
+  (function () {
+    var cached = null;
+    try { cached = JSON.parse(localStorage.getItem('hx_brand_' + KEY) || 'null'); } catch (e) {}
+    if (cached) { applyBranding(cached); if (cached.pack_cta_type) _ctaType = cached.pack_cta_type; }
+  })();
   window.HelixBranding.load(BASE, KEY).then(function (B) {
     applyBranding(B);
     if (B && B.pack_cta_type) _ctaType = B.pack_cta_type;
