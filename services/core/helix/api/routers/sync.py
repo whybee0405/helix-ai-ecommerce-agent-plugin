@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import jsonschema
@@ -67,6 +68,7 @@ async def sync_products(
                 categories=cp.categories,
                 in_stock=cp.in_stock,
                 domain_attributes=cp.domain_attributes,
+                updated_at=datetime.now(timezone.utc),
             )
             saved = await upsert_product(db, product)
             embed_product.delay(str(tenant.id), str(saved.id))
