@@ -148,7 +148,7 @@ async def widget_branding(
         content=payload,
         headers={
             "ETag": etag,
-            "Cache-Control": "public, max-age=60, stale-while-revalidate=600",
+            "Cache-Control": "no-cache",
             "Vary": "Accept-Encoding",
         },
     )

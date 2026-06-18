@@ -2223,7 +2223,7 @@ _BRANDING_BOOTSTRAP_JS = r"""
         ? { 'If-None-Match': 'W/"branding-' + stored.version + '"' }
         : {};
       var self = this;
-      this._p = fetch(BASE + '/v1/widget/branding?key=' + encodeURIComponent(KEY), { headers: headers })
+      this._p = fetch(BASE + '/v1/widget/branding?key=' + encodeURIComponent(KEY), { headers: headers, cache: 'no-cache' })
         .then(function (r) {
           if (r.status === 304 && stored) return stored;
           if (!r.ok) return stored;
