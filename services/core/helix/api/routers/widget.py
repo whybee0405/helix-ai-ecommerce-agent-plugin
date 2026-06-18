@@ -55,6 +55,7 @@ _EMBED_JS = r"""
   var _msgLog    = [];
   var wcNonce    = null;
   var nonceProm  = null;
+  var _ctaType   = 'cart'; /* overridden to 'enquire' for automotive pack */
 
   /* Detect WordPress REST root — works even when WP is in a subdirectory */
   var _apiLink = document.head.querySelector('link[rel="https://api.w.org/"]');
@@ -289,7 +290,10 @@ _EMBED_JS = r"""
     }
     if (inp && B.chat_placeholder) inp.placeholder = B.chat_placeholder;
   }
-  window.HelixBranding.load(BASE, KEY).then(applyEmbedBranding);
+  window.HelixBranding.load(BASE, KEY).then(function (B) {
+    applyEmbedBranding(B);
+    if (B && B.pack_cta_type) _ctaType = B.pack_cta_type;
+  });
 
   /* ── WooCommerce nonce ──────────────────────────────────────────────── */
   function ensureNonce() {
@@ -444,17 +448,69 @@ _EMBED_JS = r"""
       ? '<img class="hx-cimg" src="' + product.image_url + '" alt="" loading="lazy">'
       : '<div class="hx-cph"><svg viewBox="0 0 24 24" fill="#7C3AED"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>';
 
+    var ctaLabel = _ctaType === 'enquire' ? 'Enquire Now' : 'Add to Cart';
     card.innerHTML = imgHtml +
       '<div class="hx-cb">' +
         '<div class="hx-ct">' + product.title + '</div>' +
         '<div class="hx-cp">' + fmt(product.price_minor, product.currency) + '</div>' +
-        '<button class="hx-catc">Add to Cart</button>' +
+        '<button class="hx-catc">' + ctaLabel + '</button>' +
       '</div>';
 
     card.querySelector('.hx-catc').addEventListener('click', function () {
-      addToCart(product.platform_id, this);
+      if (_ctaType === 'enquire') {
+        openEnquiryForm(product);
+      } else {
+        addToCart(product.platform_id, this);
+      }
     });
     return card;
+  }
+
+  function openEnquiryForm(product) {
+    var formId = 'hx-eq-' + product.platform_id;
+    if (document.getElementById(formId)) return; /* already open */
+    var wrap = document.createElement('div');
+    wrap.id = formId;
+    wrap.className = 'hx-msg hx-bot';
+    wrap.innerHTML =
+      '<div class="hx-eq-title">Enquire about <strong>' + esc(product.title) + '</strong></div>' +
+      '<div class="hx-eq-fields">' +
+        '<input class="hx-eq-inp" name="name"  placeholder="Your name *" required>' +
+        '<input class="hx-eq-inp" name="phone" placeholder="Phone number *" type="tel">' +
+        '<input class="hx-eq-inp" name="email" placeholder="Email address" type="email">' +
+        '<input class="hx-eq-inp" name="time"  placeholder="Best time to call">' +
+      '</div>' +
+      '<button class="hx-eq-send">Send Enquiry</button>' +
+      '<div class="hx-eq-ok" style="display:none">Thanks! We\'ll be in touch shortly.</div>';
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    wrap.querySelector('.hx-eq-send').addEventListener('click', function () {
+      var name  = wrap.querySelector('[name=name]').value.trim();
+      var phone = wrap.querySelector('[name=phone]').value.trim();
+      var email = wrap.querySelector('[name=email]').value.trim();
+      var time  = wrap.querySelector('[name=time]').value.trim();
+      if (!name) { wrap.querySelector('[name=name]').focus(); return; }
+      if (!phone && !email) { wrap.querySelector('[name=phone]').focus(); return; }
+      var btn = this; btn.disabled = true; btn.textContent = 'Sending…';
+      getToken().then(function (tok) {
+        return fetch(BASE + '/v1/widget/capture-lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+          body: JSON.stringify({
+            product_platform_id: product.platform_id,
+            name: name, phone: phone || null,
+            email: email || null, preferred_contact_time: time || null,
+          }),
+        });
+      }).then(function () {
+        wrap.querySelector('.hx-eq-fields').style.display = 'none';
+        btn.style.display = 'none';
+        wrap.querySelector('.hx-eq-ok').style.display = 'block';
+      }).catch(function () {
+        btn.disabled = false; btn.textContent = 'Send Enquiry';
+      });
+    });
   }
 
   /* ── Text rendering ─────────────────────────────────────────────────── */
