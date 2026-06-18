@@ -22,5 +22,5 @@
     "stock_number":     { "type": "string" },
     "certified_used":   { "type": "boolean" }
   },
-  "required": ["make", "model", "year", "condition", "fuel_type", "transmission", "body_type"]
+  "required": []
 }

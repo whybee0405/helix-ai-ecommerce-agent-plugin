@@ -266,7 +266,7 @@ class Helix_Migrator {
 
     /* ── Apply inferred attributes to one product ─────────────────────────── */
 
-    public static function migrate_one( WC_Product $product ): array {
+    public static function migrate_one( WC_Product $product, bool $force = false ): array {
         $inferred = self::infer( $product );
         $existing = $product->get_attributes();
         $attrs    = $existing; // keep existing attributes intact
@@ -276,8 +276,8 @@ class Helix_Migrator {
         foreach ( $inferred as $slug => $value ) {
             $tax = 'pa_' . $slug;
 
-            // Skip if this attribute already has at least one term assigned.
-            if ( isset( $existing[ $tax ] ) && ! empty( $existing[ $tax ]->get_options() ) ) {
+            // Skip if this attribute already has a value — unless force mode is on.
+            if ( ! $force && isset( $existing[ $tax ] ) && ! empty( $existing[ $tax ]->get_options() ) ) {
                 $skipped[] = $slug;
                 continue;
             }
@@ -309,6 +309,8 @@ class Helix_Migrator {
             wp_send_json_error( [ 'message' => 'Unauthorized' ], 403 );
         }
 
+        $force = ! empty( $_POST['force'] );
+
         self::ensure_attributes();
 
         $products = wc_get_products( [
@@ -319,7 +321,7 @@ class Helix_Migrator {
 
         $rows = [];
         foreach ( $products as $p ) {
-            $r      = self::migrate_one( $p );
+            $r      = self::migrate_one( $p, $force );
             $rows[] = [
                 'id'      => $p->get_id(),
                 'title'   => $p->get_name(),
@@ -353,6 +355,10 @@ class Helix_Migrator {
             <button id="hx-migrate-btn" class="button button-primary button-large">
                 Run Migration
             </button>
+            <label style="margin-left:16px;vertical-align:middle;">
+                <input type="checkbox" id="hx-migrate-force">
+                Force overwrite existing attributes
+            </label>
             <span id="hx-migrate-spinner" class="spinner" style="float:none;margin:0 8px;vertical-align:middle;display:none;"></span>
 
             <div id="hx-migrate-result" style="margin-top:24px;"></div>
@@ -370,6 +376,9 @@ class Helix_Migrator {
                 var fd = new FormData();
                 fd.append('action', 'helix_run_migration');
                 fd.append('nonce', '<?php echo esc_js( wp_create_nonce( 'helix_run_migration' ) ); ?>');
+                if (document.getElementById('hx-migrate-force').checked) {
+                    fd.append('force', '1');
+                }
 
                 fetch('<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>', {
                     method: 'POST',
