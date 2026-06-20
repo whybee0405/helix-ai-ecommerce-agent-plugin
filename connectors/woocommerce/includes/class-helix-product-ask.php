@@ -41,16 +41,16 @@ class Helix_Product_Ask {
 
         $atts = shortcode_atts( [ 'product_id' => '' ], $atts, 'helix_ask_ai' );
 
-        $product = null;
+        global $product;
+        $wc_product = null;
         if ( ! empty( $atts['product_id'] ) ) {
-            $product = wc_get_product( (int) $atts['product_id'] );
+            $wc_product = wc_get_product( (int) $atts['product_id'] );
         }
-        if ( ! $product instanceof WC_Product ) {
-            global $product as $global_product;
-            $product = $global_product ?? null;
+        if ( ! $wc_product instanceof WC_Product ) {
+            $wc_product = ( $product instanceof WC_Product ) ? $product : null;
         }
 
-        $product_name = $product instanceof WC_Product ? $product->get_name() : '';
+        $product_name = $wc_product instanceof WC_Product ? $wc_product->get_name() : '';
         return self::_button_html( esc_js( $product_name ) );
     }
 
