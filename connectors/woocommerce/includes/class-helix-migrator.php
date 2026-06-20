@@ -340,96 +340,479 @@ class Helix_Migrator {
 
     public static function render_page(): void {
         ?>
-        <div class="wrap">
-            <h1>Helix — Automotive Data Migration</h1>
-            <p>
-                This tool inspects every published WC product and auto-fills missing
-                automotive attributes (make, model, year, body type, fuel, transmission,
-                mileage estimate, finance estimate, safety rating, doors, etc.) based on
-                titles, categories, and descriptions.
-                <strong>Existing attribute values are never overwritten.</strong>
-            </p>
-            <p>Run once after importing dummy data, then review the results and correct any
-               misdetections directly in the WC product editor.</p>
+        <style>
+        /* ── Helix Migrator Page ── */
+        .helix-migrator-page *,
+        .helix-migrator-page *::before,
+        .helix-migrator-page *::after { box-sizing: border-box; }
 
-            <button id="hx-migrate-btn" class="button button-primary button-large">
-                Run Migration
-            </button>
-            <label style="margin-left:16px;vertical-align:middle;">
-                <input type="checkbox" id="hx-migrate-force">
-                Force overwrite existing attributes
-            </label>
-            <span id="hx-migrate-spinner" class="spinner" style="float:none;margin:0 8px;vertical-align:middle;display:none;"></span>
+        .helix-migrator-page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px 20px 60px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #374151;
+            background: #f9fafb;
+        }
 
-            <div id="hx-migrate-result" style="margin-top:24px;"></div>
+        /* ── Header ── */
+        .hmp-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .hmp-header h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            color: #1e1b4b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .hmp-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #fff;
+            letter-spacing: .04em;
+        }
+        .hmp-subtitle {
+            font-size: 13px;
+            color: #6b7280;
+            margin: 4px 0 0;
+            line-height: 1.5;
+        }
 
-            <script>
-            document.getElementById('hx-migrate-btn').addEventListener('click', function () {
-                var btn     = this;
-                var spinner = document.getElementById('hx-migrate-spinner');
-                var result  = document.getElementById('hx-migrate-result');
+        /* ── Info card ── */
+        .hmp-info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .hmp-info-icon { flex-shrink: 0; margin-top: 1px; }
+        .hmp-info-body { font-size: 13px; color: #1e40af; line-height: 1.6; }
+        .hmp-info-body strong { color: #1e3a8a; }
 
-                btn.disabled             = true;
-                spinner.style.display    = 'inline-block';
-                result.innerHTML         = '<p>Running… this may take a moment for large catalogs.</p>';
+        /* ── Attributes grid ── */
+        .hmp-attrs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .hmp-attr-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: #f5f3ff;
+            border: 1px solid #ede9fe;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #4f46e5;
+        }
+        .hmp-attr-chip svg { flex-shrink: 0; }
 
-                var fd = new FormData();
-                fd.append('action', 'helix_run_migration');
-                fd.append('nonce', '<?php echo esc_js( wp_create_nonce( 'helix_run_migration' ) ); ?>');
-                if (document.getElementById('hx-migrate-force').checked) {
-                    fd.append('force', '1');
+        /* ── Section card ── */
+        .hmp-section {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .hmp-section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fafafa;
+        }
+        .hmp-section-head h2 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e1b4b;
+            border-left: 3px solid #6366f1;
+            padding-left: 10px;
+        }
+        .hmp-section-body { padding: 24px; }
+
+        /* ── Run controls ── */
+        .hmp-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .hmp-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            min-height: 40px;
+            border: none;
+            cursor: pointer;
+            transition: background .15s, opacity .15s;
+            font-family: inherit;
+        }
+        .hmp-btn-primary { background: #6366f1; color: #fff; }
+        .hmp-btn-primary:hover { background: #4f46e5; }
+        .hmp-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+        /* ── Toggle switch ── */
+        .hmp-toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .hmp-toggle {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 22px;
+            flex-shrink: 0;
+        }
+        .hmp-toggle input { opacity: 0; width: 0; height: 0; }
+        .hmp-toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: #d1d5db;
+            border-radius: 22px;
+            transition: background .2s;
+        }
+        .hmp-toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            left: 3px;
+            top: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform .2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,.2);
+        }
+        .hmp-toggle input:checked + .hmp-toggle-slider { background: #ef4444; }
+        .hmp-toggle input:checked + .hmp-toggle-slider::before { transform: translateX(18px); }
+        .hmp-toggle-label {
+            font-size: 13px;
+            color: #374151;
+        }
+        .hmp-toggle-label strong { color: #ef4444; }
+
+        /* ── Spinner ── */
+        .hmp-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #6366f1;
+            border-radius: 50%;
+            animation: hmp-spin .7s linear infinite;
+            display: none;
+            flex-shrink: 0;
+        }
+        @keyframes hmp-spin { to { transform: rotate(360deg); } }
+
+        .hmp-status-text {
+            font-size: 13px;
+            color: #6b7280;
+            display: none;
+        }
+
+        /* ── Result notices ── */
+        .hmp-result { margin-top: 0; }
+        .hmp-result-notice {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+        .hmp-result-notice.success { background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46; }
+        .hmp-result-notice.error   { background: #fef2f2; border: 1px solid #fca5a5; color: #7f1d1d; }
+
+        /* ── Results table ── */
+        .hmp-table-wrap { overflow-x: auto; }
+        .hmp-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .hmp-table thead th {
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 1;
+            font-size: 11px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            padding: 10px 14px;
+            border-bottom: 2px solid #e5e7eb;
+            text-align: left;
+        }
+        .hmp-table thead th:first-child { width: 50px; }
+        .hmp-table tbody td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f3f4f6;
+            color: #374151;
+            vertical-align: top;
+        }
+        .hmp-table tbody tr:last-child td { border-bottom: none; }
+        .hmp-table tbody tr:nth-child(even) td { background: #f9fafb; }
+        .hmp-table tbody tr:hover td { background: #f5f3ff; }
+        .hmp-id-cell { color: #9ca3af; font-size: 12px; font-variant-numeric: tabular-nums; }
+        .hmp-attr-set {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .hmp-attr-tag {
+            display: inline-block;
+            padding: 1px 7px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .hmp-attr-tag.set     { background: #dcfce7; color: #15803d; }
+        .hmp-attr-tag.none    { background: #f3f4f6; color: #9ca3af; font-style: italic; }
+        .hmp-attr-tag.skipped { background: #f3f4f6; color: #6b7280; }
+
+        .hmp-footer-note {
+            margin-top: 16px;
+            padding: 12px 16px;
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #78350f;
+            line-height: 1.6;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 782px) {
+            .helix-migrator-page { padding: 16px 12px 40px; }
+            .hmp-header { flex-direction: column; }
+            .hmp-controls { flex-direction: column; align-items: flex-start; }
+            .hmp-btn { width: 100%; justify-content: center; }
+            .hmp-attrs-grid { grid-template-columns: repeat(2, 1fr); }
+            .hmp-section-body { padding: 16px; }
+        }
+        @media (max-width: 480px) {
+            .hmp-attrs-grid { grid-template-columns: 1fr; }
+        }
+        </style>
+
+        <div class="helix-migrator-page">
+
+            <!-- Page header -->
+            <div class="hmp-header">
+                <div>
+                    <h1>
+                        <svg width="22" height="22" fill="none" viewBox="0 0 24 24" aria-hidden="true"><path stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        Automotive Data Migration
+                        <span class="hmp-badge">Helix AI</span>
+                    </h1>
+                    <p class="hmp-subtitle">Auto-fill missing automotive attributes from product titles, categories, and descriptions.</p>
+                </div>
+            </div>
+
+            <!-- Info banner -->
+            <div class="hmp-info">
+                <div class="hmp-info-icon">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="#3b82f6" stroke-width="2"/><path stroke="#3b82f6" stroke-width="2" stroke-linecap="round" d="M12 8v4m0 4h.01"/></svg>
+                </div>
+                <div class="hmp-info-body">
+                    This tool inspects every published WooCommerce product and auto-fills missing automotive attributes (make, model, year, body type, fuel, transmission, mileage estimate, finance estimate, safety rating, doors, etc.) based on product data.
+                    <br><strong>Existing attribute values are never overwritten</strong> unless you enable force mode.
+                    Run once after importing dummy data, then review and correct any misdetections in the WC product editor before running the Helix catalog sync.
+                </div>
+            </div>
+
+            <!-- Attributes being populated -->
+            <div class="hmp-section">
+                <div class="hmp-section-head">
+                    <h2>Attributes That Will Be Populated</h2>
+                </div>
+                <div class="hmp-section-body">
+                    <div class="hmp-attrs-grid">
+                        <?php foreach ( self::ATTRS as $slug => $label ) : ?>
+                        <div class="hmp-attr-chip">
+                            <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/></svg>
+                            <?php echo esc_html( $label ); ?>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Run section -->
+            <div class="hmp-section">
+                <div class="hmp-section-head">
+                    <h2>Run Migration</h2>
+                </div>
+                <div class="hmp-section-body">
+                    <div class="hmp-controls">
+                        <button id="hx-migrate-btn" class="hmp-btn hmp-btn-primary">
+                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Run Migration
+                        </button>
+
+                        <label class="hmp-toggle-wrap">
+                            <div class="hmp-toggle">
+                                <input type="checkbox" id="hx-migrate-force">
+                                <span class="hmp-toggle-slider"></span>
+                            </div>
+                            <span class="hmp-toggle-label">Force overwrite — <strong>overwrites existing attributes</strong></span>
+                        </label>
+
+                        <div class="hmp-spinner" id="hx-migrate-spinner"></div>
+                        <span class="hmp-status-text" id="hx-migrate-status">Running&hellip; this may take a moment for large catalogs.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results area -->
+            <div id="hx-migrate-result"></div>
+
+        </div><!-- .helix-migrator-page -->
+
+        <script>
+        document.getElementById('hx-migrate-btn').addEventListener('click', function () {
+            var btn     = this;
+            var spinner = document.getElementById('hx-migrate-spinner');
+            var status  = document.getElementById('hx-migrate-status');
+            var result  = document.getElementById('hx-migrate-result');
+
+            btn.disabled          = true;
+            spinner.style.display = 'block';
+            status.style.display  = 'inline';
+            result.innerHTML      = '';
+
+            var fd = new FormData();
+            fd.append('action', 'helix_run_migration');
+            fd.append('nonce', '<?php echo esc_js( wp_create_nonce( 'helix_run_migration' ) ); ?>');
+            if (document.getElementById('hx-migrate-force').checked) {
+                fd.append('force', '1');
+            }
+
+            fetch('<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>', {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: fd,
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                spinner.style.display = 'none';
+                status.style.display  = 'none';
+                btn.disabled          = false;
+
+                if (!res.success) {
+                    result.innerHTML =
+                        '<div class="hmp-section"><div class="hmp-section-body">' +
+                        '<div class="hmp-result-notice error"><strong>Error:</strong> ' +
+                        ((res.data && res.data.message) ? res.data.message.replace(/</g,'&lt;') : 'Unknown error') +
+                        '</div></div></div>';
+                    return;
                 }
 
-                fetch('<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    body: fd,
-                })
-                .then(function (r) { return r.json(); })
-                .then(function (res) {
-                    spinner.style.display = 'none';
-                    btn.disabled          = false;
+                var d    = res.data;
+                var setCount  = d.results.filter(function(r){ return r.set.length > 0; }).length;
+                var skipCount = d.results.filter(function(r){ return r.skipped.length > 0; }).length;
 
-                    if (!res.success) {
-                        result.innerHTML = '<div class="notice notice-error inline" style="margin:0;"><p><strong>Error:</strong> ' + (res.data && res.data.message ? res.data.message : 'Unknown error') + '</p></div>';
-                        return;
+                var html =
+                    '<div class="hmp-section">' +
+                    '<div class="hmp-section-head"><h2>Migration Results</h2></div>' +
+                    '<div class="hmp-section-body">' +
+                    '<div class="hmp-result-notice success">' +
+                    '<strong>Migration complete.</strong> Processed ' + d.processed + ' product(s). ' +
+                    setCount + ' had attributes updated, ' + skipCount + ' had existing values preserved.' +
+                    '</div>' +
+                    '<div class="hmp-table-wrap">' +
+                    '<table class="hmp-table">' +
+                    '<thead><tr>' +
+                    '<th>ID</th>' +
+                    '<th>Product</th>' +
+                    '<th>Attributes set</th>' +
+                    '<th>Already had value</th>' +
+                    '</tr></thead>' +
+                    '<tbody>';
+
+                d.results.forEach(function (row) {
+                    var setHtml;
+                    if (row.set.length > 0) {
+                        setHtml = '<div class="hmp-attr-set">';
+                        row.set.forEach(function(a) {
+                            setHtml += '<span class="hmp-attr-tag set">' + a + '</span>';
+                        });
+                        setHtml += '</div>';
+                    } else {
+                        setHtml = '<span class="hmp-attr-tag none">none set</span>';
                     }
 
-                    var d    = res.data;
-                    var html = '<div class="notice notice-success inline" style="margin:0 0 16px;"><p>'
-                             + '<strong>Migration complete.</strong> Processed ' + d.processed + ' product(s).'
-                             + '</p></div>';
+                    var skipHtml;
+                    if (row.skipped.length > 0) {
+                        skipHtml = '<div class="hmp-attr-set">';
+                        row.skipped.forEach(function(a) {
+                            skipHtml += '<span class="hmp-attr-tag skipped">' + a + '</span>';
+                        });
+                        skipHtml += '</div>';
+                    } else {
+                        skipHtml = '<span style="color:#9ca3af;font-size:12px;">—</span>';
+                    }
 
-                    html += '<table class="wp-list-table widefat fixed striped">'
-                         +  '<thead><tr><th style="width:40px">ID</th><th>Product</th><th>Attributes set</th><th>Already had value</th></tr></thead>'
-                         +  '<tbody>';
-
-                    d.results.forEach(function (row) {
-                        var setList  = row.set.length  ? row.set.join(', ')     : '<em style="color:#8E8E93">none</em>';
-                        var skipList = row.skipped.length ? row.skipped.join(', ') : '—';
-                        html += '<tr>'
-                             +  '<td>' + row.id + '</td>'
-                             +  '<td>' + row.title.replace(/</g, '&lt;') + '</td>'
-                             +  '<td>' + setList  + '</td>'
-                             +  '<td style="color:#6B6B6F;font-size:12px;">' + skipList + '</td>'
-                             +  '</tr>';
-                    });
-
-                    html += '</tbody></table>';
-                    html += '<p style="margin-top:12px;">Review the results above, then go to '
-                         +  '<strong>WooCommerce → Products</strong> and correct any misdetections '
-                         +  'before running the Helix catalog sync.</p>';
-
-                    result.innerHTML = html;
-                })
-                .catch(function (err) {
-                    spinner.style.display = 'none';
-                    btn.disabled          = false;
-                    result.innerHTML = '<div class="notice notice-error inline" style="margin:0;"><p><strong>Request failed:</strong> ' + err.message + '</p></div>';
+                    html +=
+                        '<tr>' +
+                        '<td class="hmp-id-cell">#' + row.id + '</td>' +
+                        '<td style="font-weight:500;">' + row.title.replace(/</g, '&lt;') + '</td>' +
+                        '<td>' + setHtml + '</td>' +
+                        '<td>' + skipHtml + '</td>' +
+                        '</tr>';
                 });
+
+                html +=
+                    '</tbody></table></div>' +
+                    '<div class="hmp-footer-note">' +
+                    'Review the results above, then go to <strong>WooCommerce &rarr; Products</strong> and correct any misdetections ' +
+                    'before running the Helix catalog sync.' +
+                    '</div>' +
+                    '</div></div>';
+
+                result.innerHTML = html;
+            })
+            .catch(function (err) {
+                spinner.style.display = 'none';
+                status.style.display  = 'none';
+                btn.disabled          = false;
+                result.innerHTML =
+                    '<div class="hmp-section"><div class="hmp-section-body">' +
+                    '<div class="hmp-result-notice error"><strong>Request failed:</strong> ' + err.message + '</div>' +
+                    '</div></div>';
             });
-            </script>
-        </div>
+        });
+        </script>
         <?php
     }
 }
