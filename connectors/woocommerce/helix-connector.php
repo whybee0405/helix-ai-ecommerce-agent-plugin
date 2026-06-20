@@ -23,6 +23,8 @@ require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-branding.php';
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-cost-dashboard.php';
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-migrator.php';
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-product-ask.php';
+require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-inline-chat.php';
+require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-product-faq.php';
 
 function helix_connector_init(): void {
     Helix_Admin::init();
@@ -34,6 +36,8 @@ function helix_connector_init(): void {
     Helix_Cost_Dashboard::init();
     Helix_Migrator::init();
     Helix_Product_Ask::init();
+    Helix_Inline_Chat::init();
+    Helix_Product_Faq::init();
 }
 add_action( 'plugins_loaded', 'helix_connector_init' );
 

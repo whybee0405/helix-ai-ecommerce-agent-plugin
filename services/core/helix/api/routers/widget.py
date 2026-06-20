@@ -995,6 +995,105 @@ _EMBED_JS = r"""
       send(inp.value.trim());
     }
   });
+
+  /* ── Inline chat containers (Feature 7) ─────────────────────────────── */
+  function _mountInlineChat(container) {
+    /* Clone the full panel content into the container */
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.overflow = 'hidden';
+    container.style.borderRadius = '20px';
+    container.style.border = '1px solid rgba(0,0,0,.08)';
+    container.style.boxShadow = '0 4px 24px rgba(0,0,0,.1)';
+    container.style.background = 'rgba(255,255,255,.94)';
+
+    /* Build inner structure mirroring the floating panel */
+    var inlineMsgs = document.createElement('div');
+    inlineMsgs.className = 'hx-msgs';
+    inlineMsgs.style.cssText = 'flex:1;overflow-y:auto;padding:14px;scroll-behavior:smooth;';
+    inlineMsgs.innerHTML = panel.querySelector('#hx-msgs').innerHTML;
+
+    var inlineTyping = document.createElement('div');
+    inlineTyping.className = 'hx-tb';
+    inlineTyping.style.cssText = 'display:none;padding:0 14px 10px;';
+    inlineTyping.innerHTML = '<div class="hx-tb"><div class="hx-d"></div><div class="hx-d"></div><div class="hx-d"></div></div>';
+
+    var inlineFooter = document.createElement('div');
+    inlineFooter.style.cssText = 'padding:10px 14px;border-top:1px solid rgba(0,0,0,.06);background:rgba(255,255,255,.6);flex-shrink:0;';
+    var inlineForm = document.createElement('form');
+    var inlineInp = document.createElement('textarea');
+    inlineInp.placeholder = 'Ask anything…';
+    inlineInp.rows = 1;
+    inlineInp.style.cssText = 'flex:1;border:1.5px solid rgba(0,0,0,.1);border-radius:12px;padding:9px 12px;font:400 13.5px/1.4 -apple-system,sans-serif;color:#1C1C1E;resize:none;outline:none;width:100%;box-sizing:border-box;';
+    var inlineSend = document.createElement('button');
+    inlineSend.type = 'submit';
+    inlineSend.style.cssText = 'all:unset;cursor:pointer;width:36px;height:36px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#7C3AED,#4F46E5);display:flex;align-items:center;justify-content:center;margin-left:8px;';
+    inlineSend.innerHTML = '<svg viewBox="0 0 24 24" fill="#fff" width="16" height="16"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+    inlineForm.style.cssText = 'display:flex;gap:8px;align-items:flex-end;';
+    inlineForm.appendChild(inlineInp);
+    inlineForm.appendChild(inlineSend);
+    inlineFooter.appendChild(inlineForm);
+
+    container.appendChild(inlineMsgs);
+    container.appendChild(inlineTyping);
+    container.appendChild(inlineFooter);
+
+    /* Wire up send for this inline instance */
+    function inlineSendMsg(q) {
+      if (!q.trim()) return;
+      /* Append user message to inlineMsgs */
+      var welcome = inlineMsgs.querySelector('.hx-welcome');
+      if (welcome) welcome.style.display = 'none';
+      var urow = document.createElement('div');
+      urow.className = 'hx-msg hx-user';
+      urow.innerHTML = '<div class="hx-bubble"><div style="background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;padding:10px 14px;border-radius:18px 18px 4px 18px;">' + _esc(q) + '</div></div>';
+      inlineMsgs.appendChild(urow);
+      inlineInp.value = '';
+      inlineTyping.style.display = 'flex';
+      inlineMsgs.scrollTop = inlineMsgs.scrollHeight;
+
+      getToken().then(function (tok) {
+        return fetch(BASE + '/v1/widget/chat', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q, customer_profile: {} }),
+        });
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        inlineTyping.style.display = 'none';
+        if (d.response) {
+          var brow = document.createElement('div');
+          brow.className = 'hx-msg hx-bot';
+          brow.innerHTML = '<div class="hx-bubble"><div class="hx-block"><p>' + renderInline(d.response) + '</p></div></div>';
+          inlineMsgs.appendChild(brow);
+          inlineMsgs.scrollTop = inlineMsgs.scrollHeight;
+        }
+      }).catch(function () {
+        inlineTyping.style.display = 'none';
+      });
+    }
+
+    inlineForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      inlineSendMsg(inlineInp.value.trim());
+    });
+    inlineInp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); inlineSendMsg(inlineInp.value.trim()); }
+    });
+  }
+
+  function _initInlineChats() {
+    document.querySelectorAll('.helix-inline-chat').forEach(function (el) {
+      if (el.dataset.hxMounted) return;
+      el.dataset.hxMounted = '1';
+      _mountInlineChat(el);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _initInlineChats);
+  } else {
+    _initInlineChats();
+  }
 })();
 """.strip()
 
@@ -1659,6 +1758,113 @@ async def widget_escalate(
         escalation_id=str(escalation.id),
         message="A support agent will be in touch shortly.",
     )
+
+
+# ── AI Product FAQ ─────────────────────────────────────────────────────────────
+
+class ProductFaqItem(BaseModel):
+    question: str
+    answer: str
+
+
+class ProductFaqResponse(BaseModel):
+    platform_id: str
+    faqs: list[ProductFaqItem]
+
+
+_PRODUCT_FAQ_SYSTEM = (
+    "You are a helpful AI that generates FAQ entries for e-commerce products. "
+    "Given product details, produce exactly 5 frequently-asked questions with concise answers. "
+    "Respond with only valid JSON matching the schema provided."
+)
+
+
+@router.get("/product-faq/{platform_id}", response_model=ProductFaqResponse)
+async def widget_product_faq(
+    platform_id: str,
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> ProductFaqResponse:
+    """Return FAQs for a product. Generates via Claude on first call and caches in DB."""
+    from sqlalchemy import select
+    from helix.db.models import Product, ProductFaq
+
+    # Look up the product
+    prod_row = await db.execute(
+        select(Product).where(
+            Product.tenant_id == tenant.id,
+            Product.platform_id == platform_id,
+        )
+    )
+    product = prod_row.scalar_one_or_none()
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
+
+    # Check cache
+    existing = await db.execute(
+        select(ProductFaq)
+        .where(ProductFaq.tenant_id == tenant.id, ProductFaq.product_id == product.id)
+        .order_by(ProductFaq.generated_at.asc())
+    )
+    cached_faqs = list(existing.scalars().all())
+    if cached_faqs:
+        return ProductFaqResponse(
+            platform_id=platform_id,
+            faqs=[ProductFaqItem(question=f.question, answer=f.answer) for f in cached_faqs],
+        )
+
+    # Generate via Claude
+    settings = get_settings()
+    from pydantic import BaseModel as _BaseModel
+    from typing import Literal as _Literal
+
+    class _FaqList(_BaseModel):
+        faqs: list[dict]
+
+    from helix.llm.gateway import LLMGateway, ModelTier
+
+    gateway = LLMGateway(settings=settings, tenant_id=tenant.id)
+    product_info = (
+        f"Product: {product.title}\n"
+        f"Price: {product.currency} {product.price_minor / 100:.2f}\n"
+        f"In stock: {product.in_stock}\n"
+        f"Description: {(product.description_html or '')[:500]}\n"
+        f"Attributes: {product.domain_attributes or {}}"
+    )
+
+    try:
+        result = await gateway.complete(
+            tier=ModelTier.CLASSIFY,
+            system=_PRODUCT_FAQ_SYSTEM,
+            user=f"Generate FAQs for this product:\n\n{product_info}",
+            response_schema=_FaqList,
+            max_tokens=512,
+        )
+        raw_faqs = result.faqs[:5]
+    except Exception:
+        raw_faqs = []
+
+    if not raw_faqs:
+        return ProductFaqResponse(platform_id=platform_id, faqs=[])
+
+    # Store in DB
+    saved = []
+    for item in raw_faqs:
+        q = str(item.get("question", "")).strip()
+        a = str(item.get("answer", "")).strip()
+        if not q or not a:
+            continue
+        faq = ProductFaq(
+            tenant_id=tenant.id,
+            product_id=product.id,
+            question=q,
+            answer=a,
+        )
+        db.add(faq)
+        saved.append(ProductFaqItem(question=q, answer=a))
+
+    await db.commit()
+    return ProductFaqResponse(platform_id=platform_id, faqs=saved)
 
 
 _SEARCH_BAR_JS = r"""
