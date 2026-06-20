@@ -7,6 +7,7 @@ class Helix_Widget {
     public static function init(): void {
         add_action( 'wp_footer', [ self::class, 'inject' ] );
         add_action( 'wp_footer', [ self::class, 'inject_live_search' ] );
+        add_action( 'wp_footer', [ self::class, 'inject_cart_context' ] );
         add_shortcode( 'helix_search', [ self::class, 'shortcode' ] );
         add_action( 'wp_ajax_nopriv_helix_live_search', [ self::class, 'ajax_live_search' ] );
         add_action( 'wp_ajax_helix_live_search', [ self::class, 'ajax_live_search' ] );
@@ -131,6 +132,41 @@ color:#AEAEB2;text-align:center;background:rgba(0,0,0,.02);border-top:1px solid 
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init):init();
 })();
 </script>
+        <?php
+    }
+
+    /**
+     * Inject helixCartNonce and helixCartItems into the page so the widget JS
+     * can call the WooCommerce Store API to remove/update cart items.
+     */
+    public static function inject_cart_context(): void {
+        if ( is_admin() ) return;
+        if ( ! get_option( 'helix_widget_enabled', 0 ) ) return;
+        if ( ! class_exists( 'WooCommerce' ) ) return;
+        if ( ! function_exists( 'wc_get_cart' ) && ! isset( WC()->cart ) ) return;
+
+        $cart = WC()->cart;
+        if ( ! $cart ) return;
+
+        /* Build lightweight cart items array: key, product_id, name, quantity */
+        $items = [];
+        foreach ( $cart->get_cart() as $cart_key => $cart_item ) {
+            $product = $cart_item['data'] ?? null;
+            $items[] = [
+                'key'        => $cart_key,
+                'product_id' => (string) ( $cart_item['product_id'] ?? '' ),
+                'name'       => $product instanceof WC_Product ? $product->get_name() : '',
+                'quantity'   => (int) ( $cart_item['quantity'] ?? 1 ),
+            ];
+        }
+
+        /* Generate a nonce for the WC Store API */
+        $nonce = wp_create_nonce( 'wc_store_api' );
+        ?>
+        <script>
+        window.helixCartNonce = <?php echo wp_json_encode( $nonce ); ?>;
+        window.helixCartItems = <?php echo wp_json_encode( $items ); ?>;
+        </script>
         <?php
     }
 

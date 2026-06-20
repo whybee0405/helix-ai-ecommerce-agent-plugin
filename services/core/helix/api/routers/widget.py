@@ -581,6 +581,65 @@ _EMBED_JS = r"""
     });
   }
 
+  /* ── Cart modify helpers (Feature 4) ────────────────────────────────── */
+  function _cartNonce() {
+    return (window.helixCartNonce) || null;
+  }
+
+  function _cartItemKey(productId) {
+    var items = window.helixCartItems || [];
+    for (var i = 0; i < items.length; i++) {
+      if (String(items[i].product_id) === String(productId)) return items[i].key;
+    }
+    return null;
+  }
+
+  function _execCartAction(action, productId, quantity) {
+    var nonce = _cartNonce();
+    if (!nonce) { appendMsg('Cart modification requires a page refresh first.', 'bot', []); return; }
+    var key = _cartItemKey(productId);
+    if (!key) { appendMsg('That item was not found in your cart.', 'bot', []); return; }
+
+    var url = _restRoot + 'wc/store/v1/cart/items/' + key;
+    var method, body;
+    if (action === 'remove') {
+      method = 'DELETE';
+      body = null;
+    } else {
+      method = 'PATCH';
+      body = JSON.stringify({ quantity: quantity || 1 });
+    }
+
+    var headers = { 'Content-Type': 'application/json', 'Nonce': nonce };
+    fetch(url, { method: method, headers: headers, credentials: 'include', body: body })
+      .then(function (r) {
+        var newNonce = r.headers.get('Nonce') || r.headers.get('nonce');
+        if (newNonce) { window.helixCartNonce = newNonce; }
+        if (r.ok) {
+          return r.json().then(function (d) {
+            /* Refresh cart items list from response */
+            if (d && d.items) window.helixCartItems = d.items.map(function (it) {
+              return { key: it.key, product_id: String(it.id), name: it.name, quantity: it.quantity };
+            });
+            var msg = action === 'remove' ? 'Done — the item has been removed from your cart.' : 'Done — cart updated.';
+            appendMsg(msg, 'bot', []);
+            _refreshCartCounter(null, null);
+          });
+        } else {
+          appendMsg('Sorry, I could not modify the cart right now. Please try from the cart page.', 'bot', []);
+        }
+      })
+      .catch(function () { appendMsg('Cart update failed. Please refresh and try again.', 'bot', []); });
+  }
+
+  /* Parse a potential JSON block from the AI response for special action types */
+  function _tryParseActionBlock(text) {
+    var m = text.match(/```json\s*(\{[\s\S]*?\})\s*```/);
+    if (!m) m = text.match(/(\{"type"\s*:\s*"(?:cart_action|order_status|escalate)"[\s\S]*?\})/);
+    if (!m) return null;
+    try { return JSON.parse(m[1]); } catch (e) { return null; }
+  }
+
   /* ── Text rendering ─────────────────────────────────────────────────── */
   function renderInline(raw) {
     return raw
@@ -790,7 +849,23 @@ _EMBED_JS = r"""
           convId = d.conversation_id;
           localStorage.setItem(LS_CONV, convId);
           track('message_sent', {});
-          appendMsg(d.response, 'bot', d.products || []);
+
+          /* Check for special action blocks in the AI response */
+          var actionBlock = _tryParseActionBlock(d.response);
+          if (actionBlock && actionBlock.type === 'cart_action') {
+            /* Strip the JSON block from the visible message */
+            var visibleText = d.response.replace(/```json[\s\S]*?```/, '').trim()
+                || 'Got it, let me update your cart.';
+            appendMsg(visibleText, 'bot', []);
+            _execCartAction(actionBlock.action, actionBlock.product_id, actionBlock.quantity);
+          } else if (actionBlock && actionBlock.type === 'escalate') {
+            var visibleText2 = d.response.replace(/```json[\s\S]*?```/, '').trim()
+                || 'I\'ll connect you with a human agent.';
+            appendMsg(visibleText2, 'bot', []);
+            _renderEscalateForm(convId);
+          } else {
+            appendMsg(d.response, 'bot', d.products || []);
+          }
         } else {
           appendMsg(d.detail || 'Something went wrong. Please try again.', 'bot', []);
         }
