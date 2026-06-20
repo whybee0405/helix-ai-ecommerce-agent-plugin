@@ -1432,6 +1432,49 @@ async def widget_cancel_order(
     )
 
 
+# ── Product Context (Ask AI per product) ──────────────────────────────────────
+
+class ProductContextResponse(BaseModel):
+    platform_id: str
+    title: str
+    description_html: str | None
+    domain_attributes: dict
+    price_minor: int
+    currency: str
+    in_stock: bool
+
+
+@router.get("/product-context/{platform_id}", response_model=ProductContextResponse)
+async def widget_product_context(
+    platform_id: str,
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> ProductContextResponse:
+    """Return structured product context for the 'Ask AI' button on product pages."""
+    from sqlalchemy import select
+    from helix.db.models import Product
+
+    row = await db.execute(
+        select(Product).where(
+            Product.tenant_id == tenant.id,
+            Product.platform_id == platform_id,
+        )
+    )
+    product = row.scalar_one_or_none()
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
+
+    return ProductContextResponse(
+        platform_id=product.platform_id,
+        title=product.title,
+        description_html=product.description_html,
+        domain_attributes=product.domain_attributes or {},
+        price_minor=product.price_minor,
+        currency=product.currency,
+        in_stock=product.in_stock,
+    )
+
+
 _SEARCH_BAR_JS = r"""
 (function () {
   var script = document.currentScript;
