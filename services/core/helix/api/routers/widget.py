@@ -652,12 +652,127 @@ _EMBED_JS = r"""
   function showTyping() { typing.classList.add('hx-show'); msgs.scrollTop = msgs.scrollHeight; }
   function hideTyping() { typing.classList.remove('hx-show'); }
 
+  /* ── Order tracking helpers ──────────────────────────────────────────── */
+  function _isOrderTrackingQuery(q) {
+    var s = String(q || '').toLowerCase();
+    return /\btrack(\s+(my|the|an?))?\s+order\b/.test(s)
+        || /\border\s+status\b/.test(s)
+        || /\bwhere(\s+is)?\s+(my|the)\s+order\b/.test(s)
+        || /\bmy\s+order\b/.test(s)
+        || /\border\s+#?\s*\d/.test(s);
+  }
+
+  function _statusBadgeColor(status) {
+    var s = String(status || '').toLowerCase();
+    if (s.indexOf('cancel') >= 0) return '#FF3B30';
+    if (s.indexOf('complete') >= 0 || s.indexOf('deliver') >= 0) return '#34C759';
+    if (s.indexOf('ship') >= 0 || s.indexOf('transit') >= 0) return '#007AFF';
+    if (s.indexOf('process') >= 0 || s.indexOf('pending') >= 0) return '#FF9F0A';
+    return '#6B6B6F';
+  }
+
+  function _renderOrderCard(order) {
+    var color = _statusBadgeColor(order.status);
+    var items = (order.line_items || []).map(function (it) {
+      var name = it.name || it.title || it.product_name || ('#' + (it.product_id || it.platform_id || ''));
+      var qty = it.quantity || it.qty || 1;
+      return '<li style="font:400 12px/1.5 -apple-system,sans-serif;color:#1C1C1E;">' + _esc(name) + ' × ' + qty + '</li>';
+    }).join('');
+    var totalDisp;
+    try { totalDisp = fmt(order.total_minor, order.currency); }
+    catch (e) { totalDisp = (order.currency || '') + ' ' + ((order.total_minor || 0) / 100).toFixed(2); }
+    return [
+      '<div style="background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:14px;',
+      'padding:12px;margin-top:8px;box-shadow:0 1px 6px rgba(0,0,0,.06);">',
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">',
+          '<div style="font:600 13px/1.3 -apple-system,sans-serif;color:#1C1C1E;">Order #' + _esc(order.order_id) + '</div>',
+          '<span style="background:' + color + ';color:#fff;font:600 10px/1 -apple-system,sans-serif;',
+          'padding:4px 8px;border-radius:8px;text-transform:uppercase;letter-spacing:.4px;">',
+          _esc(order.status) + '</span>',
+        '</div>',
+        items ? '<ul style="margin:0 0 8px;padding-left:18px;">' + items + '</ul>' : '',
+        '<div style="display:flex;justify-content:space-between;font:500 12.5px/1.4 -apple-system,sans-serif;color:#1C1C1E;">',
+          '<span>Total</span><span>' + totalDisp + '</span>',
+        '</div>',
+      '</div>',
+    ].join('');
+  }
+
+  function _renderOrderForm() {
+    var welcome = msgs.querySelector('.hx-welcome');
+    if (welcome) welcome.style.display = 'none';
+    var row = document.createElement('div');
+    row.className = 'hx-msg hx-bot';
+    row.innerHTML = [
+      '<div class="hx-bubble">',
+        '<div class="hx-block">',
+          '<p>I can help track your order. Please enter your email and order number.</p>',
+          '<input class="hx-eq-inp" id="hx-ot-email" type="email" placeholder="Email used at checkout" autocomplete="email" style="margin-top:6px;">',
+          '<input class="hx-eq-inp" id="hx-ot-orderid" type="text" placeholder="Order number (optional)" style="margin-top:6px;">',
+          '<button id="hx-ot-go" class="hx-eq-send" style="margin-top:8px;">Look up order</button>',
+          '<div class="hx-eq-msg" id="hx-ot-msg" style="margin-top:6px;"></div>',
+        '</div>',
+      '</div>',
+    ].join('');
+    msgs.appendChild(row);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    var btn = row.querySelector('#hx-ot-go');
+    var msgEl = row.querySelector('#hx-ot-msg');
+    btn.addEventListener('click', function () {
+      var emailVal = (row.querySelector('#hx-ot-email').value || '').trim();
+      var orderVal = (row.querySelector('#hx-ot-orderid').value || '').trim();
+      msgEl.textContent = '';
+      if (!emailVal && !orderVal) { msgEl.textContent = 'Please enter an email or order number.'; return; }
+      btn.disabled = true; btn.textContent = 'Looking up…';
+      showTyping();
+      getToken().then(function (tok) {
+        var qs = 'email=' + encodeURIComponent(emailVal || '');
+        if (orderVal) qs += '&order_id=' + encodeURIComponent(orderVal);
+        return fetch(BASE + '/v1/widget/orders?' + qs, {
+          method: 'GET',
+          headers: { 'Authorization': 'Bearer ' + tok },
+        });
+      }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        hideTyping();
+        btn.disabled = false; btn.textContent = 'Look up order';
+        if (!res.ok || !res.d || !res.d.orders) {
+          appendMsg((res.d && res.d.detail) || 'Could not look up that order.', 'bot', []);
+          return;
+        }
+        if (!res.d.orders.length) {
+          appendMsg('No orders found for that email or order number.', 'bot', []);
+          return;
+        }
+        var html = '<p>Here\'s what I found:</p>' + res.d.orders.map(_renderOrderCard).join('');
+        var brow = document.createElement('div');
+        brow.className = 'hx-msg hx-bot';
+        brow.innerHTML = '<div class="hx-bubble"><div class="hx-block">' + html + '</div></div>';
+        msgs.appendChild(brow);
+        msgs.scrollTop = msgs.scrollHeight;
+      }).catch(function () {
+        hideTyping();
+        btn.disabled = false; btn.textContent = 'Look up order';
+        msgEl.textContent = 'Something went wrong. Please try again.';
+      });
+    });
+  }
+
   /* ── Send ───────────────────────────────────────────────────────────── */
   function send(query) {
     if (!query.trim()) return;
     appendMsg(query, 'user', null);
     inp.value = '';
     inp.style.height = 'auto';
+
+    /* Intercept order-tracking queries before hitting the LLM */
+    if (_isOrderTrackingQuery(query)) {
+      track('order_tracking_intent', {});
+      _renderOrderForm();
+      return;
+    }
+
     showTyping();
 
     getToken()
@@ -1154,6 +1269,166 @@ async def capture_lead(
     return LeadCaptureResponse(
         lead_id=str(lead.id),
         message="Enquiry received.",
+    )
+
+
+# ── Order Tracking ─────────────────────────────────────────────────────────────
+
+class OrderLineItem(BaseModel):
+    title: str | None = None
+    quantity: int | None = None
+    platform_id: str | None = None
+
+
+class OrderSummary(BaseModel):
+    order_id: str
+    status: str
+    total_minor: int
+    currency: str
+    placed_at: str
+    line_items: list[dict]
+
+
+class OrdersListResponse(BaseModel):
+    orders: list[OrderSummary]
+
+
+@router.get("/orders", response_model=OrdersListResponse)
+async def widget_list_orders(
+    email: str,
+    order_id: str | None = None,
+    tenant: Tenant = Depends(get_widget_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> OrdersListResponse:
+    """Look up orders for a tenant by customer email and/or platform order id."""
+    import hashlib
+    from sqlalchemy import select, or_
+
+    from helix.db.models import Customer, Order
+
+    if not email and not order_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="At least one of email or order_id is required.",
+        )
+
+    email_hash = hashlib.sha256((email or "").strip().lower().encode("utf-8")).hexdigest()
+
+    customer_ids_subq = (
+        select(Customer.id)
+        .where(Customer.tenant_id == tenant.id)
+        .where(Customer.email_hash == email_hash)
+    )
+
+    where_clauses = [Order.tenant_id == tenant.id]
+    if order_id:
+        where_clauses.append(
+            or_(Order.platform_id == order_id, Order.customer_id.in_(customer_ids_subq))
+        )
+    else:
+        where_clauses.append(Order.customer_id.in_(customer_ids_subq))
+
+    rows = await db.execute(
+        select(Order).where(*where_clauses).order_by(Order.placed_at.desc()).limit(20)
+    )
+    orders = rows.scalars().all()
+
+    return OrdersListResponse(
+        orders=[
+            OrderSummary(
+                order_id=o.platform_id,
+                status=o.status,
+                total_minor=o.total_minor,
+                currency=o.currency,
+                placed_at=o.placed_at.isoformat(),
+                line_items=o.line_items or [],
+            )
+            for o in orders
+        ]
+    )
+
+
+class OrderCancelRequest(BaseModel):
+    email: str
+    reason: str | None = None
+
+
+class OrderCancelResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.post("/orders/{platform_id}/cancel", response_model=OrderCancelResponse)
+async def widget_cancel_order(
+    platform_id: str,
+    body: OrderCancelRequest,
+    tenant: Tenant = Depends(get_widget_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> OrderCancelResponse:
+    """Mark an order as cancellation_requested if the provided email matches."""
+    import hashlib
+    from sqlalchemy import select
+
+    from helix.db.models import Customer, Order
+
+    if not body.email or not body.email.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Email is required to cancel an order.",
+        )
+
+    order_row = await db.execute(
+        select(Order).where(
+            Order.tenant_id == tenant.id,
+            Order.platform_id == platform_id,
+        )
+    )
+    order = order_row.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Order not found."
+        )
+
+    email_hash = hashlib.sha256(body.email.strip().lower().encode("utf-8")).hexdigest()
+    customer = None
+    if order.customer_id is not None:
+        cust_row = await db.execute(
+            select(Customer).where(
+                Customer.id == order.customer_id,
+                Customer.tenant_id == tenant.id,
+            )
+        )
+        customer = cust_row.scalar_one_or_none()
+    if customer is None or customer.email_hash != email_hash:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email does not match the order on file.",
+        )
+
+    order.status = "cancellation_requested"
+    db.add(order)
+    await db.commit()
+
+    webhook_url = (tenant.branding or {}).get("lead_webhook_url") or None
+    if webhook_url:
+        import httpx as _httpx
+
+        payload = {
+            "event": "order_cancel_requested",
+            "tenant_id": str(tenant.id),
+            "order_platform_id": platform_id,
+            "email": body.email,
+            "reason": body.reason,
+        }
+        try:
+            async with _httpx.AsyncClient(timeout=5.0) as client:
+                await client.post(webhook_url, json=payload)
+        except Exception:
+            pass
+
+    return OrderCancelResponse(
+        success=True,
+        message="Your cancellation request has been received. Our team will be in touch shortly.",
     )
 
 

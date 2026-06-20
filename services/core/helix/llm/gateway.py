@@ -32,7 +32,15 @@ class LLMParseError(Exception):
 
 
 class QueryIntent(BaseModel):
-    intent: Literal["product_search", "compatibility", "routine", "faq", "other"]
+    intent: Literal[
+        "product_search",
+        "compatibility",
+        "routine",
+        "faq",
+        "order_tracking",
+        "order_cancel",
+        "other",
+    ]
     confidence: float
 
 
@@ -201,7 +209,7 @@ class LLMGateway:
         """Win 8: route the GENERATE call to the smallest model that fits the intent."""
         if intent is None:
             return ModelTier.GENERATE
-        if intent.intent in ("faq", "other"):
+        if intent.intent in ("faq", "other", "order_tracking", "order_cancel"):
             return ModelTier.CLASSIFY  # Haiku is plenty for FAQ-style answers
         if intent.intent == "product_search" and len(context_products) <= 3:
             return ModelTier.CLASSIFY  # short candidate set = Haiku can summarise it well
