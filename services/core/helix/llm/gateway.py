@@ -291,7 +291,8 @@ class LLMGateway:
 
         # Semantic cache — embed the query once, look up similar prior responses.
         # Intent-aware TTL controls freshness.
-        if semantic_cache is not None and conversation_history is None:
+        # Only use for stateless (first-turn) queries: empty history list is falsy.
+        if semantic_cache is not None and not conversation_history:
             from helix.llm.semantic_cache import ttl_for_intent
             hit = await semantic_cache.lookup(
                 namespace=cache_namespace or "global",
@@ -363,7 +364,7 @@ class LLMGateway:
         )
 
         # Store in semantic cache for future similar queries (only for stateless turns).
-        if semantic_cache is not None and conversation_history is None:
+        if semantic_cache is not None and not conversation_history:
             from helix.llm.semantic_cache import ttl_for_intent
             try:
                 await semantic_cache.store(

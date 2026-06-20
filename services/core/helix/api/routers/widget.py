@@ -1014,7 +1014,6 @@ _EMBED_JS = r"""
     inlineMsgs.innerHTML = panel.querySelector('#hx-msgs').innerHTML;
 
     var inlineTyping = document.createElement('div');
-    inlineTyping.className = 'hx-tb';
     inlineTyping.style.cssText = 'display:none;padding:0 14px 10px;';
     inlineTyping.innerHTML = '<div class="hx-tb"><div class="hx-d"></div><div class="hx-d"></div><div class="hx-d"></div></div>';
 

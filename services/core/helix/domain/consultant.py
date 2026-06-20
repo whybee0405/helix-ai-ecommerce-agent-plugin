@@ -93,7 +93,6 @@ async def handle_query(
     if conversation_history is None:
         conversation_history = []
     gateway = LLMGateway(settings=settings, tenant_id=tenant_id)
-    cache = LLMCache(settings)
     sem_cache = SemanticCache(settings)
 
     system_prompt = _build_system_prompt(pack, branding, settings.brand_name)
