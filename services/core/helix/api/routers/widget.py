@@ -711,6 +711,61 @@ _EMBED_JS = r"""
   function showTyping() { typing.classList.add('hx-show'); msgs.scrollTop = msgs.scrollHeight; }
   function hideTyping() { typing.classList.remove('hx-show'); }
 
+  /* ── Human handover (Escalation) ────────────────────────────────────── */
+  function _renderEscalateForm(currentConvId) {
+    var welcome = msgs.querySelector('.hx-welcome');
+    if (welcome) welcome.style.display = 'none';
+    var row = document.createElement('div');
+    row.className = 'hx-msg hx-bot';
+    row.innerHTML = [
+      '<div class="hx-bubble">',
+        '<div class="hx-block">',
+          '<p style="margin-bottom:10px;">Please leave your email and a brief message and a team member will be in touch.</p>',
+          '<input class="hx-eq-inp" id="hx-esc-email" type="email" placeholder="Your email address" autocomplete="email" style="margin-top:4px;">',
+          '<textarea class="hx-eq-inp" id="hx-esc-msg" placeholder="Optional message…" rows="2" style="margin-top:6px;resize:vertical;"></textarea>',
+          '<button id="hx-esc-go" class="hx-eq-send" style="margin-top:8px;">Connect me with support</button>',
+          '<div class="hx-eq-msg" id="hx-esc-err" style="margin-top:6px;"></div>',
+        '</div>',
+      '</div>',
+    ].join('');
+    msgs.appendChild(row);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    var btn = row.querySelector('#hx-esc-go');
+    var errEl = row.querySelector('#hx-esc-err');
+    btn.addEventListener('click', function () {
+      var emailVal = (row.querySelector('#hx-esc-email').value || '').trim();
+      var msgVal   = (row.querySelector('#hx-esc-msg').value   || '').trim();
+      errEl.textContent = '';
+      if (!emailVal) { errEl.textContent = 'Please enter your email address.'; return; }
+      btn.disabled = true; btn.textContent = 'Sending…';
+      getToken().then(function (tok) {
+        return fetch(BASE + '/v1/widget/escalate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+          body: JSON.stringify({
+            session_id: currentConvId || null,
+            customer_email: emailVal,
+            message: msgVal || null,
+            transcript: _msgLog.slice(-20),
+          }),
+        });
+      }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (res.ok) {
+          row.querySelector('.hx-block').innerHTML =
+            '<div class="hx-eq-ok">' + _esc(res.d.message || 'A support agent will be in touch shortly.') + '</div>';
+        } else {
+          btn.disabled = false; btn.textContent = 'Connect me with support';
+          errEl.textContent = (res.d && res.d.detail) || 'Something went wrong. Please try again.';
+        }
+      }).catch(function () {
+        btn.disabled = false; btn.textContent = 'Connect me with support';
+        errEl.textContent = 'Could not submit. Please try again.';
+      });
+    });
+  }
+
   /* ── Order tracking helpers ──────────────────────────────────────────── */
   function _isOrderTrackingQuery(q) {
     var s = String(q || '').toLowerCase();
@@ -1547,6 +1602,62 @@ async def widget_product_context(
         price_minor=product.price_minor,
         currency=product.currency,
         in_stock=product.in_stock,
+    )
+
+
+# ── Human Handover (Escalation) ────────────────────────────────────────────────
+
+class EscalateRequest(BaseModel):
+    session_id: str | None = None
+    customer_email: str | None = None
+    transcript: list[dict] = []
+    message: str | None = None
+
+
+class EscalateResponse(BaseModel):
+    escalation_id: str
+    message: str
+
+
+@router.post("/escalate", response_model=EscalateResponse, status_code=status.HTTP_201_CREATED)
+async def widget_escalate(
+    body: EscalateRequest,
+    tenant: Tenant = Depends(get_widget_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> EscalateResponse:
+    """Save an escalation record and notify the merchant (via webhook if configured)."""
+    from helix.db.models import Escalation
+
+    escalation = Escalation(
+        tenant_id=tenant.id,
+        session_id=body.session_id,
+        customer_email=body.customer_email,
+        transcript=body.transcript or [],
+    )
+    db.add(escalation)
+    await db.commit()
+    await db.refresh(escalation)
+
+    webhook_url = (tenant.branding or {}).get("lead_webhook_url") or None
+    if webhook_url:
+        import httpx as _httpx
+
+        payload = {
+            "event": "escalation_requested",
+            "escalation_id": str(escalation.id),
+            "tenant_id": str(tenant.id),
+            "customer_email": body.customer_email,
+            "message": body.message,
+        }
+        try:
+            async with _httpx.AsyncClient(timeout=5.0) as client:
+                await client.post(webhook_url, json=payload)
+        except Exception:
+            pass
+
+    return EscalateResponse(
+        escalation_id=str(escalation.id),
+        message="A support agent will be in touch shortly.",
     )
 
 

@@ -91,6 +91,19 @@ async def handle_query(
             query, tenant_id, settings, db_session, system_prompt
         )
 
+    # Detect escalation intent and return a structured escalate block
+    if intent is not None and intent.intent == "escalate":
+        await cache.aclose()
+        await sem_cache.aclose()
+        return RouteResult(
+            response=(
+                '```json\n{"type": "escalate"}\n```\n\n'
+                "No problem — let me connect you with a member of our team. "
+                "Please share your email and any details and we'll be in touch shortly."
+            ),
+            source="escalate_intent",
+        )
+
     try:
         result = await gateway.route_query(
             query=query,
