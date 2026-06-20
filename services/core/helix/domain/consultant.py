@@ -12,6 +12,30 @@ from helix.packs.loader import LoadedPack
 logger = structlog.get_logger(__name__)
 
 
+async def _maybe_inject_web_search_context(
+    query: str,
+    settings: Settings,
+    system_prompt: str,
+) -> str:
+    """Call Brave Search and append top results to the system prompt."""
+    if settings.brave_api_key is None:
+        return system_prompt
+    try:
+        from helix.tools.web_search import brave_search
+
+        results = await brave_search(
+            query, settings.brave_api_key.get_secret_value()
+        )
+        if results:
+            snippets = "\n".join(
+                f"- {r['title']}: {r['snippet']} ({r['url']})" for r in results
+            )
+            return system_prompt + f"\n\nWeb search results for context:\n{snippets}"
+    except Exception as e:  # noqa: BLE001
+        logger.warning("web_search_context_failed", error=str(e))
+    return system_prompt
+
+
 async def _maybe_inject_faq_context(
     query: str,
     tenant_id: UUID,
@@ -90,6 +114,13 @@ async def handle_query(
         system_prompt = await _maybe_inject_faq_context(
             query, tenant_id, settings, db_session, system_prompt
         )
+
+    # Web search: use when intent is web_search or no relevant products found
+    if intent is not None and (
+        intent.intent == "web_search"
+        or (intent.intent == "other" and not context_products and settings.brave_api_key)
+    ):
+        system_prompt = await _maybe_inject_web_search_context(query, settings, system_prompt)
 
     # Detect escalation intent and return a structured escalate block
     if intent is not None and intent.intent == "escalate":

@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     llm_model_generate: str = "claude-sonnet-4-6"
     llm_model_reason: str = "claude-opus-4-8"
 
+    brave_api_key: SecretStr | None = None
+
     brand_name: str = "helix"
     environment: Literal["development", "production"] = "development"
     log_level: str = "INFO"
