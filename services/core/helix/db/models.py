@@ -246,3 +246,50 @@ class Lead(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, default=_now
     )
+
+
+class Faq(Base):
+    __tablename__ = "faq"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(
+        ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    answer: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[Optional[list[float]]] = mapped_column(Vector(1536), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, default=_now
+    )
+
+
+class Escalation(Base):
+    __tablename__ = "escalation"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(
+        ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    session_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    customer_email: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
+    transcript: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, default=_now
+    )
+
+
+class ProductFaq(Base):
+    __tablename__ = "product_faq"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(
+        ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    product_id: Mapped[UUID] = mapped_column(
+        ForeignKey("product.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    answer: Mapped[str] = mapped_column(Text, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, default=_now
+    )

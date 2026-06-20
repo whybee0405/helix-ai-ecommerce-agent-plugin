@@ -12,6 +12,33 @@ from helix.packs.loader import LoadedPack
 logger = structlog.get_logger(__name__)
 
 
+async def _maybe_inject_faq_context(
+    query: str,
+    tenant_id: UUID,
+    settings: Settings,
+    db_session,
+    system_prompt: str,
+) -> str:
+    """If FAQs with embeddings exist for the tenant, vector-search them and inject
+    the best match into the system prompt. Returns the (possibly extended) prompt."""
+    try:
+        from helix.domain.search import embed_query
+        from helix.db.crud.faqs import vector_search_faqs
+
+        qvec = await embed_query(query, settings)
+        hits = await vector_search_faqs(db_session, tenant_id, qvec, limit=1)
+        if hits:
+            faq, distance = hits[0]
+            if distance < 0.25:  # close enough to be useful
+                faq_snippet = (
+                    f"\n\nRelevant FAQ:\nQ: {faq.question}\nA: {faq.answer}"
+                )
+                return system_prompt + faq_snippet
+    except Exception as e:  # noqa: BLE001
+        logger.warning("faq_context_inject_failed", error=str(e))
+    return system_prompt
+
+
 def _build_system_prompt(pack: LoadedPack, branding: Branding | None, fallback_brand: str) -> str:
     base = pack.prompts.get("system", "You are a helpful advisor.")
     brand_name = branding.brand_name if branding else fallback_brand
@@ -47,6 +74,22 @@ async def handle_query(
 
     system_prompt = _build_system_prompt(pack, branding, settings.brand_name)
     cache_namespace = f"t={tenant_id}:bv={branding_version}"
+
+    # Classify intent early so we can enrich context for FAQ queries
+    intent = None
+    try:
+        cache = LLMCache(settings)
+        intent = await gateway.classify_intent(query, cache, cache_namespace=cache_namespace)
+        await cache.aclose()
+        cache = LLMCache(settings)  # fresh handle for route_query
+    except Exception as e:  # noqa: BLE001
+        logger.warning("consultant_intent_prefetch_failed", error=str(e))
+        cache = LLMCache(settings)
+
+    if intent is not None and intent.intent == "faq":
+        system_prompt = await _maybe_inject_faq_context(
+            query, tenant_id, settings, db_session, system_prompt
+        )
 
     try:
         result = await gateway.route_query(

@@ -9,6 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from helix.api.auth.crypto import decrypt_credentials, encrypt_credentials
@@ -290,6 +291,84 @@ async def bootstrap_admin_secret(
 
 
 # ─── Leads endpoint ───────────────────────────────────────────────────────────
+
+
+# ─── FAQ Admin endpoints ──────────────────────────────────────────────────────
+
+
+class FaqCreate(BaseModel):
+    question: str
+    answer: str
+
+
+class FaqOut(BaseModel):
+    id: str
+    question: str
+    answer: str
+    has_embedding: bool
+    created_at: str
+
+
+@router.post("/v1/admin/faqs", response_model=FaqOut, status_code=201)
+async def admin_create_faq(
+    body: FaqCreate,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(_auth_admin),
+) -> FaqOut:
+    from helix.db.crud.faqs import upsert_faq
+
+    faq = await upsert_faq(db, tenant.id, None, body.question, body.answer)
+    await db.commit()
+    await db.refresh(faq)
+
+    # Kick off async embedding
+    try:
+        from helix.workers.tasks.faq_embedding import embed_faq
+        embed_faq.delay(str(tenant.id), str(faq.id))
+    except Exception:  # noqa: BLE001
+        pass
+
+    return FaqOut(
+        id=str(faq.id),
+        question=faq.question,
+        answer=faq.answer,
+        has_embedding=faq.embedding is not None,
+        created_at=faq.created_at.isoformat(),
+    )
+
+
+@router.get("/v1/admin/faqs", response_model=list[FaqOut])
+async def admin_list_faqs(
+    tenant: Tenant = Depends(_auth_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[FaqOut]:
+    from helix.db.crud.faqs import list_faqs
+
+    faqs = await list_faqs(db, tenant.id)
+    return [
+        FaqOut(
+            id=str(f.id),
+            question=f.question,
+            answer=f.answer,
+            has_embedding=f.embedding is not None,
+            created_at=f.created_at.isoformat(),
+        )
+        for f in faqs
+    ]
+
+
+@router.delete("/v1/admin/faqs/{faq_id}", status_code=204)
+async def admin_delete_faq(
+    faq_id: UUID,
+    tenant: Tenant = Depends(_auth_admin),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    from helix.db.crud.faqs import delete_faq
+
+    deleted = await delete_faq(db, faq_id, tenant.id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="FAQ not found.")
+    await db.commit()
 
 
 @router.get("/v1/admin/leads")
