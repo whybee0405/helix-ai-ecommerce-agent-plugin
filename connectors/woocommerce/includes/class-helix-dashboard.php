@@ -546,7 +546,7 @@ class Helix_Dashboard {
                 <div class="hx-card-sub">This month (USD)</div>
             </div>
             <div class="hx-card">
-                <div class="hx-card-label">Products Synced</div>
+                <div class="hx-card-label"><?php echo esc_html( Helix_Pack::config()['sync_noun'] ); ?></div>
                 <div class="hx-card-value"><?php echo esc_html( $summary['product_count'] ?? 0 ); ?></div>
                 <div class="hx-card-sub">In catalog</div>
             </div>

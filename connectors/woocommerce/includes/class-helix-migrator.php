@@ -79,6 +79,7 @@ class Helix_Migrator {
     /* ─────────────────────────────────────────────────────────────────────── */
 
     public static function init(): void {
+        if ( Helix_Pack::is_hidden('migrator') ) return;
         add_action( 'admin_menu', [ self::class, 'add_menu' ] );
         add_action( 'wp_ajax_helix_run_migration', [ self::class, 'ajax_run' ] );
     }

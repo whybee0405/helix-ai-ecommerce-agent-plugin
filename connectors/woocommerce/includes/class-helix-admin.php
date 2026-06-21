@@ -63,7 +63,7 @@ class Helix_Admin {
         update_option( 'helix_sb_card_modal', isset( $_POST['helix_sb_card_modal'] ) ? 1 : 0 );
         update_option( 'helix_lead_webhook_url', esc_url_raw( $_POST['helix_lead_webhook_url'] ?? '' ) );
 
-        $allowed_packs = [ 'kbeauty', 'automotive' ];
+        $allowed_packs = [ 'kbeauty', 'automotive', 'general' ];
         $pack_id       = sanitize_text_field( $_POST['helix_pack_id'] ?? 'kbeauty' );
         if ( ! in_array( $pack_id, $allowed_packs, true ) ) {
             $pack_id = 'kbeauty';
@@ -546,7 +546,29 @@ class Helix_Admin {
             .helix-section-body { padding: 16px; }
             .helix-pager { justify-content: center; }
         }
+
+        /* ── Industry pack selector ── */
+        .helix-pack-selector{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+        @media(max-width:782px){.helix-pack-selector{grid-template-columns:1fr}}
+        .helix-pack-card{display:flex;flex-direction:column;align-items:center;text-align:center;padding:20px 16px;border:2px solid #e5e7eb;border-radius:10px;cursor:pointer;transition:all .15s;position:relative;border-bottom:4px solid var(--pack-color)}
+        .helix-pack-card:hover{border-color:#6366f1;background:#f5f3ff}
+        .helix-pack-card--active{border-color:#6366f1;background:#eef2ff}
+        .helix-pack-radio{position:absolute;opacity:0;pointer-events:none}
+        .helix-pack-icon{font-size:32px;margin-bottom:8px;display:block}
+        .helix-pack-name{font-size:14px;font-weight:600;color:#1e1b4b;margin-bottom:4px;display:block}
+        .helix-pack-desc{font-size:12px;color:#6b7280;display:block}
+        .helix-pack-check{position:absolute;top:8px;right:8px;width:20px;height:20px;background:#6366f1;color:white;border-radius:50%;font-size:11px;display:none;align-items:center;justify-content:center}
+        .helix-pack-card--active .helix-pack-check{display:flex}
         </style>
+
+        <script>
+        document.querySelectorAll('.helix-pack-radio').forEach(function(r){
+            r.addEventListener('change',function(){
+                document.querySelectorAll('.helix-pack-card').forEach(function(c){c.classList.remove('helix-pack-card--active')});
+                this.closest('.helix-pack-card').classList.add('helix-pack-card--active');
+            });
+        });
+        </script>
 
         <div class="helix-page">
 
@@ -559,6 +581,12 @@ class Helix_Admin {
                     </svg>
                     Helix Connector
                     <span class="helix-badge">Helix AI</span>
+                    <?php
+                    $pack = Helix_Pack::config();
+                    echo '<span class="helix-industry-badge" style="background:' . esc_attr( $pack['color'] ) . '20;color:' . esc_attr( $pack['color'] ) . ';border:1px solid ' . esc_attr( $pack['color'] ) . '40;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;margin-left:10px;">';
+                    echo esc_html( $pack['icon'] . ' ' . $pack['label'] );
+                    echo '</span>';
+                    ?>
                 </h1>
             </div>
 
@@ -595,7 +623,7 @@ class Helix_Admin {
                 <div class="helix-status-divider"></div>
                 <div class="helix-status-item">
                     <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path stroke="#6b7280" stroke-width="2" stroke-linecap="round" d="M20 7H4a1 1 0 00-1 1v8a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1z"/></svg>
-                    <strong id="helix-sync-count"><?php echo esc_html( $sync_count ); ?></strong> products synced
+                    <strong id="helix-sync-count"><?php echo esc_html( $sync_count ); ?></strong> <?php echo esc_html( strtolower( Helix_Pack::config()['sync_noun'] ) ); ?>
                 </div>
                 <?php endif; ?>
             </div>
@@ -618,23 +646,20 @@ class Helix_Admin {
                                     <span class="helix-helper">Controls AI schema &amp; behaviour</span>
                                 </div>
                                 <div class="helix-field-control">
-                                    <select name="helix_pack_id" class="helix-select" style="max-width:280px;">
-                                        <?php
-                                        $current_pack = get_option( 'helix_pack_id', 'kbeauty' );
-                                        $packs = [
-                                            'kbeauty'    => 'K-Beauty / Skincare',
-                                            'automotive' => 'Automotive / Car Dealership',
-                                        ];
-                                        foreach ( $packs as $value => $label ) {
-                                            printf(
-                                                '<option value="%s"%s>%s</option>',
-                                                esc_attr( $value ),
-                                                selected( $current_pack, $value, false ),
-                                                esc_html( $label )
-                                            );
-                                        }
-                                        ?>
-                                    </select>
+                                    <?php $current_pack = get_option( 'helix_pack_id', 'kbeauty' ); ?>
+                                    <div class="helix-pack-selector">
+                                        <?php foreach ( Helix_Pack::all() as $id => $pack ) : ?>
+                                        <label class="helix-pack-card <?php echo $current_pack === $id ? 'helix-pack-card--active' : ''; ?>"
+                                               style="--pack-color: <?php echo esc_attr( $pack['color'] ); ?>">
+                                            <input type="radio" name="helix_pack_id" value="<?php echo esc_attr( $id ); ?>"
+                                                   <?php checked( $current_pack, $id ); ?> class="helix-pack-radio">
+                                            <span class="helix-pack-icon"><?php echo $pack['icon']; ?></span>
+                                            <span class="helix-pack-name"><?php echo esc_html( $pack['label'] ); ?></span>
+                                            <span class="helix-pack-desc"><?php echo esc_html( $pack['description'] ); ?></span>
+                                            <span class="helix-pack-check">&#10003;</span>
+                                        </label>
+                                        <?php endforeach; ?>
+                                    </div>
                                     <p class="helix-field-desc">Determines which product schema and AI behaviour your store uses. Changing this after connecting will update the backend immediately.</p>
                                 </div>
                             </div>

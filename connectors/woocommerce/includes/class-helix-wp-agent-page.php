@@ -373,8 +373,12 @@ class Helix_WP_Agent_Page {
                     <div class="hwpa-card-body" style="padding:0;">
                         <div class="hwpa-chat-wrap" id="hwpa-chat-wrap">
                             <div class="hwpa-chat-msgs" id="hwpa-chat-msgs">
+                                <?php
+                                $pack  = Helix_Pack::config();
+                                $intro = "I can help you manage your {$pack['label']} store. Ask me to analyse content, fix performance issues, bulk-update {$pack['product_noun']}s, or anything else.";
+                                ?>
                                 <div class="hwpa-chat-bubble assistant">
-                                    Hello! I'm your Helix WP Agent. I can help you optimise your WordPress site, review performance metrics, bulk-update posts, and more. What would you like to do?
+                                    <?php echo esc_html( $intro ); ?>
                                 </div>
                             </div>
                             <div class="hwpa-chat-input-row">

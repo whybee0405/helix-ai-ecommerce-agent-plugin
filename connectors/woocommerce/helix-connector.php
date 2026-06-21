@@ -2,16 +2,17 @@
 /**
  * Plugin Name: Helix Connector
  * Description: Syncs your WooCommerce catalog with the Helix AI commerce intelligence platform.
- * Version: 0.5.1
+ * Version: 0.5.2
  * Requires PHP: 8.0
  * WC requires at least: 7.0
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'HELIX_CONNECTOR_VERSION', '0.5.1' );
+define( 'HELIX_CONNECTOR_VERSION', '0.5.2' );
 define( 'HELIX_CONNECTOR_DIR', plugin_dir_path( __FILE__ ) );
 
+require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-pack.php';
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-api-client.php';
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-sync.php';
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-webhooks.php';
