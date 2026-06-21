@@ -54,9 +54,11 @@ class Helix_WP_Agent_Page {
 
     public static function render(): void {
         $nonce   = wp_create_nonce( 'helix_wp_agent' );
-        $api_url = esc_js( get_option( 'helix_api_url', '' ) );
-        $pub_key = esc_js( get_option( 'helix_public_key', '' ) );
-        $adm_sec = esc_js( get_option( 'helix_admin_secret', '' ) );
+        $api_url      = esc_js( get_option( 'helix_api_url', '' ) );
+        $pub_key      = esc_js( get_option( 'helix_public_key', '' ) );
+        $adm_sec      = esc_js( get_option( 'helix_admin_secret', '' ) );
+        $wp_api_user  = esc_js( get_option( 'helix_wp_api_user', '' ) );
+        $wp_app_pass  = esc_js( get_option( 'helix_wp_app_password', '' ) );
         ?>
         <style>
         /* ── Helix WP Agent page ── */
@@ -570,12 +572,14 @@ class Helix_WP_Agent_Page {
         (function () {
             'use strict';
 
-            var NONCE   = '<?php echo esc_js( $nonce ); ?>';
-            var AJAX    = '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>';
-            var API_URL = '<?php echo $api_url; ?>';
-            var PUB_KEY = '<?php echo $pub_key; ?>';
-            var ADM_SEC = '<?php echo $adm_sec; ?>';
-            var SITE_URL = '<?php echo esc_js( site_url() ); ?>';
+            var NONCE       = '<?php echo esc_js( $nonce ); ?>';
+            var AJAX        = '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>';
+            var API_URL     = '<?php echo $api_url; ?>';
+            var PUB_KEY     = '<?php echo $pub_key; ?>';
+            var ADM_SEC     = '<?php echo $adm_sec; ?>';
+            var SITE_URL    = '<?php echo esc_js( site_url() ); ?>';
+            var WP_API_USER = '<?php echo $wp_api_user; ?>';
+            var WP_APP_PASS = '<?php echo $wp_app_pass; ?>';
 
             /* ── Tab switching ─────────────────────────────────────────── */
             document.querySelectorAll('.hwpa-tab').forEach(function (btn) {
@@ -943,10 +947,12 @@ class Helix_WP_Agent_Page {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message:      msg,
-                        history:      chatHistory.slice(0, -1),
-                        site_url:     SITE_URL,
-                        admin_secret: ADM_SEC,
+                        message:         msg,
+                        history:         chatHistory.slice(0, -1),
+                        site_url:        SITE_URL,
+                        admin_secret:    ADM_SEC,
+                        wp_username:     WP_API_USER,
+                        wp_app_password: WP_APP_PASS,
                     }),
                 })
                 .then(function (r) { return r.json(); })

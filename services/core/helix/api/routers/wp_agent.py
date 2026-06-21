@@ -164,6 +164,8 @@ class ChatRequest(BaseModel):
     history: list[ChatMessage] = []
     site_url: str
     admin_secret: str
+    wp_username: str = ""
+    wp_app_password: str = ""
 
 
 class ToolCallRecord(BaseModel):
@@ -271,6 +273,8 @@ async def wp_agent_chat(body: ChatRequest) -> ChatResponse:
                     tool_input,
                     body.site_url,
                     body.admin_secret,
+                    body.wp_username,
+                    body.wp_app_password,
                 )
             except Exception as exc:
                 log.warning("wp_agent.tool_error", tool=tool_name, error=str(exc))
@@ -307,10 +311,12 @@ async def _execute_tool(
     tool_input: dict[str, Any],
     site_url: str,
     admin_secret: str,
+    wp_username: str = "",
+    wp_app_password: str = "",
 ) -> Any:
     """Dispatch a tool call to the appropriate handler."""
     if name == "wp_api_call":
-        return await _tool_wp_api_call(tool_input, site_url, admin_secret)
+        return await _tool_wp_api_call(tool_input, site_url, wp_username, wp_app_password)
     if name == "run_quick_action":
         return await _tool_run_quick_action(tool_input, site_url, admin_secret)
     if name == "get_performance_metrics":
@@ -318,22 +324,22 @@ async def _execute_tool(
     if name == "get_action_log":
         return await _tool_get_action_log(tool_input, site_url, admin_secret)
     if name == "bulk_update_posts":
-        return await _tool_bulk_update_posts(tool_input, site_url, admin_secret)
+        return await _tool_bulk_update_posts(tool_input, site_url, wp_username, wp_app_password)
     raise ValueError(f"Unknown tool: {name}")
 
 
 async def _tool_wp_api_call(
     inp: dict[str, Any],
     site_url: str,
-    admin_secret: str,
+    wp_username: str = "",
+    wp_app_password: str = "",
 ) -> Any:
-    """Proxy a WordPress REST API call through the Helix backend."""
+    """Proxy a WordPress REST API call using Application Password auth."""
     method: str = inp["method"].upper()
     endpoint: str = inp.get("endpoint", "")
     params: dict | None = inp.get("params")
     body: dict | None = inp.get("body")
 
-    # Normalise endpoint.
     if not endpoint.startswith("/"):
         endpoint = "/" + endpoint
 
@@ -341,13 +347,16 @@ async def _tool_wp_api_call(
     url = rest_root + endpoint
 
     headers = {
-        "X-Helix-Admin-Secret": admin_secret,
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
+    # Use WordPress Application Password (Basic auth) for write operations.
+    auth = (wp_username, wp_app_password) if wp_username and wp_app_password else None
 
     async with httpx.AsyncClient(timeout=30) as http:
         req_kwargs: dict[str, Any] = {"headers": headers}
+        if auth:
+            req_kwargs["auth"] = auth
         if params:
             req_kwargs["params"] = params
         if body and method in ("POST", "PUT", "PATCH"):
@@ -432,7 +441,8 @@ async def _tool_get_action_log(
 async def _tool_bulk_update_posts(
     inp: dict[str, Any],
     site_url: str,
-    admin_secret: str,
+    wp_username: str = "",
+    wp_app_password: str = "",
 ) -> Any:
     """Bulk-update multiple posts via the WordPress REST API."""
     post_ids: list[int] = inp.get("post_ids", [])
@@ -443,17 +453,18 @@ async def _tool_bulk_update_posts(
     if not updates:
         return {"error": "No updates provided"}
 
+    auth = (wp_username, wp_app_password) if wp_username and wp_app_password else None
     results: list[dict[str, Any]] = []
 
     async with httpx.AsyncClient(timeout=30) as http:
         for post_id in post_ids:
             url = site_url.rstrip("/") + f"/wp-json/wp/v2/posts/{post_id}"
-            headers = {
-                "X-Helix-Admin-Secret": admin_secret,
-                "Content-Type": "application/json",
-            }
+            headers = {"Content-Type": "application/json"}
+            req_kwargs: dict[str, Any] = {"headers": headers, "json": updates}
+            if auth:
+                req_kwargs["auth"] = auth
             try:
-                resp = await http.post(url, json=updates, headers=headers)
+                resp = await http.post(url, **req_kwargs)
                 results.append({
                     "post_id": post_id,
                     "status": resp.status_code,

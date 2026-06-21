@@ -42,6 +42,8 @@ class Helix_Admin {
         register_setting( 'helix_settings', 'helix_sb_card_modal', [ 'sanitize_callback' => 'absint' ] );
         register_setting( 'helix_settings', 'helix_lead_webhook_url', [ 'sanitize_callback' => 'esc_url_raw' ] );
         register_setting( 'helix_settings', 'helix_pack_id', [ 'sanitize_callback' => 'sanitize_text_field' ] );
+        register_setting( 'helix_settings', 'helix_wp_api_user', [ 'sanitize_callback' => 'sanitize_text_field' ] );
+        register_setting( 'helix_settings', 'helix_wp_app_password', [ 'sanitize_callback' => 'sanitize_text_field' ] );
     }
 
     public static function save_settings(): void {
@@ -62,6 +64,10 @@ class Helix_Admin {
         update_option( 'helix_sb_fly_to_cart', isset( $_POST['helix_sb_fly_to_cart'] ) ? 1 : 0 );
         update_option( 'helix_sb_card_modal', isset( $_POST['helix_sb_card_modal'] ) ? 1 : 0 );
         update_option( 'helix_lead_webhook_url', esc_url_raw( $_POST['helix_lead_webhook_url'] ?? '' ) );
+        update_option( 'helix_wp_api_user', sanitize_text_field( $_POST['helix_wp_api_user'] ?? '' ) );
+        if ( ! empty( $_POST['helix_wp_app_password'] ) ) {
+            update_option( 'helix_wp_app_password', sanitize_text_field( $_POST['helix_wp_app_password'] ) );
+        }
 
         $allowed_packs = [ 'kbeauty', 'automotive', 'general' ];
         $pack_id       = sanitize_text_field( $_POST['helix_pack_id'] ?? 'kbeauty' );
@@ -798,6 +804,40 @@ class Helix_Admin {
                                 <div class="helix-field-control">
                                     <input type="url" name="helix_lead_webhook_url" value="<?php echo esc_attr( get_option( 'helix_lead_webhook_url', '' ) ); ?>" class="helix-input wide" placeholder="https://hook.make.com/...">
                                     <p class="helix-field-desc">POST new enquiries here (Zapier, Make.com, CRM). Leave blank to disable webhooks.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WP Agent credentials section -->
+                <div class="helix-section">
+                    <div class="helix-section-head">
+                        <h2>AI Assistant — WordPress Credentials</h2>
+                    </div>
+                    <div class="helix-section-body">
+                        <p style="font-size:13px;color:#6b7280;margin:0 0 16px;">Required for the AI Assistant to create and edit posts, pages, and media. Uses a WordPress <strong>Application Password</strong> — no plugin needed.</p>
+                        <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#92400e;">
+                            <strong>How to generate an Application Password:</strong> Go to <em>Users → Profile</em>, scroll to <em>Application Passwords</em>, enter "Helix AI" as the name, click <em>Add New Application Password</em>, and copy the generated password here.
+                        </div>
+                        <div class="helix-fields">
+                            <div class="helix-field-row">
+                                <div class="helix-field-label">
+                                    WordPress Username
+                                    <span class="helix-helper">Must be an Administrator or Editor</span>
+                                </div>
+                                <div class="helix-field-control">
+                                    <input type="text" name="helix_wp_api_user" value="<?php echo esc_attr( get_option( 'helix_wp_api_user', '' ) ); ?>" class="helix-input wide" placeholder="admin">
+                                </div>
+                            </div>
+                            <div class="helix-field-row">
+                                <div class="helix-field-label">
+                                    Application Password
+                                    <span class="helix-helper">Generated from WP → Users → Profile</span>
+                                </div>
+                                <div class="helix-field-control">
+                                    <input type="password" name="helix_wp_app_password" value="<?php echo esc_attr( get_option( 'helix_wp_app_password', '' ) ); ?>" class="helix-input wide" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx">
+                                    <p class="helix-field-desc">Stored securely. Used only for AI Agent → WordPress REST API calls.</p>
                                 </div>
                             </div>
                         </div>
