@@ -29,7 +29,7 @@ def upgrade() -> None:
         ),
         sa.Column("session_id", sa.String, nullable=True),
         sa.Column("customer_email", sa.String(320), nullable=True),
-        sa.Column("transcript", postgresql.JSONB, nullable=False, server_default="'[]'"),
+        sa.Column("transcript", postgresql.JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")),
         sa.Column(
             "created_at",
             sa.TIMESTAMP(timezone=True),
