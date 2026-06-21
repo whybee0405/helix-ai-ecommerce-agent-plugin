@@ -82,6 +82,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from helix.api.routers import branding
     app.include_router(branding.router)
 
+    from helix.api.routers import wp_agent
+    app.include_router(wp_agent.router)
+
     from helix.packs.registry import load_all_packs
     load_all_packs(s.packs_dir)
 

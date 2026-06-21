@@ -2,14 +2,14 @@
 /**
  * Plugin Name: Helix Connector
  * Description: Syncs your WooCommerce catalog with the Helix AI commerce intelligence platform.
- * Version: 0.5.0
+ * Version: 0.5.1
  * Requires PHP: 8.0
  * WC requires at least: 7.0
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'HELIX_CONNECTOR_VERSION', '0.5.0' );
+define( 'HELIX_CONNECTOR_VERSION', '0.5.1' );
 define( 'HELIX_CONNECTOR_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-api-client.php';
@@ -25,6 +25,13 @@ require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-migrator.php';
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-product-ask.php';
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-inline-chat.php';
 require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-product-faq.php';
+require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-snapshot.php';
+require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-action-log.php';
+require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-quick-actions.php';
+require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-performance-dash.php';
+require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-scheduler.php';
+require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-rollback.php';
+require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-wp-agent-page.php';
 
 function helix_connector_init(): void {
     Helix_Admin::init();
@@ -38,17 +45,25 @@ function helix_connector_init(): void {
     Helix_Product_Ask::init();
     Helix_Inline_Chat::init();
     Helix_Product_Faq::init();
+    Helix_Quick_Actions::init();
+    Helix_Performance_Dash::init();
+    Helix_Scheduler::init();
+    Helix_Rollback::init();
+    Helix_WP_Agent_Page::init();
 }
 add_action( 'plugins_loaded', 'helix_connector_init' );
 
 register_activation_hook( __FILE__, 'helix_connector_activate' );
 function helix_connector_activate(): void {
     update_option( 'helix_activated', true );
+    Helix_Snapshot::install();
+    Helix_Scheduler::schedule_all();
 }
 
 register_deactivation_hook( __FILE__, 'helix_connector_deactivate' );
 function helix_connector_deactivate(): void {
     Helix_Webhooks::remove_webhooks();
+    Helix_Scheduler::unschedule_all();
     delete_option( 'helix_tenant_id' );
     delete_option( 'helix_public_key' );
     delete_option( 'helix_webhook_secret' );
