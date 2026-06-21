@@ -243,6 +243,27 @@ class Helix_WP_Agent_Page {
         .hwpa-chat-input-row{display:flex;gap:8px;padding:12px;border-top:1px solid #e5e7eb;background:#fff;}
         .hwpa-chat-input{flex:1;border:1px solid #e5e7eb;border-radius:6px;padding:9px 12px;font-size:13px;font-family:inherit;resize:none;}
         .hwpa-chat-input:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15);}
+        .hwpa-prompts-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f5f3ff;border-bottom:1px solid #e5e7eb;}
+        .hwpa-prompts-hint{font-size:12px;color:#6b7280;}
+        .hwpa-prompts-btn{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #6366f1;color:#6366f1;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;}
+        .hwpa-prompts-btn:hover{background:#6366f1;color:#fff;}
+        /* Prompts modal */
+        .hwpa-prompts-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100050;display:none;align-items:center;justify-content:center;padding:16px;}
+        .hwpa-prompts-overlay.open{display:flex;}
+        .hwpa-prompts-modal{background:#fff;border-radius:12px;width:100%;max-width:640px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+        .hwpa-prompts-modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e5e7eb;}
+        .hwpa-prompts-modal-head h3{margin:0;font-size:16px;font-weight:600;color:#1e1b4b;}
+        .hwpa-prompts-modal-head p{margin:4px 0 0;font-size:12px;color:#6b7280;}
+        .hwpa-prompts-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;line-height:1;padding:0;}
+        .hwpa-prompts-modal-close:hover{color:#374151;}
+        .hwpa-prompts-body{overflow-y:auto;padding:20px;}
+        .hwpa-prompt-category{margin-bottom:20px;}
+        .hwpa-prompt-category-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:8px;}
+        .hwpa-prompt-chips{display:flex;flex-wrap:wrap;gap:8px;}
+        .hwpa-prompt-chip{display:inline-flex;align-items:center;gap:6px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:20px;padding:7px 14px;font-size:12px;color:#374151;cursor:pointer;transition:all .15s;text-align:left;}
+        .hwpa-prompt-chip:hover{background:#eef2ff;border-color:#6366f1;color:#4f46e5;}
+        .hwpa-prompt-chip .chip-icon{font-size:14px;}
+        @media(max-width:480px){.hwpa-prompts-modal{max-height:90vh;border-radius:12px 12px 0 0;}.hwpa-prompts-overlay{align-items:flex-end;padding:0;}}
         .hwpa-typing{display:flex;gap:4px;padding:6px 10px;}
         .hwpa-typing span{width:7px;height:7px;border-radius:50%;background:#9ca3af;animation:hwpa-bounce .8s infinite;}
         .hwpa-typing span:nth-child(2){animation-delay:.15s;}
@@ -371,12 +392,103 @@ class Helix_WP_Agent_Page {
                         <h2>AI Assistant</h2>
                     </div>
                     <div class="hwpa-card-body" style="padding:0;">
+                        <?php
+                        $pack        = Helix_Pack::config();
+                        $pack_id     = Helix_Pack::current();
+                        $intro       = "I can help you manage your {$pack['label']} store. Ask me to analyse content, fix performance issues, bulk-update {$pack['product_noun']}s, or anything else.";
+
+                        $prompts_universal = [
+                            [
+                                'category' => '⚡ Performance & Speed',
+                                'chips'    => [
+                                    [ 'icon' => '🐢', 'text' => 'What is making my wp-admin so slow when I click on something?' ],
+                                    [ 'icon' => '🩺', 'text' => 'Run a full site health check and tell me what needs fixing urgently.' ],
+                                    [ 'icon' => '💾', 'text' => 'Show me my autoload data size and which options are the biggest culprits.' ],
+                                    [ 'icon' => '🔌', 'text' => 'Which active plugins are adding the most overhead to every admin page?' ],
+                                    [ 'icon' => '💗', 'text' => 'Is the WordPress Heartbeat API causing performance problems on my site?' ],
+                                ],
+                            ],
+                            [
+                                'category' => '🗄️ Database & Cleanup',
+                                'chips'    => [
+                                    [ 'icon' => '🧹', 'text' => 'How many expired transients do I have and should I clear them?' ],
+                                    [ 'icon' => '📚', 'text' => 'How many post revisions are in my database and how much space do they use?' ],
+                                    [ 'icon' => '🔧', 'text' => 'Check my database tables for overhead and tell me which ones need optimising.' ],
+                                    [ 'icon' => '🗑️', 'text' => 'Find orphaned post meta records I can safely delete.' ],
+                                    [ 'icon' => '📊', 'text' => 'Give me a full database health score with a breakdown by category.' ],
+                                ],
+                            ],
+                            [
+                                'category' => '🔒 Security Audit',
+                                'chips'    => [
+                                    [ 'icon' => '👤', 'text' => 'Audit my administrator accounts and flag anything suspicious.' ],
+                                    [ 'icon' => '💤', 'text' => 'List all inactive plugins I should remove to reduce my attack surface.' ],
+                                    [ 'icon' => '🗂️', 'text' => 'Check my key file and folder permissions for security issues.' ],
+                                    [ 'icon' => '🕐', 'text' => 'Are there any stuck or backlogged WP-Cron jobs I should know about?' ],
+                                ],
+                            ],
+                            [
+                                'category' => '📝 Content Analysis',
+                                'chips'    => [
+                                    [ 'icon' => '📉', 'text' => 'Find all pages and posts with thin content (under 200 words) and list them.' ],
+                                    [ 'icon' => '🏷️', 'text' => 'Which posts and pages are missing meta descriptions?' ],
+                                    [ 'icon' => '🗒️', 'text' => 'Show me drafts that have been sitting unpublished for more than 90 days.' ],
+                                    [ 'icon' => '🖼️', 'text' => 'Find media uploads not used anywhere on the site that I can safely delete.' ],
+                                ],
+                            ],
+                        ];
+
+                        $prompts_industry = [];
+                        if ( 'kbeauty' === $pack_id ) {
+                            $prompts_industry = [
+                                [
+                                    'category' => '💄 Products & Catalogue',
+                                    'chips'    => [
+                                        [ 'icon' => '🔍', 'text' => 'Find all skincare products missing skin type or concern attributes.' ],
+                                        [ 'icon' => '🏷️', 'text' => 'Rewrite the meta descriptions for my top 10 bestselling products.' ],
+                                        [ 'icon' => '❓', 'text' => 'Generate FAQ schema markup for my bestselling serums.' ],
+                                        [ 'icon' => '🗂️', 'text' => 'Which products have no category assigned?' ],
+                                        [ 'icon' => '✍️', 'text' => 'Write SEO-optimised descriptions for products with descriptions under 50 words.' ],
+                                    ],
+                                ],
+                            ];
+                        } elseif ( 'automotive' === $pack_id ) {
+                            $prompts_industry = [
+                                [
+                                    'category' => '🚗 Vehicle Listings',
+                                    'chips'    => [
+                                        [ 'icon' => '🔍', 'text' => 'Find all vehicle listings missing VIN, mileage, or fuel type.' ],
+                                        [ 'icon' => '🖼️', 'text' => 'Which vehicle listings have no images uploaded?' ],
+                                        [ 'icon' => '📅', 'text' => 'Show me vehicles that have been listed for more than 90 days without an enquiry.' ],
+                                        [ 'icon' => '✍️', 'text' => 'Write an enquiry-optimised description for a specific vehicle — just tell me the make and model.' ],
+                                        [ 'icon' => '📊', 'text' => 'Give me a full inventory audit: missing attributes, no images, and stale listings.' ],
+                                    ],
+                                ],
+                            ];
+                        } else {
+                            $prompts_industry = [
+                                [
+                                    'category' => '🛍️ Products & SEO',
+                                    'chips'    => [
+                                        [ 'icon' => '✍️', 'text' => 'Write SEO-optimised descriptions for my top 10 products.' ],
+                                        [ 'icon' => '🏷️', 'text' => 'Which products are missing meta descriptions or have very short ones?' ],
+                                        [ 'icon' => '🗂️', 'text' => 'Find products with no category assigned.' ],
+                                        [ 'icon' => '❓', 'text' => 'Generate FAQ schema for my most popular products.' ],
+                                    ],
+                                ],
+                            ];
+                        }
+
+                        $all_prompts = array_merge( $prompts_universal, $prompts_industry );
+                        ?>
                         <div class="hwpa-chat-wrap" id="hwpa-chat-wrap">
+                            <div class="hwpa-prompts-bar">
+                                <span class="hwpa-prompts-hint">Not sure what to ask?</span>
+                                <button class="hwpa-prompts-btn" id="hwpa-prompts-open">
+                                    💡 Example Prompts
+                                </button>
+                            </div>
                             <div class="hwpa-chat-msgs" id="hwpa-chat-msgs">
-                                <?php
-                                $pack  = Helix_Pack::config();
-                                $intro = "I can help you manage your {$pack['label']} store. Ask me to analyse content, fix performance issues, bulk-update {$pack['product_noun']}s, or anything else.";
-                                ?>
                                 <div class="hwpa-chat-bubble assistant">
                                     <?php echo esc_html( $intro ); ?>
                                 </div>
@@ -419,6 +531,34 @@ class Helix_WP_Agent_Page {
                     <div class="hwpa-spinner" id="hwpa-modal-spinner"></div>
                     <button class="hwpa-btn hwpa-btn-secondary" id="hwpa-modal-cancel">Cancel</button>
                     <button class="hwpa-btn hwpa-btn-primary" id="hwpa-modal-execute" style="display:none;">Execute</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════ PROMPTS MODAL ══════════ -->
+        <div class="hwpa-prompts-overlay" id="hwpa-prompts-overlay">
+            <div class="hwpa-prompts-modal">
+                <div class="hwpa-prompts-modal-head">
+                    <div>
+                        <h3>💡 Example Prompts</h3>
+                        <p>Click any prompt to send it to the AI Assistant instantly.</p>
+                    </div>
+                    <button class="hwpa-prompts-modal-close" id="hwpa-prompts-close">&times;</button>
+                </div>
+                <div class="hwpa-prompts-body">
+                    <?php foreach ( $all_prompts as $group ) : ?>
+                    <div class="hwpa-prompt-category">
+                        <div class="hwpa-prompt-category-label"><?php echo esc_html( $group['category'] ); ?></div>
+                        <div class="hwpa-prompt-chips">
+                            <?php foreach ( $group['chips'] as $chip ) : ?>
+                            <button class="hwpa-prompt-chip" data-prompt="<?php echo esc_attr( $chip['text'] ); ?>">
+                                <span class="chip-icon"><?php echo esc_html( $chip['icon'] ); ?></span>
+                                <?php echo esc_html( $chip['text'] ); ?>
+                            </button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>
@@ -756,6 +896,34 @@ class Helix_WP_Agent_Page {
                 var el = document.getElementById('hwpa-typing');
                 if (el) el.remove();
             }
+
+            /* ── Prompts modal ──────────────────────────────────────────── */
+            var promptsOverlay = document.getElementById('hwpa-prompts-overlay');
+            document.getElementById('hwpa-prompts-open').addEventListener('click', function () {
+                promptsOverlay.classList.add('open');
+            });
+            document.getElementById('hwpa-prompts-close').addEventListener('click', function () {
+                promptsOverlay.classList.remove('open');
+            });
+            promptsOverlay.addEventListener('click', function (e) {
+                if (e.target === promptsOverlay) promptsOverlay.classList.remove('open');
+            });
+            document.querySelectorAll('.hwpa-prompt-chip').forEach(function (chip) {
+                chip.addEventListener('click', function () {
+                    var prompt = chip.dataset.prompt;
+                    promptsOverlay.classList.remove('open');
+                    // Switch to AI Assistant tab first
+                    document.querySelectorAll('.hwpa-tab').forEach(function (b) { b.classList.remove('active'); });
+                    document.querySelectorAll('.hwpa-panel').forEach(function (p) { p.classList.remove('active'); });
+                    var aiTab = document.querySelector('.hwpa-tab[data-tab="ai-assistant"]');
+                    if (aiTab) aiTab.classList.add('active');
+                    var aiPanel = document.getElementById('hwpa-panel-ai-assistant');
+                    if (aiPanel) aiPanel.classList.add('active');
+                    // Fill and send
+                    chatInput.value = prompt;
+                    sendChat();
+                });
+            });
 
             chatSend.addEventListener('click', sendChat);
             chatInput.addEventListener('keydown', function (e) {
