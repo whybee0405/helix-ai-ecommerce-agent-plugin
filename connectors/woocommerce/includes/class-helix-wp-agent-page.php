@@ -282,6 +282,23 @@ class Helix_WP_Agent_Page {
             .hwpa-tab{padding:8px 12px;font-size:12px;}
         }
         @media(max-width:480px){.hwpa-metric-grid{grid-template-columns:1fr;}}
+
+        /* Info button */
+        .hwpa-info-btn{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:none;border:1.5px solid #9ca3af;color:#9ca3af;font-size:10px;font-weight:700;cursor:pointer;line-height:1;padding:0;margin-left:6px;flex-shrink:0;transition:all .15s;}
+        .hwpa-info-btn:hover{border-color:#6366f1;color:#6366f1;background:#eef2ff;}
+        /* Info modal */
+        .hwpa-info-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100060;display:none;align-items:center;justify-content:center;padding:16px;}
+        .hwpa-info-overlay.open{display:flex;}
+        .hwpa-info-modal{background:#fff;border-radius:12px;width:100%;max-width:520px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+        .hwpa-info-modal-head{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #e5e7eb;}
+        .hwpa-info-modal-head h3{margin:0;font-size:15px;font-weight:600;color:#1e1b4b;}
+        .hwpa-info-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;line-height:1;padding:0;margin-left:12px;flex-shrink:0;}
+        .hwpa-info-modal-close:hover{color:#374151;}
+        .hwpa-info-modal-body{padding:18px 20px;overflow-y:auto;font-size:13px;line-height:1.7;color:#374151;}
+        .hwpa-info-modal-body p{margin:0 0 10px;}
+        .hwpa-info-modal-body p:last-child{margin:0;}
+        .hwpa-info-modal-body .hwpa-info-cost{display:inline-block;background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500;margin-top:4px;}
+        .hwpa-info-modal-body .hwpa-info-free{display:inline-block;background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500;margin-top:4px;}
         </style>
 
         <div class="hwpa-page">
@@ -325,11 +342,11 @@ class Helix_WP_Agent_Page {
                 <?php
                 $actions    = Helix_Quick_Actions::get_actions();
                 $categories = [
-                    'database'    => [ 'label' => 'Database', 'icon' => '&#128451;' ],
-                    'performance' => [ 'label' => 'Performance', 'icon' => '&#9889;' ],
-                    'media'       => [ 'label' => 'Media', 'icon' => '&#128444;' ],
-                    'security'    => [ 'label' => 'Security', 'icon' => '&#128274;' ],
-                    'content'     => [ 'label' => 'Content', 'icon' => '&#128196;' ],
+                    'database'    => [ 'label' => 'Database',    'icon' => '&#128451;', 'help_title' => 'Database Cleanup',    'help_body' => '&lt;p&gt;These actions clean up your WordPress database to improve performance. Each one runs a &lt;strong&gt;dry-run preview first&lt;/strong&gt; — showing exactly what will be affected — before you confirm.&lt;/p&gt;&lt;p&gt;Affected rows are &lt;strong&gt;snapshotted before deletion&lt;/strong&gt; so you can undo from the Action Log tab.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — pure PHP/MySQL&lt;/span&gt;&lt;/p&gt;' ],
+                    'performance' => [ 'label' => 'Performance', 'icon' => '&#9889;',   'help_title' => 'Performance Tweaks',  'help_body' => '&lt;p&gt;One-click adjustments that reduce WordPress admin overhead. The Heartbeat API fires AJAX calls every 15–60 seconds in the admin — slowing every page load. Flushing rewrite rules fixes permalink issues without touching the database.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — pure PHP/WordPress&lt;/span&gt;&lt;/p&gt;' ],
+                    'media'       => [ 'label' => 'Media',       'icon' => '&#128444;', 'help_title' => 'Media Audit',         'help_body' => '&lt;p&gt;Finds orphaned uploads not referenced anywhere on the site, images missing alt text, and unregistered image sizes taking up disk space. These are &lt;strong&gt;scan-only&lt;/strong&gt; actions — no files are deleted without your confirmation.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — pure PHP/WordPress&lt;/span&gt;&lt;/p&gt;' ],
+                    'security'    => [ 'label' => 'Security',    'icon' => '&#128274;', 'help_title' => 'Security Audit',      'help_body' => '&lt;p&gt;Read-only checks that flag common WordPress security risks: admin accounts with default usernames, inactive plugins increasing your attack surface, and file permission issues on key directories.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — no changes made&lt;/span&gt;&lt;/p&gt;' ],
+                    'content'     => [ 'label' => 'Content',     'icon' => '&#128196;', 'help_title' => 'Content Audit',       'help_body' => '&lt;p&gt;Scans all posts and pages for common content problems: missing meta descriptions, thin content under 200 words, and drafts sitting unpublished for over 90 days. Results are returned as a list — no changes are made until you act on them.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — read-only scan&lt;/span&gt;&lt;/p&gt;' ],
                 ];
                 foreach ( $categories as $cat_id => $cat ) :
                     $cat_actions = array_filter( $actions, fn( $a ) => $a['category'] === $cat_id );
@@ -337,6 +354,7 @@ class Helix_WP_Agent_Page {
                 ?>
                     <div class="hwpa-category-head">
                         <?php echo $cat['icon']; ?> <?php echo esc_html( $cat['label'] ); ?>
+                        <button class="hwpa-info-btn" data-help-title="<?php echo esc_attr( $cat['help_title'] ); ?>" data-help-body="<?php echo esc_attr( $cat['help_body'] ); ?>">&#8505;</button>
                     </div>
                     <div class="hwpa-action-grid">
                         <?php foreach ( $cat_actions as $action ) : ?>
@@ -373,7 +391,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-performance" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>Site Performance Dashboard</h2>
+                        <h2>Site Performance Dashboard</h2><button class="hwpa-info-btn" data-help-title="Site Performance Dashboard" data-help-body="&lt;p&gt;Collects 15 live metrics from your WordPress database and PHP environment — autoload data size, expired transients, table overhead, orphaned meta, revision count, memory usage, and more.&lt;/p&gt;&lt;p&gt;Each metric is graded &lt;strong&gt;A–F&lt;/strong&gt; against known thresholds (e.g. autoload over 1 MB = grade D). Click &lt;strong&gt;Fix&lt;/strong&gt; next to any metric to run the corresponding quick action immediately.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — pure PHP/MySQL&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-refresh-metrics" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">
                             Refresh Metrics
                         </button>
@@ -387,7 +405,7 @@ class Helix_WP_Agent_Page {
                 <!-- Uptime Monitor card -->
                 <div class="hwpa-card" id="hwpa-uptime-card">
                     <div class="hwpa-card-head">
-                        <h2>Uptime Monitor</h2>
+                        <h2>Uptime Monitor</h2><button class="hwpa-info-btn" data-help-title="Uptime Monitor" data-help-body="&lt;p&gt;Pings your site every &lt;strong&gt;5 minutes&lt;/strong&gt; using WordPress's built-in cron system. Records the HTTP status code and response time for each check and keeps a rolling &lt;strong&gt;24-hour log&lt;/strong&gt; (288 checks).&lt;/p&gt;&lt;p&gt;If your site returns a non-200 response &lt;strong&gt;3 times in a row&lt;/strong&gt;, it sends an email alert to your configured address so you know before your customers do.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — uses WP-Cron, no external service&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-uptime-refresh" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Refresh</button>
                         <div class="hwpa-spinner" id="hwpa-uptime-spinner"></div>
                     </div>
@@ -399,7 +417,7 @@ class Helix_WP_Agent_Page {
                 <!-- Web Vitals card -->
                 <div class="hwpa-card" id="hwpa-vitals-card">
                     <div class="hwpa-card-head">
-                        <h2>Core Web Vitals</h2>
+                        <h2>Core Web Vitals</h2><button class="hwpa-info-btn" data-help-title="Core Web Vitals" data-help-body="&lt;p&gt;Uses &lt;strong&gt;Google's free PageSpeed Insights API&lt;/strong&gt; to measure how fast your site feels to real users. Tracks:&lt;/p&gt;&lt;p&gt;&lt;strong&gt;LCP&lt;/strong&gt; — how long until the main content loads &lt;br&gt;&lt;strong&gt;INP&lt;/strong&gt; — responsiveness to clicks and taps &lt;br&gt;&lt;strong&gt;CLS&lt;/strong&gt; — how much the layout shifts while loading &lt;br&gt;&lt;strong&gt;FCP&lt;/strong&gt; — when the first content appears &lt;br&gt;&lt;strong&gt;TTFB&lt;/strong&gt; — your server's initial response time&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Free — Google PageSpeed API (25,000 requests/day)&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-vitals-scan" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Scan Now</button>
                         <div class="hwpa-spinner" id="hwpa-vitals-spinner"></div>
                     </div>
@@ -413,7 +431,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-scheduler" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>Scheduled Maintenance</h2>
+                        <h2>Scheduled Maintenance</h2><button class="hwpa-info-btn" data-help-title="Scheduled Maintenance" data-help-body="&lt;p&gt;Runs cleanup jobs automatically in the background using &lt;strong&gt;WordPress WP-Cron&lt;/strong&gt; — no manual action needed. Each job logs what it did and how many rows were affected in the &lt;strong&gt;Action Log&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;Toggle each job on or off individually, or trigger any job immediately with &lt;strong&gt;Run Now&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — pure PHP/WordPress&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-refresh-sched" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">
                             Refresh
                         </button>
@@ -425,7 +443,7 @@ class Helix_WP_Agent_Page {
 
                 <!-- Weekly Digest controls -->
                 <div class="hwpa-card">
-                    <div class="hwpa-card-head"><h2>Weekly Digest Email</h2></div>
+                    <div class="hwpa-card-head"><h2>Weekly Digest Email</h2><button class="hwpa-info-btn" data-help-title="Weekly Digest Email" data-help-body="&lt;p&gt;Every &lt;strong&gt;Monday at 8am&lt;/strong&gt;, Helix collects your site stats for the past 7 days — new posts, orders, leads, uptime %, top errors — then sends them to &lt;strong&gt;Claude Haiku&lt;/strong&gt; which writes a short plain-English summary email.&lt;/p&gt;&lt;p&gt;Use &lt;strong&gt;Send Test&lt;/strong&gt; to preview it immediately.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-cost&quot;&gt;~$0.01/week in AI usage (Claude Haiku)&lt;/span&gt;&lt;/p&gt;">&#8505;</button></div>
                     <div class="hwpa-card-body">
                         <p style="font-size:13px;color:#6b7280;margin:0 0 14px;">Sends an AI-generated weekly site summary every Monday at 8am UTC.</p>
                         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -444,7 +462,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-broken-links" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>Broken Link Checker</h2>
+                        <h2>Broken Link Checker</h2><button class="hwpa-info-btn" data-help-title="Broken Link Checker" data-help-body="&lt;p&gt;Scans all published posts and pages, extracts every hyperlink, and sends an HTTP HEAD request to each URL. Links returning &lt;strong&gt;404, 410, 500, or connection errors&lt;/strong&gt; are flagged.&lt;/p&gt;&lt;p&gt;Runs in &lt;strong&gt;batches of 20&lt;/strong&gt; to avoid PHP timeouts. Use the &lt;strong&gt;Fix&lt;/strong&gt; button to replace a broken URL — original content is snapshotted first so you can undo.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — pure PHP/HTTP&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-bl-scan" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:auto;">Scan Now</button>
                         <div class="hwpa-spinner" id="hwpa-bl-spinner"></div>
                     </div>
@@ -465,7 +483,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-error-log" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>PHP Error Log</h2>
+                        <h2>PHP Error Log</h2><button class="hwpa-info-btn" data-help-title="PHP Error Log" data-help-body="&lt;p&gt;Reads your &lt;strong&gt;WordPress debug.log&lt;/strong&gt; file and parses each line into structured entries: timestamp, severity level, message, and file/line number. Errors are grouped by type — &lt;strong&gt;Fatal, Warning, Notice, Deprecated&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Clear Log&lt;/strong&gt; saves the last 50 lines as a snapshot before truncating the file.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — reads local file&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-el-refresh" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Refresh</button>
                         <button id="hwpa-el-clear" class="hwpa-btn hwpa-btn-danger hwpa-btn-sm" style="margin-left:8px;">Clear Log</button>
                         <div class="hwpa-spinner" id="hwpa-el-spinner"></div>
@@ -488,7 +506,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-backups" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>Database Backups</h2>
+                        <h2>Database Backups</h2><button class="hwpa-info-btn" data-help-title="Database Backups" data-help-body="&lt;p&gt;Exports your entire WordPress database to a &lt;strong&gt;compressed .sql.gz file&lt;/strong&gt; stored in &lt;code&gt;wp-content/helix-backups/&lt;/code&gt; — protected from direct browser access by an .htaccess rule.&lt;/p&gt;&lt;p&gt;Old backups are &lt;strong&gt;auto-deleted&lt;/strong&gt; once you exceed your limit (default: keep last 7). Download any backup directly from this interface.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — uses PHP gzencode(), no external service&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-bk-run" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:auto;">Backup Now</button>
                         <div class="hwpa-spinner" id="hwpa-bk-spinner"></div>
                     </div>
@@ -512,7 +530,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-plugins" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>Plugin Manager</h2>
+                        <h2>Plugin Manager</h2><button class="hwpa-info-btn" data-help-title="Plugin Manager" data-help-body="&lt;p&gt;Shows all installed plugins with their current version, available updates, and active/inactive status. Before &lt;strong&gt;updating or toggling&lt;/strong&gt; a plugin, the current state is saved as a snapshot so you can undo if something breaks.&lt;/p&gt;&lt;p&gt;Updates use WordPress's built-in &lt;strong&gt;Plugin Upgrader&lt;/strong&gt; — the same mechanism as the standard WP admin updates page.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — uses WordPress core APIs&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-pm-update-all" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:auto;">Update All</button>
                         <div class="hwpa-spinner" id="hwpa-pm-spinner"></div>
                     </div>
@@ -532,7 +550,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-snippets" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>Code Snippets</h2>
+                        <h2>Code Snippets</h2><button class="hwpa-info-btn" data-help-title="Code Snippets" data-help-body="&lt;p&gt;Run small PHP snippets &lt;strong&gt;without editing theme files&lt;/strong&gt;. Each snippet is attached to a WordPress hook (init, wp_head, wp_footer, etc.) and runs automatically.&lt;/p&gt;&lt;p&gt;If a snippet throws a PHP error, it is &lt;strong&gt;automatically disabled&lt;/strong&gt; and the error is recorded — your site will not crash. Always test on staging first.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — pure PHP execution&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-sn-add" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:auto;">+ Add Snippet</button>
                     </div>
                     <div class="hwpa-card-body">
@@ -548,7 +566,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-alt-text" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>AI Alt Text Generator</h2>
+                        <h2>AI Alt Text Generator</h2><button class="hwpa-info-btn" data-help-title="AI Alt Text Generator" data-help-body="&lt;p&gt;Scans your &lt;strong&gt;Media Library&lt;/strong&gt; for images missing alt text. Sends each image title to &lt;strong&gt;Claude Haiku&lt;/strong&gt;, which writes a descriptive, SEO-friendly alt text under 120 characters.&lt;/p&gt;&lt;p&gt;Saved directly to the &lt;strong&gt;_wp_attachment_image_alt&lt;/strong&gt; meta field — the standard field used by all themes and page builders.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-cost&quot;&gt;~$0.0005 per image (Claude Haiku)&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-at-scan" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Scan Missing</button>
                         <button id="hwpa-at-gen-all" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:8px;">Generate All</button>
                         <div class="hwpa-spinner" id="hwpa-at-spinner"></div>
@@ -564,7 +582,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-seo-meta" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>SEO Meta Generator</h2>
+                        <h2>SEO Meta Generator</h2><button class="hwpa-info-btn" data-help-title="SEO Meta Generator" data-help-body="&lt;p&gt;Finds all posts and pages where both &lt;strong&gt;Yoast SEO&lt;/strong&gt; and &lt;strong&gt;RankMath&lt;/strong&gt; meta description fields are empty. Generates a focused SEO title (max 60 chars) and meta description (max 160 chars) via Claude Haiku.&lt;/p&gt;&lt;p&gt;Updates &lt;strong&gt;both Yoast and RankMath meta keys&lt;/strong&gt; — works regardless of which SEO plugin you use.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-cost&quot;&gt;~$0.001 per page (Claude Haiku)&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-sm-scan" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Scan Missing</button>
                         <button id="hwpa-sm-gen-all" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:8px;">Generate All</button>
                         <div class="hwpa-spinner" id="hwpa-sm-spinner"></div>
@@ -580,7 +598,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-reviews" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>Review Synthesiser</h2>
+                        <h2>Review Synthesiser</h2><button class="hwpa-info-btn" data-help-title="Review Synthesiser" data-help-body="&lt;p&gt;Reads all &lt;strong&gt;WooCommerce product reviews&lt;/strong&gt; for a selected product and sends them to Claude Haiku. Produces a structured summary: 2–3 sentence overview, list of pros, list of cons, and an overall sentiment label.&lt;/p&gt;&lt;p&gt;Results are &lt;strong&gt;cached for 7 days&lt;/strong&gt; — you won't be charged again until the cache expires.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-cost&quot;&gt;~$0.005 per product (Claude Haiku)&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                     </div>
                     <div class="hwpa-card-body">
                         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
@@ -599,7 +617,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-int-links" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>Internal Link Suggester</h2>
+                        <h2>Internal Link Suggester</h2><button class="hwpa-info-btn" data-help-title="Internal Link Suggester" data-help-body="&lt;p&gt;Sends your post's content plus all published post titles/URLs to &lt;strong&gt;Claude Haiku&lt;/strong&gt;, which identifies the &lt;strong&gt;5 most relevant linking opportunities&lt;/strong&gt; — places where a link to another post adds value for readers and SEO.&lt;/p&gt;&lt;p&gt;Click &lt;strong&gt;Apply&lt;/strong&gt; to insert a link. Original content is snapshotted first — undo anytime from the Action Log.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-cost&quot;&gt;~$0.003 per post (Claude Haiku)&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                     </div>
                     <div class="hwpa-card-body">
                         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
@@ -617,7 +635,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-blog" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>AI Blog Post Generator</h2>
+                        <h2>AI Blog Post Generator</h2><button class="hwpa-info-btn" data-help-title="AI Blog Post Generator" data-help-body="&lt;p&gt;Provide a &lt;strong&gt;topic, keywords, tone&lt;/strong&gt; (Professional/Conversational/Technical), and word count. Claude Sonnet writes a complete HTML blog post with proper heading hierarchy, natural flow, SEO title, meta description, suggested categories, and tags.&lt;/p&gt;&lt;p&gt;Saved as a &lt;strong&gt;WordPress draft&lt;/strong&gt; — you review and edit before publishing.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-cost&quot;&gt;~$0.04 per post (Claude Sonnet)&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <span style="margin-left:auto;font-size:12px;color:#6b7280;background:#f3f4f6;padding:3px 8px;border-radius:12px;">~$0.04 / post</span>
                     </div>
                     <div class="hwpa-card-body">
@@ -667,7 +685,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-descriptions" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>Product Description Rewriter</h2>
+                        <h2>Product Description Rewriter</h2><button class="hwpa-info-btn" data-help-title="Product Description Rewriter" data-help-body="&lt;p&gt;Scans WooCommerce products for &lt;strong&gt;thin or empty descriptions&lt;/strong&gt; (under 80 words). Sends the title and domain attributes to Claude Haiku, which writes a compelling product description in HTML.&lt;/p&gt;&lt;p&gt;The &lt;strong&gt;original description is snapshotted&lt;/strong&gt; before overwriting — use Undo in the Action Log to restore any individual product.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-cost&quot;&gt;~$0.003 per product (Claude Haiku)&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-pd-scan" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Scan Thin</button>
                         <div class="hwpa-spinner" id="hwpa-pd-spinner"></div>
                     </div>
@@ -682,7 +700,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-repurpose" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>Content Repurposer</h2>
+                        <h2>Content Repurposer</h2><button class="hwpa-info-btn" data-help-title="Content Repurposer" data-help-body="&lt;p&gt;Takes any post or page and repurposes it into up to &lt;strong&gt;4 formats in one API call&lt;/strong&gt;: Social Caption (Twitter/Instagram), Email (newsletter-ready), FAQ (3–5 Q&amp;amp;A pairs), and Short Summary (2–3 sentences).&lt;/p&gt;&lt;p&gt;Select only the formats you need. Results appear as &lt;strong&gt;copyable cards&lt;/strong&gt; — nothing is saved unless you copy it.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-cost&quot;&gt;~$0.02–$0.05 per run (Claude Sonnet)&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <span style="margin-left:auto;font-size:12px;color:#6b7280;background:#f3f4f6;padding:3px 8px;border-radius:12px;">~$0.02 / post</span>
                     </div>
                     <div class="hwpa-card-body">
@@ -708,7 +726,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-images" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>Image Optimiser (WebP)</h2>
+                        <h2>Image Optimiser (WebP)</h2><button class="hwpa-info-btn" data-help-title="Image Optimiser (WebP)" data-help-body="&lt;p&gt;Uses &lt;strong&gt;PHP's Imagick extension&lt;/strong&gt; to convert JPEG and PNG images to WebP format at quality 82. WebP files are typically &lt;strong&gt;25–40% smaller&lt;/strong&gt; than JPEG at equivalent quality.&lt;/p&gt;&lt;p&gt;WebP is saved &lt;strong&gt;alongside the original&lt;/strong&gt; — no images are deleted. Falls back gracefully if Imagick is not installed.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — uses PHP Imagick, no external API&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-io-scan" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Scan</button>
                         <button id="hwpa-io-opt-all" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:8px;">Optimise All</button>
                         <div class="hwpa-spinner" id="hwpa-io-spinner"></div>
@@ -736,7 +754,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-ai-assistant" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>AI Assistant</h2>
+                        <h2>AI Assistant</h2><button class="hwpa-info-btn" data-help-title="AI Assistant" data-help-body="&lt;p&gt;A conversational interface powered by &lt;strong&gt;Claude (Anthropic's AI)&lt;/strong&gt;. Ask it to do anything on your WordPress site in plain English — create posts, analyse performance, fix SEO issues, bulk-update products, and more.&lt;/p&gt;&lt;p&gt;Uses &lt;strong&gt;tools&lt;/strong&gt; to call your WordPress REST API directly — it doesn't just give advice, it actually makes the changes. Write operations require a &lt;strong&gt;WordPress Application Password&lt;/strong&gt; configured in Helix Settings.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-cost&quot;&gt;~$0.01–$0.10 per conversation (Claude Sonnet)&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                     </div>
                     <div class="hwpa-card-body" style="padding:0;">
                         <?php
@@ -853,7 +871,7 @@ class Helix_WP_Agent_Page {
             <div id="hwpa-panel-action-log" class="hwpa-panel" role="tabpanel">
                 <div class="hwpa-card">
                     <div class="hwpa-card-head">
-                        <h2>Action Log</h2>
+                        <h2>Action Log</h2><button class="hwpa-info-btn" data-help-title="Action Log" data-help-body="&lt;p&gt;A &lt;strong&gt;timestamped audit trail&lt;/strong&gt; of every action performed through this panel: who ran it, when, what was affected, and whether a rollback snapshot is available.&lt;/p&gt;&lt;p&gt;For any &lt;strong&gt;reversible action&lt;/strong&gt;, clicking Undo restores the snapshotted data exactly as it was. Snapshots expire after &lt;strong&gt;7 days&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;hwpa-info-free&quot;&gt;Zero cost — local database only&lt;/span&gt;&lt;/p&gt;">&#8505;</button>
                         <button id="hwpa-log-clear" class="hwpa-btn hwpa-btn-danger hwpa-btn-sm" style="margin-left:auto;">
                             Clear Log
                         </button>
@@ -907,6 +925,17 @@ class Helix_WP_Agent_Page {
                     </div>
                     <?php endforeach; ?>
                 </div>
+            </div>
+        </div>
+
+        <!-- ══════════ INFO MODAL ══════════ -->
+        <div class="hwpa-info-overlay" id="hwpa-info-overlay">
+            <div class="hwpa-info-modal">
+                <div class="hwpa-info-modal-head">
+                    <h3 id="hwpa-info-title"></h3>
+                    <button class="hwpa-info-modal-close" id="hwpa-info-close">&times;</button>
+                </div>
+                <div class="hwpa-info-modal-body" id="hwpa-info-body"></div>
             </div>
         </div>
 
@@ -2339,6 +2368,22 @@ class Helix_WP_Agent_Page {
                             digestResult.textContent = 'Failed: ' + String(res.data || 'Check API configuration.');
                         }
                     });
+                });
+            })();
+
+            /* ── Info modal ──────────────────────────────────────────────── */
+            (function(){
+                var infoOverlay = document.getElementById('hwpa-info-overlay');
+                var infoTitle   = document.getElementById('hwpa-info-title');
+                var infoBody    = document.getElementById('hwpa-info-body');
+                document.getElementById('hwpa-info-close').addEventListener('click', function(){ infoOverlay.classList.remove('open'); });
+                infoOverlay.addEventListener('click', function(e){ if(e.target===infoOverlay) infoOverlay.classList.remove('open'); });
+                document.addEventListener('click', function(e){
+                    var btn = e.target.closest('.hwpa-info-btn');
+                    if(!btn) return;
+                    infoTitle.textContent = btn.dataset.helpTitle || '';
+                    infoBody.innerHTML    = btn.dataset.helpBody  || '';
+                    infoOverlay.classList.add('open');
                 });
             })();
 
