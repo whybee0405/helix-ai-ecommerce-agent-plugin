@@ -266,11 +266,21 @@ class Helix_WP_Agent_Page {
         .hwpa-prompt-chip:hover{background:#eef2ff;border-color:#6366f1;color:#4f46e5;}
         .hwpa-prompt-chip .chip-icon{font-size:14px;}
         @media(max-width:480px){.hwpa-prompts-modal{max-height:90vh;border-radius:12px 12px 0 0;}.hwpa-prompts-overlay{align-items:flex-end;padding:0;}}
-        .hwpa-typing{display:flex;gap:4px;padding:6px 10px;}
-        .hwpa-typing span{width:7px;height:7px;border-radius:50%;background:#9ca3af;animation:hwpa-bounce .8s infinite;}
-        .hwpa-typing span:nth-child(2){animation-delay:.15s;}
-        .hwpa-typing span:nth-child(3){animation-delay:.3s;}
+        .hwpa-thinking{display:flex;align-items:center;gap:10px;padding:4px 2px;}
+        .hwpa-thinking-dots{display:flex;gap:5px;}
+        .hwpa-thinking-dots span{width:8px;height:8px;border-radius:50%;background:#6366f1;animation:hwpa-bounce .8s infinite;}
+        .hwpa-thinking-dots span:nth-child(2){animation-delay:.15s;}
+        .hwpa-thinking-dots span:nth-child(3){animation-delay:.3s;}
         @keyframes hwpa-bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-6px);}}
+        .hwpa-thinking-status{font-size:13px;color:#6b7280;font-style:italic;transition:opacity .2s ease;}
+        /* tool call chips */
+        .hwpa-tool-calls{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
+        .hwpa-tool-detail{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;}
+        .hwpa-tool-detail summary{padding:6px 10px;cursor:pointer;list-style:none;display:flex;align-items:center;user-select:none;}
+        .hwpa-tool-detail summary::-webkit-details-marker{display:none;}
+        .hwpa-tool-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#4b5563;}
+        .hwpa-tool-chip-icon{opacity:.6;}
+        .hwpa-tool-pre{margin:0;padding:10px;font-size:11px;background:#fff;border-top:1px solid #e5e7eb;overflow-x:auto;white-space:pre-wrap;word-break:break-word;max-height:180px;overflow-y:auto;}
 
         /* responsive */
         @media(max-width:1024px){.hwpa-metric-grid{grid-template-columns:repeat(2,1fr);}}
@@ -1262,17 +1272,41 @@ class Helix_WP_Agent_Page {
                 return div;
             }
 
+            var _hwpaThinkTimer = null;
+            var _hwpaThinkMsgs  = [
+                'Thinking…',
+                'Connecting to WordPress…',
+                'Fetching data…',
+                'Running tools…',
+                'Analyzing results…',
+                'Writing response…'
+            ];
+
             function showTyping() {
                 var div = document.createElement('div');
                 div.className = 'hwpa-chat-bubble assistant';
                 div.id = 'hwpa-typing';
-                div.innerHTML = '<div class="hwpa-typing"><span></span><span></span><span></span></div>';
+                div.innerHTML = '<div class="hwpa-thinking"><div class="hwpa-thinking-dots"><span></span><span></span><span></span></div><span class="hwpa-thinking-status" id="hwpa-thinking-status">Thinking…</span></div>';
                 chatMsgs.appendChild(div);
                 chatMsgs.scrollTop = chatMsgs.scrollHeight;
+                chatInput.disabled = true;
+                var idx = 0;
+                _hwpaThinkTimer = setInterval(function () {
+                    idx = (idx + 1) % _hwpaThinkMsgs.length;
+                    var el = document.getElementById('hwpa-thinking-status');
+                    if (!el) return;
+                    el.style.opacity = '0';
+                    setTimeout(function () {
+                        var el2 = document.getElementById('hwpa-thinking-status');
+                        if (el2) { el2.textContent = _hwpaThinkMsgs[idx]; el2.style.opacity = '1'; }
+                    }, 200);
+                }, 2500);
             }
             function hideTyping() {
+                if (_hwpaThinkTimer) { clearInterval(_hwpaThinkTimer); _hwpaThinkTimer = null; }
                 var el = document.getElementById('hwpa-typing');
                 if (el) el.remove();
+                chatInput.disabled = false;
             }
 
             /* ── Prompts modal ──────────────────────────────────────────── */
@@ -1337,11 +1371,16 @@ class Helix_WP_Agent_Page {
                         appendBubble('assistant', '<span style="color:#ef4444;">' + escHtml(res.error) + '</span>');
                         return;
                     }
-                    // Show tool calls.
+                    // Show tool calls as collapsible chips.
                     if (res.tool_calls && res.tool_calls.length) {
+                        var tcHtml = '<div class="hwpa-tool-calls">';
                         res.tool_calls.forEach(function (tc) {
-                            appendBubble('tool-result', 'Tool: ' + escHtml(tc.name) + '\n' + JSON.stringify(tc.result, null, 2));
+                            var label = tc.name.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+                            var detail = JSON.stringify(tc.result, null, 2);
+                            tcHtml += '<details class="hwpa-tool-detail"><summary><span class="hwpa-tool-chip"><span class="hwpa-tool-chip-icon">⚙</span> ' + escHtml(label) + '</span></summary><pre class="hwpa-tool-pre">' + escHtml(detail) + '</pre></details>';
                         });
+                        tcHtml += '</div>';
+                        appendBubble('tool-result', tcHtml);
                     }
                     var reply = res.response || '(No response)';
                     appendBubble('assistant', escHtml(reply).replace(/\n/g, '<br>'));
