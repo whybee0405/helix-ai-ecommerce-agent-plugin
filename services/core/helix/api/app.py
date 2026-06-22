@@ -85,6 +85,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from helix.api.routers import wp_agent
     app.include_router(wp_agent.router)
 
+    from helix.api.routers import alt_text
+    app.include_router(alt_text.router)
+
+    from helix.api.routers import seo_meta
+    app.include_router(seo_meta.router)
+
+    from helix.api.routers import reviews
+    app.include_router(reviews.router)
+
+    from helix.api.routers import internal_links
+    app.include_router(internal_links.router)
+
+    from helix.api.routers import digest
+    app.include_router(digest.router)
+
+    from helix.api.routers import blog_post
+    app.include_router(blog_post.router)
+
+    from helix.api.routers import product_descriptions as product_desc_router
+    app.include_router(product_desc_router.router)
+
+    from helix.api.routers import repurpose
+    app.include_router(repurpose.router)
+
     from helix.packs.registry import load_all_packs
     load_all_packs(s.packs_dir)
 

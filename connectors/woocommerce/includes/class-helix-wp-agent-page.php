@@ -303,6 +303,19 @@ class Helix_WP_Agent_Page {
                 <button class="hwpa-tab active" data-tab="quick-actions" role="tab">Quick Actions</button>
                 <button class="hwpa-tab" data-tab="performance" role="tab">Performance</button>
                 <button class="hwpa-tab" data-tab="scheduler" role="tab">Scheduler</button>
+                <button class="hwpa-tab" data-tab="broken-links" role="tab">&#128279; Broken Links</button>
+                <button class="hwpa-tab" data-tab="error-log" role="tab">&#129811; Error Log</button>
+                <button class="hwpa-tab" data-tab="backups" role="tab">&#128190; Backups</button>
+                <button class="hwpa-tab" data-tab="plugins" role="tab">&#128268; Plugins</button>
+                <button class="hwpa-tab" data-tab="snippets" role="tab">&#129513; Snippets</button>
+                <button class="hwpa-tab" data-tab="alt-text" role="tab">&#128444;&#65039; Alt Text</button>
+                <button class="hwpa-tab" data-tab="seo-meta" role="tab">&#127991;&#65039; SEO Meta</button>
+                <button class="hwpa-tab" data-tab="reviews" role="tab">&#11088; Reviews</button>
+                <button class="hwpa-tab" data-tab="int-links" role="tab">&#128279; Int. Links</button>
+                <button class="hwpa-tab" data-tab="blog" role="tab">&#9997;&#65039; Blog</button>
+                <button class="hwpa-tab" data-tab="descriptions" role="tab">&#128717; Descriptions</button>
+                <button class="hwpa-tab" data-tab="repurpose" role="tab">&#9851;&#65039; Repurpose</button>
+                <button class="hwpa-tab" data-tab="images" role="tab">&#128444;&#65039; Images</button>
                 <button class="hwpa-tab" data-tab="ai-assistant" role="tab">AI Assistant</button>
                 <button class="hwpa-tab" data-tab="action-log" role="tab">Action Log</button>
             </div>
@@ -370,6 +383,30 @@ class Helix_WP_Agent_Page {
                         <p style="color:#9ca3af;font-size:13px;">Click "Refresh Metrics" to load live data.</p>
                     </div>
                 </div>
+
+                <!-- Uptime Monitor card -->
+                <div class="hwpa-card" id="hwpa-uptime-card">
+                    <div class="hwpa-card-head">
+                        <h2>Uptime Monitor</h2>
+                        <button id="hwpa-uptime-refresh" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Refresh</button>
+                        <div class="hwpa-spinner" id="hwpa-uptime-spinner"></div>
+                    </div>
+                    <div class="hwpa-card-body" id="hwpa-uptime-body">
+                        <p style="color:#9ca3af;font-size:13px;">Loading uptime data&hellip;</p>
+                    </div>
+                </div>
+
+                <!-- Web Vitals card -->
+                <div class="hwpa-card" id="hwpa-vitals-card">
+                    <div class="hwpa-card-head">
+                        <h2>Core Web Vitals</h2>
+                        <button id="hwpa-vitals-scan" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Scan Now</button>
+                        <div class="hwpa-spinner" id="hwpa-vitals-spinner"></div>
+                    </div>
+                    <div class="hwpa-card-body" id="hwpa-vitals-body">
+                        <p style="color:#9ca3af;font-size:13px;">Requires a PageSpeed API key in Helix Settings. Click "Scan Now" to run.</p>
+                    </div>
+                </div>
             </div>
 
             <!-- ══════════ SCHEDULER TAB ══════════ -->
@@ -383,6 +420,314 @@ class Helix_WP_Agent_Page {
                     </div>
                     <div class="hwpa-card-body" id="hwpa-sched-body">
                         <p style="color:#9ca3af;font-size:13px;">Loading schedule...</p>
+                    </div>
+                </div>
+
+                <!-- Weekly Digest controls -->
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head"><h2>Weekly Digest Email</h2></div>
+                    <div class="hwpa-card-body">
+                        <p style="font-size:13px;color:#6b7280;margin:0 0 14px;">Sends an AI-generated weekly site summary every Monday at 8am UTC.</p>
+                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                            <label style="font-size:13px;font-weight:500;">Digest email:</label>
+                            <input type="email" id="hwpa-digest-email" value="<?php echo esc_attr( get_option( 'admin_email', '' ) ); ?>"
+                                   style="border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:13px;width:260px;">
+                            <button id="hwpa-digest-test" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm">Send Test Digest</button>
+                            <div class="hwpa-spinner" id="hwpa-digest-spinner"></div>
+                        </div>
+                        <p id="hwpa-digest-result" style="margin:10px 0 0;font-size:12px;display:none;"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ BROKEN LINKS TAB ══════════ -->
+            <div id="hwpa-panel-broken-links" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>Broken Link Checker</h2>
+                        <button id="hwpa-bl-scan" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:auto;">Scan Now</button>
+                        <div class="hwpa-spinner" id="hwpa-bl-spinner"></div>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <div id="hwpa-bl-progress" style="display:none;margin-bottom:12px;">
+                            <div style="background:#f3f4f6;border-radius:4px;height:8px;overflow:hidden;">
+                                <div id="hwpa-bl-bar" style="height:100%;background:#6366f1;width:0%;transition:width .3s;"></div>
+                            </div>
+                            <p id="hwpa-bl-progress-text" style="font-size:12px;color:#6b7280;margin:6px 0 0;"></p>
+                        </div>
+                        <p id="hwpa-bl-last-scan" style="font-size:12px;color:#9ca3af;margin:0 0 12px;"></p>
+                        <div id="hwpa-bl-results"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ ERROR LOG TAB ══════════ -->
+            <div id="hwpa-panel-error-log" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>PHP Error Log</h2>
+                        <button id="hwpa-el-refresh" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Refresh</button>
+                        <button id="hwpa-el-clear" class="hwpa-btn hwpa-btn-danger hwpa-btn-sm" style="margin-left:8px;">Clear Log</button>
+                        <div class="hwpa-spinner" id="hwpa-el-spinner"></div>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <div id="hwpa-el-badges" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+                        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                            <button class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm hwpa-el-filter" data-level="">All</button>
+                            <button class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm hwpa-el-filter" data-level="Fatal" style="color:#ef4444;border-color:#ef4444;">Fatal</button>
+                            <button class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm hwpa-el-filter" data-level="Warning" style="color:#f59e0b;border-color:#f59e0b;">Warning</button>
+                            <button class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm hwpa-el-filter" data-level="Notice">Notice</button>
+                            <button class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm hwpa-el-filter" data-level="Deprecated">Deprecated</button>
+                        </div>
+                        <div id="hwpa-el-results"><p style="color:#9ca3af;font-size:13px;">Click Refresh to load error log.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ BACKUPS TAB ══════════ -->
+            <div id="hwpa-panel-backups" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>Database Backups</h2>
+                        <button id="hwpa-bk-run" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:auto;">Backup Now</button>
+                        <div class="hwpa-spinner" id="hwpa-bk-spinner"></div>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+                            <label style="font-size:13px;font-weight:500;">Schedule:</label>
+                            <select id="hwpa-bk-schedule" style="border:1px solid #e5e7eb;border-radius:6px;padding:5px 10px;font-size:13px;">
+                                <option value="daily" <?php selected( get_option( 'helix_backup_schedule', 'daily' ), 'daily' ); ?>>Daily</option>
+                                <option value="weekly" <?php selected( get_option( 'helix_backup_schedule', 'daily' ), 'weekly' ); ?>>Weekly</option>
+                                <option value="off" <?php selected( get_option( 'helix_backup_schedule', 'daily' ), 'off' ); ?>>Off</option>
+                            </select>
+                            <label style="font-size:13px;font-weight:500;">Keep last:</label>
+                            <input type="number" id="hwpa-bk-keep" value="<?php echo esc_attr( get_option( 'helix_backup_keep', 7 ) ); ?>" min="1" max="30" style="width:60px;border:1px solid #e5e7eb;border-radius:6px;padding:5px 8px;font-size:13px;">
+                        </div>
+                        <div id="hwpa-bk-results"><p style="color:#9ca3af;font-size:13px;">Loading backup list&hellip;</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ PLUGINS TAB ══════════ -->
+            <div id="hwpa-panel-plugins" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>Plugin Manager</h2>
+                        <button id="hwpa-pm-update-all" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:auto;">Update All</button>
+                        <div class="hwpa-spinner" id="hwpa-pm-spinner"></div>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                            <button class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm hwpa-pm-filter active" data-filter="all">All</button>
+                            <button class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm hwpa-pm-filter" data-filter="updates" style="color:#f59e0b;border-color:#f59e0b;">Updates Available</button>
+                            <button class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm hwpa-pm-filter" data-filter="active">Active</button>
+                            <button class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm hwpa-pm-filter" data-filter="inactive">Inactive</button>
+                        </div>
+                        <div id="hwpa-pm-results"><p style="color:#9ca3af;font-size:13px;">Loading plugins&hellip;</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ SNIPPETS TAB ══════════ -->
+            <div id="hwpa-panel-snippets" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>Code Snippets</h2>
+                        <button id="hwpa-sn-add" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:auto;">+ Add Snippet</button>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#7f1d1d;">
+                            <strong>&#9888; Warning:</strong> Code snippets run as PHP on your site. A syntax error or bug can break your site. Only add code you fully understand.
+                        </div>
+                        <div id="hwpa-sn-list"><p style="color:#9ca3af;font-size:13px;">Loading snippets&hellip;</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ ALT TEXT TAB ══════════ -->
+            <div id="hwpa-panel-alt-text" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>AI Alt Text Generator</h2>
+                        <button id="hwpa-at-scan" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Scan Missing</button>
+                        <button id="hwpa-at-gen-all" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:8px;">Generate All</button>
+                        <div class="hwpa-spinner" id="hwpa-at-spinner"></div>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <p id="hwpa-at-count" style="font-size:13px;color:#6b7280;margin:0 0 12px;"></p>
+                        <div id="hwpa-at-results"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ SEO META TAB ══════════ -->
+            <div id="hwpa-panel-seo-meta" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>SEO Meta Generator</h2>
+                        <button id="hwpa-sm-scan" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Scan Missing</button>
+                        <button id="hwpa-sm-gen-all" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:8px;">Generate All</button>
+                        <div class="hwpa-spinner" id="hwpa-sm-spinner"></div>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <p id="hwpa-sm-count" style="font-size:13px;color:#6b7280;margin:0 0 12px;"></p>
+                        <div id="hwpa-sm-results"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ REVIEWS TAB ══════════ -->
+            <div id="hwpa-panel-reviews" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>Review Synthesiser</h2>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+                            <select id="hwpa-rv-product" style="border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:13px;min-width:240px;">
+                                <option value="">— Select a product —</option>
+                            </select>
+                            <button id="hwpa-rv-synthesise" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" disabled>Synthesise Reviews</button>
+                            <div class="hwpa-spinner" id="hwpa-rv-spinner"></div>
+                        </div>
+                        <div id="hwpa-rv-result"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ INTERNAL LINKS TAB ══════════ -->
+            <div id="hwpa-panel-int-links" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>Internal Link Suggester</h2>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+                            <input type="number" id="hwpa-il-post-id" placeholder="Post ID" min="1"
+                                   style="border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:13px;width:120px;">
+                            <button id="hwpa-il-suggest" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm">Suggest Links</button>
+                            <div class="hwpa-spinner" id="hwpa-il-spinner"></div>
+                        </div>
+                        <div id="hwpa-il-results"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ BLOG TAB ══════════ -->
+            <div id="hwpa-panel-blog" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>AI Blog Post Generator</h2>
+                        <span style="margin-left:auto;font-size:12px;color:#6b7280;background:#f3f4f6;padding:3px 8px;border-radius:12px;">~$0.04 / post</span>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+                            <div>
+                                <label style="font-size:12px;font-weight:500;color:#374151;display:block;margin-bottom:4px;">Topic *</label>
+                                <input type="text" id="hwpa-bg-topic" placeholder="e.g. 10 tips for glowing skin"
+                                       style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font-size:13px;">
+                            </div>
+                            <div>
+                                <label style="font-size:12px;font-weight:500;color:#374151;display:block;margin-bottom:4px;">Keywords (comma-sep)</label>
+                                <input type="text" id="hwpa-bg-keywords" placeholder="skincare, vitamin C, serum"
+                                       style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font-size:13px;">
+                            </div>
+                            <div>
+                                <label style="font-size:12px;font-weight:500;color:#374151;display:block;margin-bottom:4px;">Tone</label>
+                                <div style="display:flex;gap:8px;">
+                                    <?php foreach ( [ 'professional', 'conversational', 'technical' ] as $tone ) : ?>
+                                    <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                                        <input type="radio" name="hwpa-bg-tone" value="<?php echo esc_attr( $tone ); ?>"
+                                               <?php checked( $tone, 'professional' ); ?>>
+                                        <?php echo esc_html( ucfirst( $tone ) ); ?>
+                                    </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                            <div>
+                                <label style="font-size:12px;font-weight:500;color:#374151;display:block;margin-bottom:4px;">Word count</label>
+                                <select id="hwpa-bg-wordcount" style="border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:13px;">
+                                    <option value="400">~400 words</option>
+                                    <option value="800" selected>~800 words</option>
+                                    <option value="1200">~1200 words</option>
+                                    <option value="1800">~1800 words</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <button id="hwpa-bg-generate" class="hwpa-btn hwpa-btn-primary">Generate Post</button>
+                            <div class="hwpa-spinner" id="hwpa-bg-spinner"></div>
+                        </div>
+                        <div id="hwpa-bg-result" style="margin-top:16px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ DESCRIPTIONS TAB ══════════ -->
+            <div id="hwpa-panel-descriptions" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>Product Description Rewriter</h2>
+                        <button id="hwpa-pd-scan" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Scan Thin</button>
+                        <div class="hwpa-spinner" id="hwpa-pd-spinner"></div>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <p id="hwpa-pd-count" style="font-size:13px;color:#6b7280;margin:0 0 12px;"></p>
+                        <div id="hwpa-pd-results"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ REPURPOSE TAB ══════════ -->
+            <div id="hwpa-panel-repurpose" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>Content Repurposer</h2>
+                        <span style="margin-left:auto;font-size:12px;color:#6b7280;background:#f3f4f6;padding:3px 8px;border-radius:12px;">~$0.02 / post</span>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+                            <input type="number" id="hwpa-rp-post-id" placeholder="Post ID" min="1"
+                                   style="border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:13px;width:120px;">
+                            <span style="font-size:13px;color:#6b7280;">Formats:</span>
+                            <?php foreach ( [ 'social_caption' => 'Social Caption', 'email' => 'Email', 'faq' => 'FAQ', 'short_summary' => 'Summary' ] as $val => $lbl ) : ?>
+                            <label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                                <input type="checkbox" class="hwpa-rp-format" value="<?php echo esc_attr( $val ); ?>" checked>
+                                <?php echo esc_html( $lbl ); ?>
+                            </label>
+                            <?php endforeach; ?>
+                            <button id="hwpa-rp-generate" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm">Repurpose</button>
+                            <div class="hwpa-spinner" id="hwpa-rp-spinner"></div>
+                        </div>
+                        <div id="hwpa-rp-result"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ IMAGES TAB ══════════ -->
+            <div id="hwpa-panel-images" class="hwpa-panel" role="tabpanel">
+                <div class="hwpa-card">
+                    <div class="hwpa-card-head">
+                        <h2>Image Optimiser (WebP)</h2>
+                        <button id="hwpa-io-scan" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm" style="margin-left:auto;">Scan</button>
+                        <button id="hwpa-io-opt-all" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm" style="margin-left:8px;">Optimise All</button>
+                        <div class="hwpa-spinner" id="hwpa-io-spinner"></div>
+                    </div>
+                    <div class="hwpa-card-body">
+                        <?php
+                        $imagick_ok = extension_loaded( 'imagick' );
+                        $badge_bg   = $imagick_ok ? '#d1fae5' : '#fee2e2';
+                        $badge_col  = $imagick_ok ? '#065f46' : '#7f1d1d';
+                        $badge_txt  = $imagick_ok ? 'Imagick Available' : 'Imagick Not Available';
+                        ?>
+                        <div style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:<?php echo esc_attr( $badge_bg ); ?>;color:<?php echo esc_attr( $badge_col ); ?>;margin-bottom:12px;">
+                            <?php echo esc_html( $badge_txt ); ?>
+                        </div>
+                        <?php if ( ! $imagick_ok ) : ?>
+                        <p style="font-size:13px;color:#6b7280;">Imagick PHP extension is required for WebP conversion. Contact your host to enable it.</p>
+                        <?php endif; ?>
+                        <p id="hwpa-io-count" style="font-size:13px;color:#6b7280;margin:0 0 12px;"></p>
+                        <div id="hwpa-io-results"></div>
                     </div>
                 </div>
             </div>
@@ -1009,6 +1354,993 @@ class Helix_WP_Agent_Page {
             if (document.querySelector('.hwpa-tab[data-tab="scheduler"]').classList.contains('active')) {
                 loadScheduler();
             }
+
+            /* ═══════════════════════════════════════════════════════════
+             *  UPTIME MONITOR
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var uptimeBody = document.getElementById('hwpa-uptime-body');
+                function loadUptime() {
+                    ajaxPost('helix_uptime_data', {}, function (res) {
+                        if (!res.success) { uptimeBody.innerHTML = '<p style="color:#ef4444;">Failed to load uptime data.</p>'; return; }
+                        var d = res.data;
+                        var statusColor = d.status === 'up' ? '#10b981' : '#ef4444';
+                        var statusLabel = d.status === 'up' ? 'UP' : 'DOWN';
+                        var html = '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">';
+                        html += '<div style="display:inline-flex;align-items:center;padding:4px 14px;background:' + statusColor + '20;color:' + statusColor + ';border-radius:20px;font-size:14px;font-weight:700;">' + escHtml(statusLabel) + '</div>';
+                        html += '<div style="font-size:13px;"><strong>' + escHtml(String(d.uptime_pct)) + '%</strong> uptime</div>';
+                        html += '<div style="font-size:13px;"><strong>' + escHtml(String(d.avg_ms)) + 'ms</strong> avg response</div>';
+                        if (d.last_check) { html += '<div style="font-size:12px;color:#9ca3af;">Last check: ' + escHtml(d.last_check) + '</div>'; }
+                        html += '</div>';
+                        if (d.sparkline && d.sparkline.length) {
+                            var maxMs = Math.max.apply(null, d.sparkline) || 1;
+                            html += '<div style="display:flex;align-items:flex-end;gap:2px;height:40px;margin-top:12px;">';
+                            d.sparkline.forEach(function (v) {
+                                var h = v ? Math.max(4, Math.round((v / maxMs) * 40)) : 2;
+                                var c = v > 0 ? '#6366f1' : '#e5e7eb';
+                                html += '<div style="flex:1;background:' + c + ';height:' + h + 'px;border-radius:2px 2px 0 0;" title="' + v + 'ms"></div>';
+                            });
+                            html += '</div><div style="font-size:10px;color:#9ca3af;margin-top:2px;">24h response time (hourly avg)</div>';
+                        }
+                        uptimeBody.innerHTML = html;
+                    });
+                }
+                document.getElementById('hwpa-uptime-refresh').addEventListener('click', loadUptime);
+                // Load when performance tab is active.
+                document.querySelectorAll('.hwpa-tab[data-tab="performance"]').forEach(function (t) {
+                    t.addEventListener('click', function () { setTimeout(loadUptime, 50); });
+                });
+                loadUptime();
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  WEB VITALS
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var vitalsBody    = document.getElementById('hwpa-vitals-body');
+                var vitalsSpinner = document.getElementById('hwpa-vitals-spinner');
+                document.getElementById('hwpa-vitals-scan').addEventListener('click', function () {
+                    vitalsSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_web_vitals_scan', { force: '1' }, function (res) {
+                        vitalsSpinner.style.display = 'none';
+                        if (!res.success) { vitalsBody.innerHTML = '<p style="color:#ef4444;">' + escHtml(String(res.data || 'Failed')) + '</p>'; return; }
+                        var d   = res.data;
+                        var sc  = d.score || 0;
+                        var col = sc >= 90 ? '#10b981' : sc >= 50 ? '#f59e0b' : '#ef4444';
+                        var html = '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px;">';
+                        html += '<div style="width:60px;height:60px;border-radius:50%;background:' + col + '20;color:' + col + ';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;">' + sc + '</div>';
+                        html += '<div><div style="font-size:14px;font-weight:600;">Performance Score</div><div style="font-size:12px;color:#6b7280;">' + escHtml(d.strategy || 'mobile') + ' · ' + (d.from_cache ? 'Cached' : 'Live') + '</div></div></div>';
+                        var metrics = [
+                            { key: 'lcp',  label: 'LCP' },
+                            { key: 'fcp',  label: 'FCP' },
+                            { key: 'inp',  label: 'INP' },
+                            { key: 'cls',  label: 'CLS' },
+                            { key: 'ttfb', label: 'TTFB' },
+                        ];
+                        html += '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">';
+                        metrics.forEach(function (m) {
+                            var mv = d[m.key] || {};
+                            var rc = { good: '#10b981', 'needs-improvement': '#f59e0b', poor: '#ef4444' }[mv.rating] || '#6b7280';
+                            html += '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;text-align:center;">';
+                            html += '<div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">' + escHtml(m.label) + '</div>';
+                            html += '<div style="font-size:16px;font-weight:700;color:' + rc + ';margin:4px 0;">' + escHtml(mv.display || '—') + '</div>';
+                            html += '<div style="font-size:10px;color:' + rc + ';text-transform:capitalize;">' + escHtml(mv.rating || '') + '</div>';
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                        vitalsBody.innerHTML = html;
+                    });
+                });
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  BROKEN LINKS
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var blResults  = document.getElementById('hwpa-bl-results');
+                var blProgress = document.getElementById('hwpa-bl-progress');
+                var blBar      = document.getElementById('hwpa-bl-bar');
+                var blProgText = document.getElementById('hwpa-bl-progress-text');
+                var blSpinner  = document.getElementById('hwpa-bl-spinner');
+                var allBroken  = [];
+
+                document.getElementById('hwpa-bl-scan').addEventListener('click', function () {
+                    allBroken = [];
+                    blProgress.style.display = 'block';
+                    blBar.style.width = '0%';
+                    blResults.innerHTML = '';
+                    blSpinner.style.display = 'inline-block';
+                    scanBatch(0);
+                });
+
+                function scanBatch(offset) {
+                    ajaxPost('helix_scan_broken_links', { offset: offset, batch: 20, force: '1' }, function (res) {
+                        if (!res.success) {
+                            blSpinner.style.display = 'none';
+                            blProgress.style.display = 'none';
+                            blResults.innerHTML = '<p style="color:#ef4444;">Scan failed.</p>';
+                            return;
+                        }
+                        var d = res.data;
+                        if (d.from_cache) {
+                            allBroken = d.links || [];
+                            renderBrokenLinks();
+                            blSpinner.style.display = 'none';
+                            blProgress.style.display = 'none';
+                            document.getElementById('hwpa-bl-last-scan').textContent = 'Results from cache.';
+                            return;
+                        }
+                        allBroken = allBroken.concat(d.links || []);
+                        var pct = d.total > 0 ? Math.round((d.scanned / d.total) * 100) : 100;
+                        blBar.style.width = pct + '%';
+                        blProgText.textContent = 'Scanned ' + d.scanned + ' of ' + d.total + ' links…';
+                        if (d.is_last_batch) {
+                            blSpinner.style.display = 'none';
+                            blProgress.style.display = 'none';
+                            document.getElementById('hwpa-bl-last-scan').textContent = 'Scan complete. Found ' + allBroken.length + ' broken link(s).';
+                            renderBrokenLinks();
+                        } else {
+                            scanBatch(d.offset + d.batch);
+                        }
+                    });
+                }
+
+                function renderBrokenLinks() {
+                    if (!allBroken.length) {
+                        blResults.innerHTML = '<p style="color:#10b981;font-weight:600;">No broken links found!</p>';
+                        return;
+                    }
+                    var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
+                    html += '<thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #e5e7eb;">Post</th><th style="text-align:left;padding:8px;border-bottom:2px solid #e5e7eb;">Broken URL</th><th style="padding:8px;border-bottom:2px solid #e5e7eb;">Status</th><th style="padding:8px;border-bottom:2px solid #e5e7eb;">Fix</th></tr></thead><tbody>';
+                    allBroken.forEach(function (l) {
+                        html += '<tr>';
+                        html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;">' + escHtml(l.post_title) + '</td>';
+                        html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escAttr(l.url) + '">' + escHtml(l.url) + '</td>';
+                        html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center;"><span style="background:#fee2e2;color:#7f1d1d;padding:2px 8px;border-radius:12px;font-size:11px;">' + escHtml(String(l.status_code || l.error || '?')) + '</span></td>';
+                        html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center;"><button class="hwpa-btn hwpa-btn-ghost hwpa-btn-sm hwpa-bl-fix-btn" data-post-id="' + escAttr(String(l.post_id)) + '" data-old-url="' + escAttr(l.url) + '">Fix</button></td>';
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table></div>';
+                    blResults.innerHTML = html;
+                    blResults.querySelectorAll('.hwpa-bl-fix-btn').forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            var newUrl = prompt('Replace broken URL:\n' + btn.dataset.oldUrl + '\n\nEnter new URL:');
+                            if (!newUrl) return;
+                            btn.disabled = true;
+                            ajaxPost('helix_broken_links_fix', { post_id: btn.dataset.postId, old_url: btn.dataset.oldUrl, new_url: newUrl }, function (res) {
+                                if (res.success) {
+                                    toast('Link replaced successfully.', 'success');
+                                    btn.closest('tr').remove();
+                                } else {
+                                    toast('Fix failed: ' + escHtml(String(res.data || '')), 'error');
+                                    btn.disabled = false;
+                                }
+                            });
+                        });
+                    });
+                }
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  ERROR LOG
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var elResults  = document.getElementById('hwpa-el-results');
+                var elBadges   = document.getElementById('hwpa-el-badges');
+                var elSpinner  = document.getElementById('hwpa-el-spinner');
+                var elLevel    = '';
+                var allEntries = [];
+
+                function loadErrorLog(level) {
+                    elSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_get_error_log', { level: level || '' }, function (res) {
+                        elSpinner.style.display = 'none';
+                        if (!res.success) { elResults.innerHTML = '<p style="color:#ef4444;">Failed to load log.</p>'; return; }
+                        var d = res.data;
+                        allEntries = d.entries || [];
+                        var counts  = d.counts || {};
+                        var badgeColors = { Fatal: '#ef4444', Warning: '#f59e0b', Notice: '#6366f1', Deprecated: '#6b7280' };
+                        var badgeHtml = '';
+                        Object.keys(counts).forEach(function (k) {
+                            badgeHtml += '<span style="background:' + (badgeColors[k] || '#e5e7eb') + '20;color:' + (badgeColors[k] || '#374151') + ';border:1px solid currentColor;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;">' + escHtml(k) + ': ' + counts[k] + '</span>';
+                        });
+                        elBadges.innerHTML = badgeHtml;
+                        if (!d.exists) { elResults.innerHTML = '<p style="color:#9ca3af;">No debug.log file found.</p>'; return; }
+                        if (!allEntries.length) { elResults.innerHTML = '<p style="color:#10b981;">Log is empty.</p>'; return; }
+                        var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">';
+                        html += '<thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #e5e7eb;">Timestamp</th><th style="padding:6px 8px;border-bottom:2px solid #e5e7eb;">Level</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #e5e7eb;">Message</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #e5e7eb;">File:Line</th></tr></thead><tbody>';
+                        allEntries.forEach(function (e) {
+                            var lc = badgeColors[e.level] || '#6b7280';
+                            html += '<tr>';
+                            html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;color:#9ca3af;">' + escHtml(e.timestamp) + '</td>';
+                            html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:center;"><span style="background:' + lc + '20;color:' + lc + ';padding:1px 6px;border-radius:10px;font-size:10px;font-weight:600;">' + escHtml(e.level) + '</span></td>';
+                            html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;max-width:360px;">' + escHtml(e.message) + '</td>';
+                            html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;color:#6b7280;">' + (e.file ? escHtml(e.file.split('/').slice(-1)[0]) + ':' + escHtml(e.line) : '—') + '</td>';
+                            html += '</tr>';
+                        });
+                        html += '</tbody></table></div>';
+                        elResults.innerHTML = html;
+                    });
+                }
+
+                document.getElementById('hwpa-el-refresh').addEventListener('click', function () { loadErrorLog(elLevel); });
+                document.getElementById('hwpa-el-clear').addEventListener('click', function () {
+                    if (!confirm('Clear the PHP error log? This cannot be undone.')) return;
+                    elSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_clear_error_log', {}, function (res) {
+                        elSpinner.style.display = 'none';
+                        if (res.success) { toast('Error log cleared.', 'success'); loadErrorLog(''); }
+                        else { toast('Clear failed.', 'error'); }
+                    });
+                });
+                document.querySelectorAll('.hwpa-el-filter').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        elLevel = btn.dataset.level;
+                        loadErrorLog(elLevel);
+                    });
+                });
+                // Auto-load when tab opened.
+                document.querySelectorAll('.hwpa-tab[data-tab="error-log"]').forEach(function (t) {
+                    t.addEventListener('click', function () { loadErrorLog(''); });
+                });
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  BACKUPS
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var bkResults = document.getElementById('hwpa-bk-results');
+                var bkSpinner = document.getElementById('hwpa-bk-spinner');
+
+                function loadBackups() {
+                    ajaxPost('helix_list_backups', {}, function (res) {
+                        if (!res.success) { bkResults.innerHTML = '<p style="color:#ef4444;">Failed to load backups.</p>'; return; }
+                        var d = res.data;
+                        var backups = d.backups || [];
+                        if (!backups.length) { bkResults.innerHTML = '<p style="color:#9ca3af;font-size:13px;">No backups yet. Click "Backup Now" to create one.</p>'; return; }
+                        var html = '<p style="font-size:12px;color:#6b7280;margin:0 0 8px;">Total: ' + escHtml(String(d.total_size_kb)) + ' KB</p>';
+                        html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
+                        html += '<thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #e5e7eb;">Filename</th><th style="text-align:left;padding:8px;border-bottom:2px solid #e5e7eb;">Date</th><th style="padding:8px;border-bottom:2px solid #e5e7eb;">Size</th><th style="padding:8px;border-bottom:2px solid #e5e7eb;">Actions</th></tr></thead><tbody>';
+                        backups.forEach(function (b) {
+                            html += '<tr>';
+                            html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;font-size:12px;font-family:monospace;">' + escHtml(b.filename) + '</td>';
+                            html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;">' + escHtml(b.date) + '</td>';
+                            html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center;">' + escHtml(String(b.size_kb)) + ' KB</td>';
+                            html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center;display:flex;gap:6px;justify-content:center;">';
+                            html += '<button class="hwpa-btn hwpa-btn-ghost hwpa-btn-sm hwpa-bk-dl" data-fn="' + escAttr(b.filename) + '">Download</button>';
+                            html += '<button class="hwpa-btn hwpa-btn-danger hwpa-btn-sm hwpa-bk-del" data-fn="' + escAttr(b.filename) + '">Delete</button>';
+                            html += '</td></tr>';
+                        });
+                        html += '</tbody></table></div>';
+                        bkResults.innerHTML = html;
+                        bkResults.querySelectorAll('.hwpa-bk-dl').forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                var form = document.createElement('form');
+                                form.method = 'POST';
+                                form.action = AJAX;
+                                ['action','nonce','filename'].forEach(function (k) {
+                                    var i = document.createElement('input');
+                                    i.type = 'hidden'; i.name = k;
+                                    i.value = k === 'action' ? 'helix_download_backup' : (k === 'nonce' ? NONCE : btn.dataset.fn);
+                                    form.appendChild(i);
+                                });
+                                document.body.appendChild(form);
+                                form.submit();
+                                form.remove();
+                            });
+                        });
+                        bkResults.querySelectorAll('.hwpa-bk-del').forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                if (!confirm('Delete ' + btn.dataset.fn + '?')) return;
+                                ajaxPost('helix_delete_backup', { filename: btn.dataset.fn }, function (res) {
+                                    if (res.success) { toast('Backup deleted.', 'success'); loadBackups(); }
+                                    else { toast('Delete failed.', 'error'); }
+                                });
+                            });
+                        });
+                    });
+                }
+
+                document.getElementById('hwpa-bk-run').addEventListener('click', function () {
+                    var btn = this;
+                    btn.disabled = true;
+                    bkSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_run_backup', {}, function (res) {
+                        btn.disabled = false;
+                        bkSpinner.style.display = 'none';
+                        if (res.success) {
+                            toast('Backup created: ' + escHtml(res.data.filename) + ' (' + res.data.size_kb + ' KB)', 'success');
+                            loadBackups();
+                        } else {
+                            toast('Backup failed: ' + escHtml(String(res.data || '')), 'error');
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.hwpa-tab[data-tab="backups"]').forEach(function (t) {
+                    t.addEventListener('click', loadBackups);
+                });
+                loadBackups();
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  PLUGIN MANAGER
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var pmResults = document.getElementById('hwpa-pm-results');
+                var pmSpinner = document.getElementById('hwpa-pm-spinner');
+                var pmFilter  = 'all';
+                var allPlugins = [];
+
+                function loadPlugins() {
+                    pmSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_list_plugins', {}, function (res) {
+                        pmSpinner.style.display = 'none';
+                        if (!res.success) { pmResults.innerHTML = '<p style="color:#ef4444;">Failed to load plugins.</p>'; return; }
+                        allPlugins = res.data.plugins || [];
+                        renderPlugins();
+                    });
+                }
+
+                function renderPlugins() {
+                    var list = allPlugins.filter(function (p) {
+                        if (pmFilter === 'updates') return p.update_available;
+                        if (pmFilter === 'active')  return p.active;
+                        if (pmFilter === 'inactive') return !p.active;
+                        return true;
+                    });
+                    if (!list.length) { pmResults.innerHTML = '<p style="color:#9ca3af;font-size:13px;">No plugins found for filter: ' + escHtml(pmFilter) + '.</p>'; return; }
+                    var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+                    list.forEach(function (p) {
+                        html += '<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;flex-wrap:wrap;">';
+                        html += '<div style="flex:1;min-width:200px;"><div style="font-size:13px;font-weight:600;">' + escHtml(p.name) + '</div>';
+                        html += '<div style="font-size:11px;color:#6b7280;">v' + escHtml(p.version) + (p.update_available ? ' → <strong style="color:#f59e0b;">v' + escHtml(p.new_version) + ' available</strong>' : '') + '</div></div>';
+                        html += '<label class="hwpa-toggle" title="Toggle active"><input type="checkbox"' + (p.active ? ' checked' : '') + ' data-file="' + escAttr(p.file) + '" class="hwpa-pm-toggle"><span class="hwpa-toggle-slider"></span></label>';
+                        if (p.update_available) {
+                            html += '<button class="hwpa-btn hwpa-btn-primary hwpa-btn-sm hwpa-pm-update-btn" data-file="' + escAttr(p.file) + '">Update</button>';
+                        }
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                    pmResults.innerHTML = html;
+
+                    pmResults.querySelectorAll('.hwpa-pm-toggle').forEach(function (cb) {
+                        cb.addEventListener('change', function () {
+                            cb.disabled = true;
+                            ajaxPost('helix_toggle_plugin', { plugin_file: cb.dataset.file, activate: cb.checked ? '1' : '0' }, function (res) {
+                                cb.disabled = false;
+                                if (res.success) { toast('Plugin ' + (cb.checked ? 'activated' : 'deactivated') + '.', 'success'); }
+                                else { toast('Error: ' + escHtml(String(res.data || '')), 'error'); cb.checked = !cb.checked; }
+                            });
+                        });
+                    });
+
+                    pmResults.querySelectorAll('.hwpa-pm-update-btn').forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            btn.disabled = true; btn.textContent = 'Updating…';
+                            ajaxPost('helix_update_plugin', { plugin_file: btn.dataset.file }, function (res) {
+                                if (res.success) { toast('Updated to v' + escHtml(res.data.new_version), 'success'); loadPlugins(); }
+                                else { toast('Update failed: ' + escHtml(String(res.data || '')), 'error'); btn.disabled = false; btn.textContent = 'Update'; }
+                            });
+                        });
+                    });
+                }
+
+                document.querySelectorAll('.hwpa-pm-filter').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        document.querySelectorAll('.hwpa-pm-filter').forEach(function (b) { b.classList.remove('active'); });
+                        btn.classList.add('active');
+                        pmFilter = btn.dataset.filter;
+                        renderPlugins();
+                    });
+                });
+
+                document.getElementById('hwpa-pm-update-all').addEventListener('click', function () {
+                    var updates = allPlugins.filter(function (p) { return p.update_available; });
+                    if (!updates.length) { toast('No updates available.', 'success'); return; }
+                    if (!confirm('Update ' + updates.length + ' plugin(s)?')) return;
+                    pmSpinner.style.display = 'inline-block';
+                    var i = 0;
+                    function updateNext() {
+                        if (i >= updates.length) { pmSpinner.style.display = 'none'; toast('All updates complete.', 'success'); loadPlugins(); return; }
+                        ajaxPost('helix_update_plugin', { plugin_file: updates[i].file }, function () { i++; updateNext(); });
+                    }
+                    updateNext();
+                });
+
+                document.querySelectorAll('.hwpa-tab[data-tab="plugins"]').forEach(function (t) {
+                    t.addEventListener('click', loadPlugins);
+                });
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  SNIPPETS
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var snList    = document.getElementById('hwpa-sn-list');
+                var editModal = null;
+
+                function loadSnippets() {
+                    ajaxPost('helix_snippets_list', {}, function (res) {
+                        if (!res.success) { snList.innerHTML = '<p style="color:#ef4444;">Failed.</p>'; return; }
+                        var snippets = res.data.snippets || [];
+                        if (!snippets.length) { snList.innerHTML = '<p style="color:#9ca3af;font-size:13px;">No snippets yet. Click "+ Add Snippet" to create one.</p>'; return; }
+                        var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+                        snippets.forEach(function (s) {
+                            html += '<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;flex-wrap:wrap;">';
+                            html += '<label class="hwpa-toggle"><input type="checkbox"' + (parseInt(s.enabled) ? ' checked' : '') + ' class="hwpa-sn-toggle" data-id="' + escAttr(s.id) + '"><span class="hwpa-toggle-slider"></span></label>';
+                            html += '<div style="flex:1;min-width:150px;"><div style="font-size:13px;font-weight:600;">' + escHtml(s.name) + '</div>';
+                            html += '<div style="font-size:11px;color:#6b7280;">Hook: <code>' + escHtml(s.hook) + '</code></div></div>';
+                            html += '<button class="hwpa-btn hwpa-btn-ghost hwpa-btn-sm hwpa-sn-edit-btn" data-id="' + escAttr(s.id) + '">Edit</button>';
+                            html += '<button class="hwpa-btn hwpa-btn-danger hwpa-btn-sm hwpa-sn-del-btn" data-id="' + escAttr(s.id) + '">Delete</button>';
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                        snList.innerHTML = html;
+                        attachSnippetHandlers(snippets);
+                    });
+                }
+
+                function attachSnippetHandlers(snippets) {
+                    snList.querySelectorAll('.hwpa-sn-toggle').forEach(function (cb) {
+                        cb.addEventListener('change', function () {
+                            ajaxPost('helix_snippets_toggle', { id: cb.dataset.id, enabled: cb.checked ? '1' : '0' }, function (res) {
+                                if (!res.success) { toast('Toggle failed.', 'error'); cb.checked = !cb.checked; }
+                            });
+                        });
+                    });
+                    snList.querySelectorAll('.hwpa-sn-del-btn').forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            if (!confirm('Delete this snippet?')) return;
+                            ajaxPost('helix_snippets_delete', { id: btn.dataset.id }, function (res) {
+                                if (res.success) { toast('Snippet deleted.', 'success'); loadSnippets(); }
+                                else { toast('Delete failed.', 'error'); }
+                            });
+                        });
+                    });
+                    snList.querySelectorAll('.hwpa-sn-edit-btn').forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            var s = snippets.find(function (x) { return String(x.id) === String(btn.dataset.id); });
+                            if (s) openSnippetModal(s);
+                        });
+                    });
+                }
+
+                function openSnippetModal(snippet) {
+                    var overlay = document.createElement('div');
+                    overlay.className = 'hwpa-modal-overlay open';
+                    var isNew = !snippet || !snippet.id;
+                    overlay.innerHTML = '<div class="hwpa-modal" style="max-width:640px;">'
+                        + '<div class="hwpa-modal-head"><h3>' + (isNew ? 'Add Snippet' : 'Edit Snippet') + '</h3><button class="hwpa-modal-close" id="hwpa-sn-close">&times;</button></div>'
+                        + '<div class="hwpa-modal-body" style="max-height:60vh;">'
+                        + '<div style="display:flex;flex-direction:column;gap:12px;">'
+                        + '<div><label style="font-size:12px;font-weight:500;">Name *</label><input type="text" id="hwpa-sn-name" value="' + escAttr(snippet ? snippet.name : '') + '" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font-size:13px;margin-top:4px;"></div>'
+                        + '<div><label style="font-size:12px;font-weight:500;">Hook</label><input type="text" id="hwpa-sn-hook" value="' + escAttr(snippet ? snippet.hook : 'init') + '" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font-size:13px;margin-top:4px;"></div>'
+                        + '<div><label style="font-size:12px;font-weight:500;">PHP Code *</label><textarea id="hwpa-sn-code" rows="8" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font-size:12px;font-family:monospace;margin-top:4px;resize:vertical;">' + escHtml(snippet ? snippet.code : '') + '</textarea></div>'
+                        + '</div></div>'
+                        + '<div class="hwpa-modal-foot"><button class="hwpa-btn hwpa-btn-secondary" id="hwpa-sn-cancel">Cancel</button><button class="hwpa-btn hwpa-btn-primary" id="hwpa-sn-save">Save Snippet</button></div>'
+                        + '</div>';
+                    document.body.appendChild(overlay);
+                    overlay.querySelector('#hwpa-sn-close').addEventListener('click', function () { overlay.remove(); });
+                    overlay.querySelector('#hwpa-sn-cancel').addEventListener('click', function () { overlay.remove(); });
+                    overlay.querySelector('#hwpa-sn-save').addEventListener('click', function () {
+                        var data = {
+                            id:   snippet ? snippet.id : '0',
+                            name: overlay.querySelector('#hwpa-sn-name').value,
+                            hook: overlay.querySelector('#hwpa-sn-hook').value,
+                            code: overlay.querySelector('#hwpa-sn-code').value,
+                        };
+                        ajaxPost('helix_snippets_save', data, function (res) {
+                            if (res.success) { overlay.remove(); toast('Snippet saved.', 'success'); loadSnippets(); }
+                            else { toast('Save failed: ' + escHtml(String(res.data || '')), 'error'); }
+                        });
+                    });
+                }
+
+                document.getElementById('hwpa-sn-add').addEventListener('click', function () { openSnippetModal({}); });
+                document.querySelectorAll('.hwpa-tab[data-tab="snippets"]').forEach(function (t) { t.addEventListener('click', loadSnippets); });
+                loadSnippets();
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  ALT TEXT
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var atResults = document.getElementById('hwpa-at-results');
+                var atCount   = document.getElementById('hwpa-at-count');
+                var atSpinner = document.getElementById('hwpa-at-spinner');
+                var atItems   = [];
+
+                function loadAlt() {
+                    atSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_alt_text_scan', {}, function (res) {
+                        atSpinner.style.display = 'none';
+                        if (!res.success) { atResults.innerHTML = '<p style="color:#ef4444;">Scan failed.</p>'; return; }
+                        atItems = res.data.attachments || [];
+                        atCount.textContent = res.data.count + ' image(s) missing alt text.';
+                        if (!atItems.length) { atResults.innerHTML = '<p style="color:#10b981;font-weight:600;">All images have alt text!</p>'; return; }
+                        renderAlt();
+                    });
+                }
+
+                function renderAlt() {
+                    var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+                    atItems.forEach(function (img) {
+                        html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;">';
+                        html += '<img src="' + escAttr(img.thumbnail_url) + '" style="width:48px;height:48px;object-fit:cover;border-radius:4px;" loading="lazy">';
+                        html += '<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(img.title || img.url) + '</div><div style="font-size:11px;color:#9ca3af;">Missing alt text</div></div>';
+                        html += '<button class="hwpa-btn hwpa-btn-primary hwpa-btn-sm hwpa-at-gen-one" data-id="' + escAttr(String(img.id)) + '">Generate</button>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                    atResults.innerHTML = html;
+                    atResults.querySelectorAll('.hwpa-at-gen-one').forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            btn.disabled = true; btn.textContent = '…';
+                            ajaxPost('helix_alt_text_generate_one', { attachment_id: btn.dataset.id }, function (res) {
+                                if (res.success) { toast('Alt text set: "' + escHtml(res.data.alt_text) + '"', 'success'); btn.closest('div[style]').remove(); }
+                                else { toast('Error: ' + escHtml(String(res.data || '')), 'error'); btn.disabled = false; btn.textContent = 'Generate'; }
+                            });
+                        });
+                    });
+                }
+
+                document.getElementById('hwpa-at-scan').addEventListener('click', loadAlt);
+                document.getElementById('hwpa-at-gen-all').addEventListener('click', function () {
+                    if (!atItems.length) { toast('Scan first.', 'error'); return; }
+                    atSpinner.style.display = 'inline-block';
+                    var i = 0;
+                    function genNext() {
+                        if (i >= atItems.length) { atSpinner.style.display = 'none'; toast('All alt texts generated.', 'success'); loadAlt(); return; }
+                        ajaxPost('helix_alt_text_generate_one', { attachment_id: atItems[i].id }, function () { i++; genNext(); });
+                    }
+                    genNext();
+                });
+                document.querySelectorAll('.hwpa-tab[data-tab="alt-text"]').forEach(function (t) { t.addEventListener('click', loadAlt); });
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  SEO META
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var smResults = document.getElementById('hwpa-sm-results');
+                var smCount   = document.getElementById('hwpa-sm-count');
+                var smSpinner = document.getElementById('hwpa-sm-spinner');
+                var smItems   = [];
+
+                function loadSeo() {
+                    smSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_seo_scan', {}, function (res) {
+                        smSpinner.style.display = 'none';
+                        if (!res.success) { smResults.innerHTML = '<p style="color:#ef4444;">Scan failed.</p>'; return; }
+                        smItems = res.data.posts || [];
+                        smCount.textContent = res.data.count + ' post(s) missing SEO meta.';
+                        if (!smItems.length) { smResults.innerHTML = '<p style="color:#10b981;font-weight:600;">All posts have SEO meta!</p>'; return; }
+                        renderSeo();
+                    });
+                }
+
+                function renderSeo() {
+                    var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
+                    html += '<thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #e5e7eb;">Post</th><th style="padding:8px;border-bottom:2px solid #e5e7eb;">Type</th><th style="padding:8px;border-bottom:2px solid #e5e7eb;">Action</th></tr></thead><tbody>';
+                    smItems.forEach(function (p) {
+                        html += '<tr id="hwpa-sm-row-' + p.ID + '">';
+                        html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;">' + escHtml(p.post_title) + '</td>';
+                        html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center;"><span style="background:#ede9fe;color:#6366f1;padding:2px 8px;border-radius:10px;font-size:11px;">' + escHtml(p.post_type) + '</span></td>';
+                        html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center;"><button class="hwpa-btn hwpa-btn-primary hwpa-btn-sm hwpa-sm-gen-one" data-id="' + escAttr(String(p.ID)) + '">Generate</button></td>';
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table></div>';
+                    smResults.innerHTML = html;
+                    smResults.querySelectorAll('.hwpa-sm-gen-one').forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            btn.disabled = true; btn.textContent = '…';
+                            ajaxPost('helix_seo_generate_one', { post_id: btn.dataset.id }, function (res) {
+                                if (res.success) { toast('SEO meta updated.', 'success'); document.getElementById('hwpa-sm-row-' + btn.dataset.id).remove(); }
+                                else { toast('Error: ' + escHtml(String(res.data || '')), 'error'); btn.disabled = false; btn.textContent = 'Generate'; }
+                            });
+                        });
+                    });
+                }
+
+                document.getElementById('hwpa-sm-scan').addEventListener('click', loadSeo);
+                document.getElementById('hwpa-sm-gen-all').addEventListener('click', function () {
+                    if (!smItems.length) { toast('Scan first.', 'error'); return; }
+                    smSpinner.style.display = 'inline-block';
+                    var i = 0;
+                    function genNext() {
+                        if (i >= smItems.length) { smSpinner.style.display = 'none'; toast('All SEO meta generated.', 'success'); loadSeo(); return; }
+                        ajaxPost('helix_seo_generate_one', { post_id: smItems[i].ID }, function () { i++; genNext(); });
+                    }
+                    genNext();
+                });
+                document.querySelectorAll('.hwpa-tab[data-tab="seo-meta"]').forEach(function (t) { t.addEventListener('click', loadSeo); });
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  REVIEWS
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var rvProduct   = document.getElementById('hwpa-rv-product');
+                var rvSynth     = document.getElementById('hwpa-rv-synthesise');
+                var rvResult    = document.getElementById('hwpa-rv-result');
+                var rvSpinner   = document.getElementById('hwpa-rv-spinner');
+
+                function loadProducts() {
+                    ajaxPost('helix_reviews_get_products', {}, function (res) {
+                        if (!res.success) return;
+                        var products = res.data.products || [];
+                        rvProduct.innerHTML = '<option value="">— Select a product —</option>';
+                        products.forEach(function (p) {
+                            var opt = document.createElement('option');
+                            opt.value = p.id;
+                            opt.textContent = p.title + ' (' + p.review_count + ' reviews)' + (p.has_synthesis ? ' ✓' : '');
+                            rvProduct.appendChild(opt);
+                        });
+                    });
+                }
+
+                rvProduct.addEventListener('change', function () { rvSynth.disabled = !rvProduct.value; });
+
+                rvSynth.addEventListener('click', function () {
+                    var pid = rvProduct.value;
+                    if (!pid) return;
+                    rvSynth.disabled = true;
+                    rvSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_reviews_synthesise', { product_id: pid }, function (res) {
+                        rvSpinner.style.display = 'none';
+                        rvSynth.disabled = false;
+                        if (!res.success) { rvResult.innerHTML = '<p style="color:#ef4444;">' + escHtml(String(res.data || 'Failed')) + '</p>'; return; }
+                        var d = res.data;
+                        var sentCol = { positive: '#10b981', negative: '#ef4444', mixed: '#f59e0b' }[d.sentiment] || '#6b7280';
+                        var html = '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-top:12px;">';
+                        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+                        html += '<span style="font-size:22px;font-weight:700;">' + escHtml(String(d.avg_rating)) + '&#9733;</span>';
+                        html += '<span style="background:' + sentCol + '20;color:' + sentCol + ';padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;text-transform:capitalize;">' + escHtml(d.sentiment) + '</span></div>';
+                        html += '<p style="font-size:13px;line-height:1.6;margin:0 0 12px;">' + escHtml(d.summary) + '</p>';
+                        if (d.pros && d.pros.length) {
+                            html += '<div style="margin-bottom:8px;"><strong style="font-size:12px;color:#10b981;">Pros</strong><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">';
+                            d.pros.forEach(function (p) { html += '<span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:12px;">' + escHtml(p) + '</span>'; });
+                            html += '</div></div>';
+                        }
+                        if (d.cons && d.cons.length) {
+                            html += '<div><strong style="font-size:12px;color:#ef4444;">Cons</strong><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">';
+                            d.cons.forEach(function (c) { html += '<span style="background:#fee2e2;color:#7f1d1d;padding:3px 10px;border-radius:20px;font-size:12px;">' + escHtml(c) + '</span>'; });
+                            html += '</div></div>';
+                        }
+                        html += '</div>';
+                        rvResult.innerHTML = html;
+                    });
+                });
+
+                document.querySelectorAll('.hwpa-tab[data-tab="reviews"]').forEach(function (t) { t.addEventListener('click', loadProducts); });
+                loadProducts();
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  INTERNAL LINKS
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var ilResults = document.getElementById('hwpa-il-results');
+                var ilSpinner = document.getElementById('hwpa-il-spinner');
+
+                document.getElementById('hwpa-il-suggest').addEventListener('click', function () {
+                    var pid = document.getElementById('hwpa-il-post-id').value;
+                    if (!pid) { toast('Enter a Post ID.', 'error'); return; }
+                    ilSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_internal_links_suggest', { post_id: pid }, function (res) {
+                        ilSpinner.style.display = 'none';
+                        if (!res.success) { ilResults.innerHTML = '<p style="color:#ef4444;">' + escHtml(String(res.data || 'Failed')) + '</p>'; return; }
+                        var sugs = res.data.suggestions || [];
+                        if (!sugs.length) { ilResults.innerHTML = '<p style="color:#9ca3af;">No link suggestions found for this post.</p>'; return; }
+                        var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+                        sugs.forEach(function (s, idx) {
+                            html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;">';
+                            html += '<div style="flex:1;"><div style="font-size:13px;"><strong>&ldquo;' + escHtml(s.anchor_text) + '&rdquo;</strong> &rarr; <a href="' + escAttr(s.target_url) + '" target="_blank" style="color:#6366f1;">' + escHtml(s.target_title) + '</a></div></div>';
+                            html += '<button class="hwpa-btn hwpa-btn-primary hwpa-btn-sm hwpa-il-apply" data-idx="' + idx + '" data-anchor="' + escAttr(s.anchor_text) + '" data-url="' + escAttr(s.target_url) + '" data-pid="' + escAttr(String(pid)) + '">Apply</button>';
+                            html += '<button class="hwpa-btn hwpa-btn-ghost hwpa-btn-sm hwpa-il-undo" data-snap="" style="display:none;">Undo</button>';
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                        ilResults.innerHTML = html;
+                        ilResults.querySelectorAll('.hwpa-il-apply').forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                btn.disabled = true;
+                                ajaxPost('helix_internal_links_apply', { post_id: btn.dataset.pid, anchor_text: btn.dataset.anchor, target_url: btn.dataset.url }, function (res) {
+                                    if (res.success) {
+                                        toast('Link applied.', 'success');
+                                        btn.style.display = 'none';
+                                        var undoBtn = btn.nextElementSibling;
+                                        undoBtn.dataset.snap = res.data.snapshot_id;
+                                        undoBtn.style.display = 'inline-flex';
+                                    } else {
+                                        toast('Error: ' + escHtml(String(res.data || '')), 'error');
+                                        btn.disabled = false;
+                                    }
+                                });
+                            });
+                        });
+                        ilResults.querySelectorAll('.hwpa-il-undo').forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                if (!btn.dataset.snap) return;
+                                ajaxPost('helix_action_rollback', { snapshot_id: btn.dataset.snap }, function (res) {
+                                    if (res.success) { toast('Link undone.', 'success'); btn.style.display = 'none'; }
+                                    else { toast('Undo failed.', 'error'); }
+                                });
+                            });
+                        });
+                    });
+                });
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  BLOG GENERATOR
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var bgResult  = document.getElementById('hwpa-bg-result');
+                var bgSpinner = document.getElementById('hwpa-bg-spinner');
+                var bgData    = null;
+
+                document.getElementById('hwpa-bg-generate').addEventListener('click', function () {
+                    var topic = document.getElementById('hwpa-bg-topic').value.trim();
+                    if (!topic) { toast('Enter a topic.', 'error'); return; }
+                    var tone = document.querySelector('input[name="hwpa-bg-tone"]:checked');
+                    bgSpinner.style.display = 'inline-block';
+                    bgResult.innerHTML = '';
+                    bgData = null;
+
+                    ajaxPost('helix_blog_generate', {
+                        topic:      topic,
+                        keywords:   document.getElementById('hwpa-bg-keywords').value,
+                        tone:       tone ? tone.value : 'professional',
+                        word_count: document.getElementById('hwpa-bg-wordcount').value,
+                        save_draft: '0',
+                    }, function (res) {
+                        bgSpinner.style.display = 'none';
+                        if (!res.success) { bgResult.innerHTML = '<p style="color:#ef4444;">' + escHtml(String(res.data || 'Failed')) + '</p>'; return; }
+                        bgData = res.data;
+                        var html = '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;">';
+                        html += '<h3 style="margin:0 0 8px;font-size:16px;color:#1e1b4b;">' + escHtml(bgData.title) + '</h3>';
+                        html += '<p style="font-size:12px;color:#6b7280;margin:0 0 12px;">' + escHtml(bgData.excerpt) + '</p>';
+                        html += '<div style="font-size:13px;line-height:1.6;max-height:300px;overflow-y:auto;border:1px solid #f3f4f6;border-radius:6px;padding:12px;">' + bgData.content_html + '</div>';
+                        html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
+                        html += '<button id="hwpa-bg-save" class="hwpa-btn hwpa-btn-primary hwpa-btn-sm">Save as Draft</button>';
+                        if (bgData.suggested_tags && bgData.suggested_tags.length) {
+                            html += '<div style="font-size:12px;color:#6b7280;display:flex;gap:4px;align-items:center;flex-wrap:wrap;">Tags:';
+                            bgData.suggested_tags.forEach(function (t) { html += '<span style="background:#f3f4f6;padding:2px 8px;border-radius:10px;">' + escHtml(t) + '</span>'; });
+                            html += '</div>';
+                        }
+                        html += '</div></div>';
+                        bgResult.innerHTML = html;
+                        document.getElementById('hwpa-bg-save').addEventListener('click', function () {
+                            var saveBtn = this;
+                            saveBtn.disabled = true;
+                            ajaxPost('helix_blog_generate', {
+                                topic:      topic,
+                                keywords:   document.getElementById('hwpa-bg-keywords').value,
+                                tone:       tone ? tone.value : 'professional',
+                                word_count: document.getElementById('hwpa-bg-wordcount').value,
+                                save_draft: '1',
+                            }, function (res2) {
+                                if (res2.success && res2.data.edit_url) {
+                                    toast('Draft saved! <a href="' + escAttr(res2.data.edit_url) + '" target="_blank" style="color:#6366f1;">Edit it</a>', 'success');
+                                } else {
+                                    toast('Save failed.', 'error');
+                                    saveBtn.disabled = false;
+                                }
+                            });
+                        });
+                    });
+                });
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  PRODUCT DESCRIPTIONS
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var pdResults = document.getElementById('hwpa-pd-results');
+                var pdCount   = document.getElementById('hwpa-pd-count');
+                var pdSpinner = document.getElementById('hwpa-pd-spinner');
+
+                function loadDescriptions() {
+                    pdSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_desc_scan', {}, function (res) {
+                        pdSpinner.style.display = 'none';
+                        if (!res.success) { pdResults.innerHTML = '<p style="color:#ef4444;">Scan failed.</p>'; return; }
+                        var products = res.data.products || [];
+                        pdCount.textContent = res.data.count + ' product(s) with thin descriptions (<80 words).';
+                        if (!products.length) { pdResults.innerHTML = '<p style="color:#10b981;font-weight:600;">All products have full descriptions!</p>'; return; }
+                        var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+                        products.forEach(function (p) {
+                            html += '<div id="hwpa-pd-row-' + p.id + '" style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;flex-wrap:wrap;">';
+                            html += '<div style="flex:1;min-width:150px;"><div style="font-size:13px;font-weight:600;">' + escHtml(p.title) + '</div>';
+                            html += '<div style="font-size:11px;color:#9ca3af;">' + p.word_count + ' words</div></div>';
+                            html += '<button class="hwpa-btn hwpa-btn-primary hwpa-btn-sm hwpa-pd-rewrite" data-id="' + escAttr(String(p.id)) + '">Rewrite</button>';
+                            html += '<button class="hwpa-btn hwpa-btn-ghost hwpa-btn-sm hwpa-pd-undo" data-snap="" style="display:none;">Undo</button>';
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                        pdResults.innerHTML = html;
+                        pdResults.querySelectorAll('.hwpa-pd-rewrite').forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                btn.disabled = true; btn.textContent = '…';
+                                ajaxPost('helix_desc_rewrite_one', { product_id: btn.dataset.id }, function (res) {
+                                    if (res.success) {
+                                        toast('Description rewritten.', 'success');
+                                        btn.style.display = 'none';
+                                        var undo = btn.nextElementSibling;
+                                        undo.dataset.snap = res.data.snapshot_id;
+                                        undo.style.display = 'inline-flex';
+                                    } else {
+                                        toast('Error: ' + escHtml(String(res.data || '')), 'error');
+                                        btn.disabled = false; btn.textContent = 'Rewrite';
+                                    }
+                                });
+                            });
+                        });
+                        pdResults.querySelectorAll('.hwpa-pd-undo').forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                ajaxPost('helix_action_rollback', { snapshot_id: btn.dataset.snap }, function (res) {
+                                    if (res.success) { toast('Reverted.', 'success'); loadDescriptions(); }
+                                    else { toast('Undo failed.', 'error'); }
+                                });
+                            });
+                        });
+                    });
+                }
+
+                document.getElementById('hwpa-pd-scan').addEventListener('click', loadDescriptions);
+                document.querySelectorAll('.hwpa-tab[data-tab="descriptions"]').forEach(function (t) { t.addEventListener('click', loadDescriptions); });
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  REPURPOSE
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var rpResult  = document.getElementById('hwpa-rp-result');
+                var rpSpinner = document.getElementById('hwpa-rp-spinner');
+
+                document.getElementById('hwpa-rp-generate').addEventListener('click', function () {
+                    var pid = document.getElementById('hwpa-rp-post-id').value;
+                    if (!pid) { toast('Enter a Post ID.', 'error'); return; }
+                    var formats = [];
+                    document.querySelectorAll('.hwpa-rp-format:checked').forEach(function (cb) { formats.push(cb.value); });
+                    if (!formats.length) { toast('Select at least one format.', 'error'); return; }
+                    rpSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_repurpose', { post_id: pid, formats: formats.join(',') }, function (res) {
+                        rpSpinner.style.display = 'none';
+                        if (!res.success) { rpResult.innerHTML = '<p style="color:#ef4444;">' + escHtml(String(res.data || 'Failed')) + '</p>'; return; }
+                        var d = res.data;
+                        var html = '<div style="display:flex;flex-direction:column;gap:12px;">';
+                        var items = [
+                            { key: 'social_caption', label: 'Social Caption' },
+                            { key: 'email_body',      label: 'Email Body' },
+                            { key: 'short_summary',   label: 'Short Summary' },
+                        ];
+                        items.forEach(function (item) {
+                            if (!d[item.key]) return;
+                            html += '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;">';
+                            html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">';
+                            html += '<strong style="font-size:13px;">' + escHtml(item.label) + '</strong>';
+                            html += '<button class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm hwpa-rp-copy" data-text="' + escAttr(d[item.key]) + '">Copy</button></div>';
+                            html += '<p style="font-size:13px;line-height:1.6;margin:0;white-space:pre-wrap;">' + escHtml(d[item.key]) + '</p></div>';
+                        });
+                        if (d.faq && d.faq.length) {
+                            html += '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;">';
+                            html += '<strong style="font-size:13px;">FAQ</strong>';
+                            d.faq.forEach(function (qa) {
+                                html += '<div style="margin-top:10px;"><strong style="font-size:12px;">' + escHtml(qa.question || '') + '</strong><p style="font-size:12px;color:#374151;margin:4px 0 0;">' + escHtml(qa.answer || '') + '</p></div>';
+                            });
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                        rpResult.innerHTML = html;
+                        rpResult.querySelectorAll('.hwpa-rp-copy').forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                navigator.clipboard.writeText(btn.dataset.text).then(function () { toast('Copied!', 'success'); });
+                            });
+                        });
+                    });
+                });
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  IMAGE OPTIMISER
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var ioResults = document.getElementById('hwpa-io-results');
+                var ioCount   = document.getElementById('hwpa-io-count');
+                var ioSpinner = document.getElementById('hwpa-io-spinner');
+                var ioItems   = [];
+
+                function loadImages() {
+                    ioSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_image_scan', {}, function (res) {
+                        ioSpinner.style.display = 'none';
+                        if (!res.success) { ioResults.innerHTML = '<p style="color:#ef4444;">Scan failed.</p>'; return; }
+                        ioItems = res.data.images || [];
+                        ioCount.textContent = res.data.count + ' image(s) without WebP version.';
+                        if (!ioItems.length) { ioResults.innerHTML = '<p style="color:#10b981;font-weight:600;">All images have WebP versions!</p>'; return; }
+                        renderImages();
+                    });
+                }
+
+                function renderImages() {
+                    var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
+                    html += '<thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #e5e7eb;">Image</th><th style="padding:8px;border-bottom:2px solid #e5e7eb;">Original</th><th style="padding:8px;border-bottom:2px solid #e5e7eb;">Action</th></tr></thead><tbody>';
+                    ioItems.forEach(function (img) {
+                        html += '<tr id="hwpa-io-row-' + img.id + '">';
+                        html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;">' + escHtml(img.title) + '</td>';
+                        html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center;">' + escHtml(String(img.size_kb)) + ' KB</td>';
+                        html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center;"><button class="hwpa-btn hwpa-btn-primary hwpa-btn-sm hwpa-io-opt-one" data-id="' + escAttr(String(img.id)) + '">Optimise</button><span class="hwpa-io-result-' + img.id + '" style="font-size:11px;margin-left:6px;display:none;"></span></td>';
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table></div>';
+                    ioResults.innerHTML = html;
+                    ioResults.querySelectorAll('.hwpa-io-opt-one').forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            btn.disabled = true; btn.textContent = '…';
+                            ajaxPost('helix_image_optimise_batch', { attachment_ids: [btn.dataset.id] }, function (res) {
+                                if (res.success && res.data.results && res.data.results[0]) {
+                                    var r = res.data.results[0];
+                                    if (r.error) { toast('Error: ' + escHtml(r.error), 'error'); btn.disabled = false; btn.textContent = 'Optimise'; return; }
+                                    var sp = ioResults.querySelector('.hwpa-io-result-' + r.id);
+                                    if (sp) { sp.style.display = 'inline'; sp.style.color = '#10b981'; sp.textContent = r.webp_kb + 'KB (-' + r.saved_pct + '%)'; }
+                                    btn.style.display = 'none';
+                                } else {
+                                    toast('Optimise failed.', 'error'); btn.disabled = false; btn.textContent = 'Optimise';
+                                }
+                            });
+                        });
+                    });
+                }
+
+                document.getElementById('hwpa-io-scan').addEventListener('click', loadImages);
+                document.getElementById('hwpa-io-opt-all').addEventListener('click', function () {
+                    if (!ioItems.length) { toast('Scan first.', 'error'); return; }
+                    ioSpinner.style.display = 'inline-block';
+                    var batches = [];
+                    for (var i = 0; i < ioItems.length; i += 20) {
+                        batches.push(ioItems.slice(i, i + 20).map(function (x) { return x.id; }));
+                    }
+                    var bi = 0;
+                    function nextBatch() {
+                        if (bi >= batches.length) { ioSpinner.style.display = 'none'; toast('All images optimised.', 'success'); loadImages(); return; }
+                        ajaxPost('helix_image_optimise_batch', { attachment_ids: batches[bi].join(',') }, function () { bi++; nextBatch(); });
+                    }
+                    nextBatch();
+                });
+                document.querySelectorAll('.hwpa-tab[data-tab="images"]').forEach(function (t) { t.addEventListener('click', loadImages); });
+            })();
+
+            /* ═══════════════════════════════════════════════════════════
+             *  WEEKLY DIGEST
+             * ═══════════════════════════════════════════════════════════ */
+            (function () {
+                var digestBtn     = document.getElementById('hwpa-digest-test');
+                var digestSpinner = document.getElementById('hwpa-digest-spinner');
+                var digestResult  = document.getElementById('hwpa-digest-result');
+
+                digestBtn.addEventListener('click', function () {
+                    var email = document.getElementById('hwpa-digest-email').value.trim();
+                    if (!email) { toast('Enter an email address.', 'error'); return; }
+                    digestBtn.disabled = true;
+                    digestSpinner.style.display = 'inline-block';
+                    ajaxPost('helix_digest_send_test', { email: email }, function (res) {
+                        digestBtn.disabled = false;
+                        digestSpinner.style.display = 'none';
+                        digestResult.style.display = 'block';
+                        if (res.success) {
+                            digestResult.style.color = '#10b981';
+                            digestResult.textContent = 'Digest sent to ' + res.data.email + '.';
+                            toast('Test digest sent.', 'success');
+                        } else {
+                            digestResult.style.color = '#ef4444';
+                            digestResult.textContent = 'Failed: ' + String(res.data || 'Check API configuration.');
+                        }
+                    });
+                });
+            })();
 
             /* ── Helpers ───────────────────────────────────────────────── */
             function escHtml(str) {

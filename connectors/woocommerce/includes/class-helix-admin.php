@@ -44,6 +44,12 @@ class Helix_Admin {
         register_setting( 'helix_settings', 'helix_pack_id', [ 'sanitize_callback' => 'sanitize_text_field' ] );
         register_setting( 'helix_settings', 'helix_wp_api_user', [ 'sanitize_callback' => 'sanitize_text_field' ] );
         register_setting( 'helix_settings', 'helix_wp_app_password', [ 'sanitize_callback' => 'sanitize_text_field' ] );
+        register_setting( 'helix_settings', 'helix_uptime_alert_email', [ 'sanitize_callback' => 'sanitize_email' ] );
+        register_setting( 'helix_settings', 'helix_backup_schedule', [ 'sanitize_callback' => 'sanitize_text_field' ] );
+        register_setting( 'helix_settings', 'helix_backup_keep', [ 'sanitize_callback' => 'absint' ] );
+        register_setting( 'helix_settings', 'helix_digest_enabled', [ 'sanitize_callback' => 'absint' ] );
+        register_setting( 'helix_settings', 'helix_digest_email', [ 'sanitize_callback' => 'sanitize_email' ] );
+        register_setting( 'helix_settings', 'helix_pagespeed_api_key', [ 'sanitize_callback' => 'sanitize_text_field' ] );
     }
 
     public static function save_settings(): void {
@@ -68,6 +74,14 @@ class Helix_Admin {
         if ( ! empty( $_POST['helix_wp_app_password'] ) ) {
             update_option( 'helix_wp_app_password', sanitize_text_field( $_POST['helix_wp_app_password'] ) );
         }
+        update_option( 'helix_uptime_alert_email', sanitize_email( $_POST['helix_uptime_alert_email'] ?? '' ) );
+        $allowed_schedules = [ 'daily', 'weekly', 'off' ];
+        $backup_schedule   = sanitize_text_field( $_POST['helix_backup_schedule'] ?? 'daily' );
+        update_option( 'helix_backup_schedule', in_array( $backup_schedule, $allowed_schedules, true ) ? $backup_schedule : 'daily' );
+        update_option( 'helix_backup_keep', absint( $_POST['helix_backup_keep'] ?? 7 ) ?: 7 );
+        update_option( 'helix_digest_enabled', isset( $_POST['helix_digest_enabled'] ) ? 1 : 0 );
+        update_option( 'helix_digest_email', sanitize_email( $_POST['helix_digest_email'] ?? '' ) );
+        update_option( 'helix_pagespeed_api_key', sanitize_text_field( $_POST['helix_pagespeed_api_key'] ?? '' ) );
 
         $allowed_packs = [ 'kbeauty', 'automotive', 'general' ];
         $pack_id       = sanitize_text_field( $_POST['helix_pack_id'] ?? 'kbeauty' );
