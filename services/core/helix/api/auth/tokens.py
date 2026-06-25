@@ -19,3 +19,23 @@ def validate_widget_token(token: str, secret: str) -> UUID:
         return UUID(payload["tenant_id"])
     except (JWTError, KeyError, ValueError) as exc:
         raise InvalidTokenError(str(exc)) from exc
+
+
+# ── Dashboard session tokens ──────────────────────────────────────────────────
+
+_ACCESS_TTL = timedelta(minutes=15)
+
+
+def issue_access_token(tenant_id: UUID, secret: str) -> str:
+    exp = datetime.now(timezone.utc) + _ACCESS_TTL
+    return jwt.encode({"sub": str(tenant_id), "type": "access", "exp": exp}, secret, algorithm="HS256")
+
+
+def validate_access_token(token: str, secret: str) -> UUID:
+    try:
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        if payload.get("type") != "access":
+            raise InvalidTokenError("wrong token type")
+        return UUID(payload["sub"])
+    except (JWTError, KeyError, ValueError) as exc:
+        raise InvalidTokenError(str(exc)) from exc

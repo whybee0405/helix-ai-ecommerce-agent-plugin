@@ -52,3 +52,10 @@ async def list_tenants(
 async def count_tenants(session: AsyncSession) -> int:
     result = await session.execute(select(func.count(Tenant.id)))
     return result.scalar_one()
+
+
+async def get_tenant_by_email(session: AsyncSession, email: str) -> Tenant | None:
+    result = await session.execute(
+        select(Tenant).where(Tenant.billing_email == email.lower())
+    )
+    return result.scalar_one_or_none()

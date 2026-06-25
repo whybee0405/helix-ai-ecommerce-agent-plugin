@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
+from helix.api.deps import get_db, get_tenant, check_ai_op_quota, get_tenant_anthropic_key
 from helix.config import get_settings
 from helix.db.models import Tenant
 
@@ -47,11 +47,12 @@ class DescriptionResponse(BaseModel):
 async def rewrite_description(
     body: DescriptionRequest,
     tenant: Tenant = Depends(get_tenant),
+    _: Tenant = Depends(check_ai_op_quota),
     db: AsyncSession = Depends(get_db),
 ) -> DescriptionResponse:
     """Rewrite a product description in SEO-optimised HTML."""
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key.get_secret_value())
+    client = anthropic.AsyncAnthropic(api_key=get_tenant_anthropic_key(tenant) or settings.anthropic_api_key.get_secret_value())
 
     style_guidance = _PACK_STYLE.get(body.pack_id, _PACK_STYLE["general"])
 

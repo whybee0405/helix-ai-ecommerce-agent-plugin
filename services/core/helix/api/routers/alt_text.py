@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
+from helix.api.deps import get_db, get_tenant, check_ai_op_quota, get_tenant_anthropic_key
 from helix.config import get_settings
 from helix.db.models import Tenant
 
@@ -37,11 +37,12 @@ class AltTextResponse(BaseModel):
 async def generate_alt_text(
     body: AltTextRequest,
     tenant: Tenant = Depends(get_tenant),
+    _: Tenant = Depends(check_ai_op_quota),
     db: AsyncSession = Depends(get_db),
 ) -> AltTextResponse:
     """Generate concise SEO alt text for an image using Claude Haiku."""
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key.get_secret_value())
+    client = anthropic.AsyncAnthropic(api_key=get_tenant_anthropic_key(tenant) or settings.anthropic_api_key.get_secret_value())
 
     pack_label = _PACK_LABELS.get(body.pack_id, "retail")
     prompt = (

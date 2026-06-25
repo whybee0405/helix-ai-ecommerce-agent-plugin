@@ -72,9 +72,10 @@ class RouteResult:
 
 
 class LLMGateway:
-    def __init__(self, settings: Settings, tenant_id: UUID) -> None:
+    def __init__(self, settings: Settings, tenant_id: UUID, *, api_key_override: str | None = None) -> None:
         self._settings = settings
         self._tenant_id = tenant_id
+        self._api_key = api_key_override or settings.anthropic_api_key.get_secret_value()
         self._tier_to_model = {
             ModelTier.CLASSIFY: settings.llm_model_classify,
             ModelTier.GENERATE: settings.llm_model_generate,
@@ -100,9 +101,7 @@ class LLMGateway:
         if message_history is None:
             message_history = []
         model_id = self._tier_to_model[tier]
-        client = anthropic.AsyncAnthropic(
-            api_key=self._settings.anthropic_api_key.get_secret_value()
-        )
+        client = anthropic.AsyncAnthropic(api_key=self._api_key)
         schema_hint = json.dumps(response_schema.model_json_schema(), indent=2)
         user_with_schema = (
             f"{user}\n\nRespond with only valid JSON that matches this schema:\n{schema_hint}"
@@ -155,9 +154,7 @@ class LLMGateway:
         if message_history is None:
             message_history = []
         model_id = self._tier_to_model[tier]
-        client = anthropic.AsyncAnthropic(
-            api_key=self._settings.anthropic_api_key.get_secret_value()
-        )
+        client = anthropic.AsyncAnthropic(api_key=self._api_key)
         accumulated = ""
         async with client.messages.stream(
             model=model_id,

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
+from helix.api.deps import get_db, get_tenant, check_ai_op_quota, get_tenant_anthropic_key
 from helix.config import get_settings
 from helix.db.models import Tenant
 
@@ -36,11 +36,12 @@ class DigestResponse(BaseModel):
 async def generate_digest(
     body: DigestStats,
     tenant: Tenant = Depends(get_tenant),
+    _: Tenant = Depends(check_ai_op_quota),
     db: AsyncSession = Depends(get_db),
 ) -> DigestResponse:
     """Generate a 150-word weekly site digest email."""
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key.get_secret_value())
+    client = anthropic.AsyncAnthropic(api_key=get_tenant_anthropic_key(tenant) or settings.anthropic_api_key.get_secret_value())
 
     errors_section = ""
     if body.top_errors:

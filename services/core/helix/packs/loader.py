@@ -22,6 +22,7 @@ class LoadedPack:
     compatibility_rules: list[dict]
     prompts: dict[str, str]
     copy: dict[str, dict]
+    attribute_registry: dict[str, dict] = field(default_factory=dict)
 
 
 class PackLoader:
@@ -54,6 +55,14 @@ class PackLoader:
             for f in copy_dir.glob("*.json"):
                 copy[f.stem] = json.loads(f.read_text())
 
+        attr_registry_path = path / "attribute_registry.json"
+        attribute_registry: dict[str, dict] = {}
+        if attr_registry_path.exists():
+            try:
+                attribute_registry = json.loads(attr_registry_path.read_text())
+            except (json.JSONDecodeError, OSError):
+                pass
+
         return LoadedPack(
             id=meta["id"],
             version=str(meta["version"]),
@@ -65,4 +74,5 @@ class PackLoader:
             compatibility_rules=compat_rules if isinstance(compat_rules, list) else [],
             prompts=prompts,
             copy=copy,
+            attribute_registry=attribute_registry,
         )

@@ -35,5 +35,9 @@ celery_app.conf.update(
             "task": "helix.workers.tasks.faq_warm.warm_all_tenants",
             "schedule": 7 * 24 * 60 * 60,  # weekly
         },
+        "trial-reminders-daily": {
+            "task": "helix.workers.tasks.trial_reminders.send_trial_reminders",
+            "schedule": 24 * 60 * 60,  # daily
+        },
     },
 )

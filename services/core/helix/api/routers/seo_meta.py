@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
+from helix.api.deps import get_db, get_tenant, check_ai_op_quota, get_tenant_anthropic_key
 from helix.config import get_settings
 from helix.db.models import Tenant
 
@@ -34,11 +34,12 @@ class SeoMetaResponse(BaseModel):
 async def generate_seo_meta(
     body: SeoMetaRequest,
     tenant: Tenant = Depends(get_tenant),
+    _: Tenant = Depends(check_ai_op_quota),
     db: AsyncSession = Depends(get_db),
 ) -> SeoMetaResponse:
     """Generate SEO title (≤60 chars) and meta description (≤160 chars)."""
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key.get_secret_value())
+    client = anthropic.AsyncAnthropic(api_key=get_tenant_anthropic_key(tenant) or settings.anthropic_api_key.get_secret_value())
 
     excerpt_snippet = body.post_excerpt[:200] if body.post_excerpt else "none"
     prompt = (

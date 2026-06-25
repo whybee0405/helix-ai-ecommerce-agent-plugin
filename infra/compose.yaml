@@ -55,6 +55,18 @@ services:
       - ../packs:/packs
       - hf-cache:/root/.cache/huggingface
 
+  web:
+    build:
+      context: /var/www/helix-saas-web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://api.helix.cloudia.co.za
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
 volumes:
   db_data:
   hf-cache:
