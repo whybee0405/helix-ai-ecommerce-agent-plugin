@@ -14,10 +14,12 @@ from typing import Any
 import anthropic
 import httpx
 import structlog
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
+from helix.api.deps import get_tenant, check_ai_op_quota, get_tenant_anthropic_key
 from helix.config import get_settings
+from helix.db.models import Tenant
 
 logger = structlog.get_logger(__name__)
 
@@ -202,7 +204,11 @@ async def list_actions() -> ActionsResponse:
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def wp_agent_chat(body: ChatRequest) -> ChatResponse:
+async def wp_agent_chat(
+    body: ChatRequest,
+    tenant: Tenant = Depends(get_tenant),
+    _: Tenant = Depends(check_ai_op_quota),
+) -> ChatResponse:
     """
     Run an agentic Claude conversation with WordPress management tools.
 
@@ -212,7 +218,7 @@ async def wp_agent_chat(body: ChatRequest) -> ChatResponse:
     """
     settings = get_settings()
     client = anthropic.AsyncAnthropic(
-        api_key=settings.anthropic_api_key.get_secret_value()
+        api_key=get_tenant_anthropic_key(tenant) or settings.anthropic_api_key.get_secret_value()
     )
 
     # Build conversation history for Claude.

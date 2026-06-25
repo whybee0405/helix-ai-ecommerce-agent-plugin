@@ -1,0 +1,38 @@
+{
+  "skin_types": {
+    "label": "skin types",
+    "type": "array",
+    "embed": true,
+    "weight": 2
+  },
+  "concerns_targeted": {
+    "label": "concerns",
+    "type": "array",
+    "embed": true,
+    "weight": 2
+  },
+  "key_ingredients": {
+    "label": "key ingredients",
+    "type": "array",
+    "embed": true,
+    "weight": 3
+  },
+  "spf": {
+    "label": "SPF",
+    "type": "integer",
+    "embed": true,
+    "weight": 1
+  },
+  "ph_level": {
+    "label": "pH level",
+    "type": "number",
+    "embed": true,
+    "weight": 1
+  },
+  "step": {
+    "label": "routine step",
+    "type": "scalar",
+    "embed": true,
+    "weight": 1
+  }
+}

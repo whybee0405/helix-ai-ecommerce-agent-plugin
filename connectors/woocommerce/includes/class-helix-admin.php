@@ -7,6 +7,8 @@ class Helix_Admin {
         add_action( 'admin_init', [ self::class, 'register_settings' ] );
         add_action( 'admin_post_helix_save_settings', [ self::class, 'save_settings' ] );
         add_action( 'wp_ajax_helix_run_sync', [ self::class, 'ajax_run_sync' ] );
+        add_action( 'wp_ajax_helix_save_attr_types', [ self::class, 'ajax_save_attr_types' ] );
+        add_action( 'wp_ajax_helix_save_registration', [ self::class, 'ajax_save_registration' ] );
     }
 
     public static function add_settings_page(): void {
@@ -44,6 +46,12 @@ class Helix_Admin {
         register_setting( 'helix_settings', 'helix_pack_id', [ 'sanitize_callback' => 'sanitize_text_field' ] );
         register_setting( 'helix_settings', 'helix_wp_api_user', [ 'sanitize_callback' => 'sanitize_text_field' ] );
         register_setting( 'helix_settings', 'helix_wp_app_password', [ 'sanitize_callback' => 'sanitize_text_field' ] );
+        register_setting( 'helix_settings', 'helix_uptime_alert_email', [ 'sanitize_callback' => 'sanitize_email' ] );
+        register_setting( 'helix_settings', 'helix_backup_schedule', [ 'sanitize_callback' => 'sanitize_text_field' ] );
+        register_setting( 'helix_settings', 'helix_backup_keep', [ 'sanitize_callback' => 'absint' ] );
+        register_setting( 'helix_settings', 'helix_digest_enabled', [ 'sanitize_callback' => 'absint' ] );
+        register_setting( 'helix_settings', 'helix_digest_email', [ 'sanitize_callback' => 'sanitize_email' ] );
+        register_setting( 'helix_settings', 'helix_pagespeed_api_key', [ 'sanitize_callback' => 'sanitize_text_field' ] );
     }
 
     public static function save_settings(): void {
@@ -68,6 +76,14 @@ class Helix_Admin {
         if ( ! empty( $_POST['helix_wp_app_password'] ) ) {
             update_option( 'helix_wp_app_password', sanitize_text_field( $_POST['helix_wp_app_password'] ) );
         }
+        update_option( 'helix_uptime_alert_email', sanitize_email( $_POST['helix_uptime_alert_email'] ?? '' ) );
+        $allowed_schedules = [ 'daily', 'weekly', 'off' ];
+        $backup_schedule   = sanitize_text_field( $_POST['helix_backup_schedule'] ?? 'daily' );
+        update_option( 'helix_backup_schedule', in_array( $backup_schedule, $allowed_schedules, true ) ? $backup_schedule : 'daily' );
+        update_option( 'helix_backup_keep', absint( $_POST['helix_backup_keep'] ?? 7 ) ?: 7 );
+        update_option( 'helix_digest_enabled', isset( $_POST['helix_digest_enabled'] ) ? 1 : 0 );
+        update_option( 'helix_digest_email', sanitize_email( $_POST['helix_digest_email'] ?? '' ) );
+        update_option( 'helix_pagespeed_api_key', sanitize_text_field( $_POST['helix_pagespeed_api_key'] ?? '' ) );
 
         $allowed_packs = [ 'kbeauty', 'automotive', 'general' ];
         $pack_id       = sanitize_text_field( $_POST['helix_pack_id'] ?? 'kbeauty' );
@@ -135,6 +151,40 @@ class Helix_Admin {
             'errors'  => $result['errors'] ?? [],
             'last_sync' => get_option( 'helix_last_sync', '' ),
         ] );
+    }
+
+    public static function ajax_save_registration(): void {
+        check_ajax_referer( 'helix_save_registration', 'nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        update_option( 'helix_api_url',      esc_url_raw( $_POST['helix_api_url'] ?? '' ) );
+        update_option( 'helix_tenant_id',    sanitize_text_field( $_POST['helix_tenant_id'] ?? '' ) );
+        update_option( 'helix_public_key',   sanitize_text_field( $_POST['helix_public_key'] ?? '' ) );
+        update_option( 'helix_admin_secret', sanitize_text_field( $_POST['helix_admin_secret'] ?? '' ) );
+        update_option( 'helix_pack_id',      sanitize_text_field( $_POST['helix_pack_id'] ?? 'kbeauty' ) );
+
+        wp_send_json_success();
+    }
+
+    public static function ajax_save_attr_types(): void {
+        check_ajax_referer( 'helix_save_attr_types', 'helix_attr_types_nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        $raw = sanitize_textarea_field( wp_unslash( $_POST['helix_custom_attr_types'] ?? '' ) );
+
+        if ( $raw !== '' ) {
+            $decoded = json_decode( $raw, true );
+            if ( ! is_array( $decoded ) ) {
+                wp_send_json_error( 'Invalid JSON — must be an object mapping slug to type.' );
+            }
+        }
+
+        update_option( 'helix_custom_attr_types', $raw );
+        wp_send_json_success();
     }
 
     public static function render_settings_page(): void {
@@ -631,8 +681,18 @@ class Helix_Admin {
                     <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path stroke="#6b7280" stroke-width="2" stroke-linecap="round" d="M20 7H4a1 1 0 00-1 1v8a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1z"/></svg>
                     <strong id="helix-sync-count"><?php echo esc_html( $sync_count ); ?></strong> <?php echo esc_html( strtolower( Helix_Pack::config()['sync_noun'] ) ); ?>
                 </div>
+                <div class="helix-status-divider"></div>
+                <div class="helix-status-item" id="helix-billing-status-item">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path stroke="#6b7280" stroke-width="2" stroke-linecap="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    Plan: <strong id="helix-plan-badge" style="color:#7c3aed;">Loading…</strong>
+                </div>
                 <?php endif; ?>
             </div>
+
+            <?php if ( $connected ) : ?>
+            <!-- Trial / subscription banner — populated via JS after billing status fetch -->
+            <div id="helix-trial-banner" style="display:none;margin:12px 0;padding:12px 16px;border-radius:8px;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:12px;"></div>
+            <?php endif; ?>
 
             <!-- Settings form -->
             <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -678,15 +738,41 @@ class Helix_Admin {
                                     <input type="url" name="helix_api_url" value="<?php echo esc_attr( get_option( 'helix_api_url' ) ); ?>" class="helix-input wide" placeholder="https://api.helix.ai">
                                 </div>
                             </div>
-                            <div class="helix-field-row">
+                            <?php if ( ! $connected ) : ?>
+                            <!-- Self-service registration wizard (shown when not yet connected) -->
+                            <div class="helix-field-row" id="helix-register-row">
                                 <div class="helix-field-label">
-                                    Provision Key
-                                    <span class="helix-helper">Used for first-time provisioning</span>
+                                    Get Started
+                                    <span class="helix-helper">Create your free Helix account</span>
                                 </div>
                                 <div class="helix-field-control">
-                                    <input type="password" name="helix_provision_key" value="<?php echo esc_attr( get_option( 'helix_provision_key' ) ); ?>" class="helix-input">
+                                    <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:20px;">
+                                        <p style="margin:0 0 14px;font-size:13px;color:#5b21b6;font-weight:600;">Start your 14-day free trial — no credit card required.</p>
+                                        <div style="display:flex;flex-direction:column;gap:10px;">
+                                            <input type="email" id="helix-reg-email" class="helix-input wide" placeholder="your@email.com" style="border-color:#c4b5fd;">
+                                            <input type="text" id="helix-reg-name" class="helix-input wide" placeholder="Store name" style="border-color:#c4b5fd;">
+                                        </div>
+                                        <button type="button" id="helix-register-btn" class="helix-btn" style="margin-top:14px;background:#7c3aed;color:#fff;width:100%;justify-content:center;">
+                                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                            Create Free Account &amp; Connect
+                                        </button>
+                                        <div class="helix-spinner" id="helix-register-spinner" style="display:none;margin-top:10px;"></div>
+                                        <div id="helix-register-error" style="display:none;margin-top:10px;font-size:12px;color:#dc2626;background:#fef2f2;padding:8px 12px;border-radius:6px;"></div>
+                                        <p style="margin:12px 0 0;font-size:11px;color:#7c3aed;text-align:center;">
+                                            Already have an account? Enter your API URL below and use the manual provision key field.
+                                        </p>
+                                    </div>
+                                    <details style="margin-top:12px;">
+                                        <summary style="font-size:12px;color:#6b7280;cursor:pointer;">Manual provision key (advanced)</summary>
+                                        <div style="margin-top:8px;">
+                                            <input type="password" name="helix_provision_key" value="<?php echo esc_attr( get_option( 'helix_provision_key' ) ); ?>" class="helix-input wide" placeholder="Provision key from Helix dashboard">
+                                        </div>
+                                    </details>
                                 </div>
                             </div>
+                            <?php else : ?>
+                            <input type="hidden" name="helix_provision_key" value="<?php echo esc_attr( get_option( 'helix_provision_key' ) ); ?>">
+                            <?php endif; ?>
                             <div class="helix-field-row">
                                 <div class="helix-field-label">
                                     WC Consumer Key
@@ -897,6 +983,62 @@ class Helix_Admin {
             </form>
 
             <?php if ( $connected ) : ?>
+            <!-- Custom Attribute Types section -->
+            <div class="helix-section">
+                <div class="helix-section-head">
+                    <h2>Custom Attribute Types</h2>
+                </div>
+                <div class="helix-section-body">
+                    <p style="font-size:13px;color:#6b7280;margin:0 0 12px;">
+                        Map custom WooCommerce product attributes to their data type so Helix can embed them correctly.
+                        Enter a JSON object mapping attribute slug (without <code>pa_</code>) to one of:
+                        <code>scalar</code>, <code>integer</code>, <code>number</code>, <code>boolean</code>, <code>array</code>.
+                        After saving, re-run a catalog sync to re-embed affected products.
+                    </p>
+                    <form method="post" action="" id="helix-attr-types-form">
+                        <?php wp_nonce_field( 'helix_save_attr_types', 'helix_attr_types_nonce' ); ?>
+                        <textarea
+                            name="helix_custom_attr_types"
+                            rows="5"
+                            class="helix-input wide"
+                            style="font-family:monospace;font-size:12px;resize:vertical;"
+                            placeholder='{"material": "scalar", "weight_kg": "number", "age_group": "array", "is_organic": "boolean"}'
+                        ><?php echo esc_textarea( get_option( 'helix_custom_attr_types', '' ) ); ?></textarea>
+                        <p style="font-size:11px;color:#9ca3af;margin:6px 0 12px;">
+                            Built-in types (kbeauty/automotive packs) are already handled — only add attributes unique to your store here.
+                        </p>
+                        <button type="submit" class="helix-btn">Save Attribute Types</button>
+                        <span id="helix-attr-save-msg" style="margin-left:10px;font-size:12px;color:#059669;display:none;">Saved!</span>
+                    </form>
+                    <script>
+                    document.getElementById('helix-attr-types-form').addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        var raw = this.querySelector('[name=helix_custom_attr_types]').value.trim();
+                        if (raw) {
+                            try { JSON.parse(raw); } catch(err) {
+                                alert('Invalid JSON: ' + err.message);
+                                return;
+                            }
+                        }
+                        var data = new FormData(this);
+                        data.append('action', 'helix_save_attr_types');
+                        fetch(ajaxurl, { method: 'POST', body: data })
+                            .then(function(r) { return r.json(); })
+                            .then(function(d) {
+                                if (d.success) {
+                                    var msg = document.getElementById('helix-attr-save-msg');
+                                    msg.style.display = 'inline';
+                                    setTimeout(function() { msg.style.display = 'none'; }, 3000);
+                                } else {
+                                    alert(d.data || 'Save failed.');
+                                }
+                            })
+                            .catch(function(err) { alert('Request failed: ' + err.message); });
+                    });
+                    </script>
+                </div>
+            </div>
+
             <!-- Catalog Sync section -->
             <div class="helix-section">
                 <div class="helix-section-head">
@@ -979,6 +1121,115 @@ class Helix_Admin {
                     result.innerHTML = '<div class="helix-sync-result-inner error"><strong>Request failed:</strong> ' + err.message + '</div>';
                 });
             });
+            </script>
+            <?php endif; ?>
+
+            <?php if ( ! $connected ) : ?>
+            <!-- Registration wizard JS -->
+            <script>
+            (function () {
+                var btn = document.getElementById('helix-register-btn');
+                if (!btn) return;
+                btn.addEventListener('click', function () {
+                    var email   = document.getElementById('helix-reg-email').value.trim();
+                    var name    = document.getElementById('helix-reg-name').value.trim();
+                    var apiUrl  = document.querySelector('[name=helix_api_url]').value.trim()
+                                  || 'https://helix.cloudia.co.za';
+                    var packId  = (document.querySelector('[name=helix_pack_id]:checked') || {}).value || 'kbeauty';
+                    var errBox  = document.getElementById('helix-register-error');
+                    var spinner = document.getElementById('helix-register-spinner');
+
+                    errBox.style.display = 'none';
+                    if (!email || !name) { errBox.textContent = 'Please enter your email and store name.'; errBox.style.display = 'block'; return; }
+                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errBox.textContent = 'Please enter a valid email address.'; errBox.style.display = 'block'; return; }
+
+                    btn.disabled = true;
+                    spinner.style.display = 'block';
+
+                    fetch(apiUrl.replace(/\/$/, '') + '/v1/auth/register', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            email: email,
+                            store_name: name,
+                            store_url: '<?php echo esc_js( get_site_url() ); ?>',
+                            platform: 'woocommerce',
+                            pack_id: packId
+                        })
+                    })
+                    .then(function (r) { return r.json().then(function(d) { return {ok: r.ok, data: d}; }); })
+                    .then(function (res) {
+                        spinner.style.display = 'none';
+                        if (!res.ok) {
+                            var msg = (res.data.detail || JSON.stringify(res.data));
+                            errBox.textContent = 'Registration failed: ' + msg;
+                            errBox.style.display = 'block';
+                            btn.disabled = false;
+                            return;
+                        }
+                        var d = res.data;
+                        // Save credentials via AJAX then reload.
+                        var fd = new FormData();
+                        fd.append('action', 'helix_save_registration');
+                        fd.append('nonce', '<?php echo esc_js( wp_create_nonce( 'helix_save_registration' ) ); ?>');
+                        fd.append('helix_api_url',     apiUrl);
+                        fd.append('helix_tenant_id',   d.tenant_id);
+                        fd.append('helix_public_key',  d.public_key);
+                        fd.append('helix_admin_secret', d.admin_secret);
+                        fd.append('helix_pack_id',     packId);
+                        fetch(ajaxurl, {method: 'POST', body: fd})
+                            .then(function () {
+                                window.location = window.location.href.split('?')[0] + '?page=helix-connector&saved=1';
+                            });
+                    })
+                    .catch(function (err) {
+                        spinner.style.display = 'none';
+                        btn.disabled = false;
+                        errBox.textContent = 'Request failed: ' + err.message;
+                        errBox.style.display = 'block';
+                    });
+                });
+            })();
+            </script>
+            <?php endif; ?>
+
+            <?php if ( $connected ) : ?>
+            <!-- Billing status + trial banner JS -->
+            <script>
+            (function () {
+                var apiUrl = '<?php echo esc_js( get_option( 'helix_api_url', 'https://helix.cloudia.co.za' ) ); ?>';
+                var publicKey = '<?php echo esc_js( get_option( 'helix_public_key', '' ) ); ?>';
+                if (!publicKey) return;
+
+                fetch(apiUrl.replace(/\/$/, '') + '/v1/billing/status', {
+                    headers: {'Authorization': 'Bearer ' + publicKey}
+                })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) {
+                    if (!d) return;
+                    var badge = document.getElementById('helix-plan-badge');
+                    if (badge) badge.textContent = d.plan_display_name + ' · ' + d.subscription_status;
+
+                    var banner = document.getElementById('helix-trial-banner');
+                    if (!banner) return;
+
+                    if (d.subscription_status === 'trialing' && d.days_remaining !== null) {
+                        var urgent = d.days_remaining <= 3;
+                        banner.style.cssText = 'display:flex;background:' + (urgent ? '#fef3c7' : '#f5f3ff') + ';border:1px solid ' + (urgent ? '#fcd34d' : '#ddd6fe') + ';border-radius:8px;padding:12px 16px;margin:12px 0;font-size:13px;align-items:center;justify-content:space-between;gap:12px;';
+                        banner.innerHTML = '<span>' + (urgent ? '⚠️' : '🎯') + ' <strong>' + d.days_remaining + ' day' + (d.days_remaining !== 1 ? 's' : '') + ' left</strong> in your free trial.</span>'
+                            + '<a href="' + apiUrl.replace(/\/$/, '') + '/billing?key=' + publicKey + '" target="_blank" style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:600;font-size:12px;white-space:nowrap;">Upgrade Now</a>';
+                    } else if (d.subscription_status === 'trial_expired' || (d.subscription_status === 'trialing' && d.days_remaining === 0)) {
+                        banner.style.cssText = 'display:flex;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px 16px;margin:12px 0;font-size:13px;align-items:center;justify-content:space-between;gap:12px;';
+                        banner.innerHTML = '<span>🔴 <strong>Your trial has ended.</strong> AI features are paused until you subscribe.</span>'
+                            + '<a href="' + apiUrl.replace(/\/$/, '') + '/billing?key=' + publicKey + '" target="_blank" style="background:#dc2626;color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:600;font-size:12px;white-space:nowrap;">Subscribe Now</a>';
+                    } else if (d.subscription_status === 'paused') {
+                        banner.style.cssText = 'display:flex;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px 16px;margin:12px 0;font-size:13px;align-items:center;justify-content:space-between;gap:12px;';
+                        banner.innerHTML = '<span>⚠️ <strong>Payment failed.</strong> Update your payment method to restore access.</span>'
+                            + '<a href="' + apiUrl.replace(/\/$/, '') + '/billing/portal?key=' + publicKey + '" target="_blank" style="background:#dc2626;color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:600;font-size:12px;white-space:nowrap;">Fix Payment</a>';
+                    }
+                })
+                .catch(function () {});
+            })();
             </script>
             <?php endif; ?>
 

@@ -189,6 +189,10 @@ _EMBED_JS = r"""
     'animation:hx-db 1.2s ease-in-out infinite;}',
     '.hx-d:nth-child(2){animation-delay:.15s;}.hx-d:nth-child(3){animation-delay:.3s;}',
     '@keyframes hx-db{0%,60%,100%{transform:translateY(0);opacity:.4;}30%{transform:translateY(-5px);opacity:1;}}',
+    '.hx-typing-label{font:400 11px/1 -apple-system,sans-serif;color:#AEAEB2;margin-left:4px;}',
+    '.hx-cursor{display:inline-block;width:2px;height:13px;background:#7C3AED;',
+    'margin-left:1px;vertical-align:text-bottom;animation:hx-blink .7s steps(2) infinite;}',
+    '@keyframes hx-blink{0%,100%{opacity:1;}50%{opacity:0;}}',
 
     '#hx-footer{padding:10px 14px;border-top:1px solid rgba(0,0,0,.06);',
     'background:rgba(255,255,255,.6);backdrop-filter:blur(8px);flex-shrink:0;}',
@@ -284,7 +288,7 @@ _EMBED_JS = r"""
     '<p id="hx-greeting-p">Tell me what you\'re looking for.</p>',
     '</div>',
     '</div>',
-    '<div id="hx-typing"><div class="hx-tb"><div class="hx-d"></div><div class="hx-d"></div><div class="hx-d"></div></div></div>',
+    '<div id="hx-typing"><div class="hx-tb"><div class="hx-d"></div><div class="hx-d"></div><div class="hx-d"></div><span class="hx-typing-label" id="hx-typing-label">Thinking</span></div></div>',
     '<div id="hx-footer">',
     '<form id="hx-form">',
     '<textarea id="hx-inp" placeholder="Ask anything…" rows="1"></textarea>',
@@ -708,8 +712,17 @@ _EMBED_JS = r"""
     msgs.scrollTop = msgs.scrollHeight;
   }
 
-  function showTyping() { typing.classList.add('hx-show'); msgs.scrollTop = msgs.scrollHeight; }
-  function hideTyping() { typing.classList.remove('hx-show'); }
+  var _hxTagline = panel.querySelector('#hx-brand-tagline');
+  var _hxTaglineOrig = '';
+  function showTyping() {
+    typing.classList.add('hx-show');
+    msgs.scrollTop = msgs.scrollHeight;
+    if (_hxTagline) { if (!_hxTaglineOrig) _hxTaglineOrig = _hxTagline.textContent; _hxTagline.textContent = 'Typing…'; }
+  }
+  function hideTyping() {
+    typing.classList.remove('hx-show');
+    if (_hxTagline && _hxTaglineOrig) _hxTagline.textContent = _hxTaglineOrig;
+  }
 
   /* ── Human handover (Escalation) ────────────────────────────────────── */
   function _renderEscalateForm(currentConvId) {
@@ -873,60 +886,134 @@ _EMBED_JS = r"""
     });
   }
 
+  /* ── Streaming helpers ───────────────────────────────────────────────── */
+  function _mkStreamBubble() {
+    var welcome = msgs.querySelector('.hx-welcome');
+    if (welcome) welcome.style.display = 'none';
+    var row    = document.createElement('div');
+    row.className = 'hx-msg hx-bot';
+    var bubble = document.createElement('div');
+    bubble.className = 'hx-bubble';
+    var block  = document.createElement('div');
+    block.className = 'hx-block';
+    var p = document.createElement('p');
+    p.className = 'hx-stream-p';
+    block.appendChild(p);
+    bubble.appendChild(block);
+    row.appendChild(bubble);
+    msgs.appendChild(row);
+    msgs.scrollTop = msgs.scrollHeight;
+    return row;
+  }
+
+  function _finalizeStreamBubble(row, text, products) {
+    if (row) row.remove();
+    appendMsg(text, 'bot', products || [], true /* silent — caller logs */);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
   /* ── Send ───────────────────────────────────────────────────────────── */
   function send(query) {
-    if (!query.trim()) return;
+    if (!query.trim() || inp.disabled) return;
     appendMsg(query, 'user', null);
     inp.value = '';
     inp.style.height = 'auto';
+    inp.disabled = true;
 
     /* Intercept order-tracking queries before hitting the LLM */
     if (_isOrderTrackingQuery(query)) {
       track('order_tracking_intent', {});
       _renderOrderForm();
+      inp.disabled = false;
       return;
     }
 
     showTyping();
 
+    var streamRow  = null;
+    var streamText = '';
+    var streamP    = null;
+    var sseBuf     = '';
+
     getToken()
       .then(function (tok) {
-        return fetch(BASE + '/v1/widget/chat', {
+        return fetch(BASE + '/v1/widget/chat/stream', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: query, customer_profile: {}, conversation_id: convId || undefined }),
         });
       })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        hideTyping();
-        if (d.response) {
-          convId = d.conversation_id;
-          localStorage.setItem(LS_CONV, convId);
-          track('message_sent', {});
+      .then(function (r) {
+        if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
+        var reader  = r.body.getReader();
+        var decoder = new TextDecoder();
 
-          /* Check for special action blocks in the AI response */
-          var actionBlock = _tryParseActionBlock(d.response);
-          if (actionBlock && actionBlock.type === 'cart_action') {
-            /* Strip the JSON block from the visible message */
-            var visibleText = d.response.replace(/```json[\s\S]*?```/, '').trim()
-                || 'Got it, let me update your cart.';
-            appendMsg(visibleText, 'bot', []);
-            _execCartAction(actionBlock.action, actionBlock.product_id, actionBlock.quantity);
-          } else if (actionBlock && actionBlock.type === 'escalate') {
-            var visibleText2 = d.response.replace(/```json[\s\S]*?```/, '').trim()
-                || 'I\'ll connect you with a human agent.';
-            appendMsg(visibleText2, 'bot', []);
-            _renderEscalateForm(convId);
-          } else {
-            appendMsg(d.response, 'bot', d.products || []);
-          }
-        } else {
-          appendMsg(d.detail || 'Something went wrong. Please try again.', 'bot', []);
+        function pump() {
+          return reader.read().then(function (chunk) {
+            if (chunk.done) {
+              /* Stream closed — finalize any in-progress bubble */
+              if (streamRow) { _finalizeStreamBubble(streamRow, streamText, []); streamRow = null; }
+              hideTyping();
+              inp.disabled = false;
+              return;
+            }
+            sseBuf += decoder.decode(chunk.value, { stream: true });
+            var lines = sseBuf.split('\n');
+            sseBuf = lines.pop();
+            lines.forEach(function (line) {
+              if (!line.startsWith('data: ')) return;
+              try {
+                var ev = JSON.parse(line.slice(6));
+                if (ev.type === 'token') {
+                  if (!streamRow) {
+                    hideTyping();
+                    streamRow = _mkStreamBubble();
+                    streamP   = streamRow.querySelector('.hx-stream-p');
+                  }
+                  streamText += ev.content;
+                  streamP.innerHTML = renderInline(streamText) + '<span class="hx-cursor"></span>';
+                  msgs.scrollTop = msgs.scrollHeight;
+
+                } else if (ev.type === 'products') {
+                  if (streamRow) {
+                    _finalizeStreamBubble(streamRow, streamText, ev.items || []);
+                    streamRow = null;
+                  }
+                  /* Check for special action blocks */
+                  var actionBlock = _tryParseActionBlock(streamText);
+                  if (actionBlock && actionBlock.type === 'escalate') {
+                    _renderEscalateForm(convId);
+                  } else if (actionBlock && actionBlock.type === 'cart_action') {
+                    _execCartAction(actionBlock.action, actionBlock.product_id, actionBlock.quantity);
+                  }
+
+                } else if (ev.type === 'done') {
+                  if (streamRow) { _finalizeStreamBubble(streamRow, streamText, []); streamRow = null; }
+                  convId = ev.conversation_id;
+                  localStorage.setItem(LS_CONV, convId);
+                  track('message_sent', {});
+                  _msgLog.push({ role: 'bot', text: streamText, products: [] });
+                  try { localStorage.setItem(LS_MSGS, JSON.stringify(_msgLog)); } catch (e) {}
+                  inp.disabled = false;
+                  inp.focus();
+
+                } else if (ev.type === 'error') {
+                  hideTyping();
+                  if (streamRow) { streamRow.remove(); streamRow = null; }
+                  appendMsg(ev.message || 'Something went wrong. Please try again.', 'bot', []);
+                  inp.disabled = false;
+                }
+              } catch (e) { /* malformed SSE line — skip */ }
+            });
+            return pump();
+          });
         }
+        return pump();
       })
       .catch(function () {
         hideTyping();
+        inp.disabled = false;
+        if (streamRow) { streamRow.remove(); streamRow = null; }
         appendMsg('Could not reach ' + window.HelixBranding.substitute('{{brand_short_name}}') + '. Please try again.', 'bot', []);
       });
   }
@@ -1015,7 +1102,7 @@ _EMBED_JS = r"""
 
     var inlineTyping = document.createElement('div');
     inlineTyping.style.cssText = 'display:none;padding:0 14px 10px;';
-    inlineTyping.innerHTML = '<div class="hx-tb"><div class="hx-d"></div><div class="hx-d"></div><div class="hx-d"></div></div>';
+    inlineTyping.innerHTML = '<div class="hx-tb"><div class="hx-d"></div><div class="hx-d"></div><div class="hx-d"></div><span class="hx-typing-label">Thinking</span></div>';
 
     var inlineFooter = document.createElement('div');
     inlineFooter.style.cssText = 'padding:10px 14px;border-top:1px solid rgba(0,0,0,.06);background:rgba(255,255,255,.6);flex-shrink:0;';
@@ -1292,30 +1379,213 @@ async def widget_chat_stream(
     tenant: Tenant = Depends(get_widget_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
-    pipeline = await _run_chat_pipeline(body, tenant, db, "/v1/widget/chat/stream")
+    """Stream real LLM token deltas as SSE events.
+
+    Event types: token | products | done | error
+    """
+    settings = get_settings()
+    pack = get_pack_for_tenant(tenant)
+    from helix.branding import get_effective_branding
+    branding = await get_effective_branding(tenant)
+
+    # ── Rate-limit / budget guard ─────────────────────────────────────────
+    import redis.asyncio as _aioredis
+    from helix.llm.budget import acquire_token, check_budget
+    _redis = _aioredis.from_url(str(settings.redis_url), decode_responses=True)
+    try:
+        if not await acquire_token(_redis, tenant.id):
+            async def _rl() -> AsyncGenerator[str, None]:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Rate limit exceeded — please slow down.'})}\n\n"
+            await _redis.aclose()
+            return StreamingResponse(_rl(), media_type="text/event-stream")
+        budget = await check_budget(db, _redis, tenant.id, tenant.tier, tenant.daily_budget_usd)
+    finally:
+        await _redis.aclose()
+
+    # ── Pre-LLM work (embed, search, load conversation) ───────────────────
+    query_vector = await embed_query(body.query, settings)
+    product_rows = await vector_search_products(db, tenant.id, query_vector, limit=5)
+    context_products = [
+        {
+            "platform_id": p.platform_id,
+            "title": p.title,
+            "price_minor": p.price_minor,
+            "currency": p.currency,
+            "images": p.images or [],
+            "categories": p.categories or [],
+            "domain_attributes": p.domain_attributes or {},
+        }
+        for p, _ in product_rows
+    ]
+    product_cards = [
+        {
+            "platform_id": p["platform_id"],
+            "title": p["title"],
+            "price_minor": p["price_minor"],
+            "currency": p["currency"],
+            "image_url": p["images"][0] if p["images"] else None,
+        }
+        for p in context_products
+    ]
+
+    merged_profile = body.customer_profile
+    customer_uuid = None
+    if body.customer_id:
+        try:
+            cid = UUID(body.customer_id)
+            customer_uuid = cid
+            customer = await get_customer_by_id(db, cid, tenant.id)
+            if customer:
+                merged_profile = {**(customer.profile or {}), **body.customer_profile}
+        except ValueError:
+            pass
+
+    conversation = None
+    if body.conversation_id:
+        try:
+            conversation = await get_conversation(db, UUID(body.conversation_id), tenant.id)
+        except ValueError:
+            pass
+    if conversation is None:
+        conversation = await create_conversation(db, tenant.id, customer_uuid)
+
+    prior_messages = await get_messages(db, conversation.id, tenant.id)
+    raw_history = [{"role": m.role, "content": m.content} for m in prior_messages]
+    from helix.llm.history import HistoryCompressor
+    compressor = HistoryCompressor(settings)
+    try:
+        conversation_history = await compressor.compress(conversation.id, raw_history)
+    finally:
+        await compressor.aclose()
+
+    # ── System prompt + intent classification ─────────────────────────────
+    from helix.domain.consultant import (
+        _build_system_prompt,
+        _maybe_inject_faq_context,
+        _maybe_inject_web_search_context,
+    )
+    system_prompt = _build_system_prompt(pack, branding, settings.brand_name)
+    cache_namespace = f"t={tenant.id}:bv={tenant.branding_version}"
+
+    from helix.llm.gateway import LLMGateway, ModelTier
+    from helix.llm.cache import LLMCache
+    gateway = LLMGateway(settings=settings, tenant_id=tenant.id)
+    _cache = LLMCache(settings)
+    intent = None
+    try:
+        intent = await gateway.classify_intent(body.query, _cache, cache_namespace=cache_namespace)
+    except Exception:
+        pass
+    finally:
+        await _cache.aclose()
+
+    if intent and intent.intent == "faq":
+        system_prompt = await _maybe_inject_faq_context(body.query, tenant.id, settings, db, system_prompt)
+    if intent and (
+        intent.intent == "web_search"
+        or (intent.intent == "other" and not context_products and settings.brave_api_key)
+    ):
+        system_prompt = await _maybe_inject_web_search_context(body.query, settings, system_prompt)
+
+    # Fast-path: budget hard-blocked
+    if budget.mode.value == "blocked":
+        async def _blocked() -> AsyncGenerator[str, None]:
+            msg = "We've hit our daily traffic limit. Please try again shortly or browse our catalogue directly."
+            yield f"data: {json.dumps({'type': 'token', 'content': msg})}\n\n"
+            yield "data: " + json.dumps({"type": "done", "source": "budget_blocked",
+                "conversation_id": str(conversation.id), "assistant_message_id": ""}) + "\n\n"
+        return StreamingResponse(_blocked(), media_type="text/event-stream")
+
+    # Fast-path: escalation
+    if intent and intent.intent == "escalate":
+        async def _escalate() -> AsyncGenerator[str, None]:
+            txt = ('```json\n{"type": "escalate"}\n```\n\n'
+                   "No problem — let me connect you with a member of our team. "
+                   "Please share your email and any details and we'll be in touch shortly.")
+            yield f"data: {json.dumps({'type': 'token', 'content': txt})}\n\n"
+            yield "data: " + json.dumps({"type": "done", "source": "escalate",
+                "conversation_id": str(conversation.id), "assistant_message_id": ""}) + "\n\n"
+        return StreamingResponse(_escalate(), media_type="text/event-stream")
+
+    # ── Build grounded user prompt (plain prose — no JSON schema for streaming) ──
+    if context_products:
+        product_list = "\n".join(
+            f"- {p['title']} ({p.get('currency', '?')} {p.get('price_minor', 0) / 100:.0f})"
+            for p in context_products[:5]
+        )
+        grounded_user = (
+            f"Customer profile: {merged_profile}\n\n"
+            f"Available products:\n{product_list}\n\n"
+            f"Customer question: {body.query}\n\n"
+            "Reply naturally in plain language. Mention product names when recommending them. Be concise and helpful."
+        )
+    else:
+        grounded_user = f"Customer profile: {merged_profile}\n\nCustomer question: {body.query}"
+
+    chosen_tier = gateway._pick_model_for_intent(intent, context_products)
+    if budget.mode.value == "degraded":
+        chosen_tier = ModelTier.CLASSIFY
+
+    conv_id = conversation.id
 
     async def _events() -> AsyncGenerator[str, None]:
-        text = pipeline.route.response
-        # naive chunking on word boundaries — replace with real Anthropic stream when
-        # the gateway returns mid-token deltas (see LLMGateway.stream_text).
-        idx = 0
-        chunk = 40
-        while idx < len(text):
-            if await request.is_disconnected():
+        full_parts: list[str] = []
+        try:
+            async for token in gateway.stream_text(
+                tier=chosen_tier,
+                system=system_prompt,
+                user=grounded_user,
+                max_tokens=768,
+                message_history=conversation_history,
+            ):
+                if await request.is_disconnected():
+                    return
+                full_parts.append(token)
+                yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+        except Exception as exc:
+            logger.warning("widget_stream_llm_error", error=str(exc))
+            if not full_parts:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Could not generate a response. Please try again.'})}\n\n"
                 return
-            piece = text[idx : idx + chunk]
-            yield f"data: {json.dumps({'type': 'token', 'content': piece})}\n\n"
-            idx += chunk
+
+        full_text = "".join(full_parts)
+        if not full_text:
+            return
+
+        # Persist conversation
+        asst_msg_id = ""
+        try:
+            usage = gateway._last_usage
+            if usage.get("cost_usd", 0) > 0:
+                await create_usage_event(
+                    db, tenant.id, usage.get("model", ""),
+                    usage.get("tokens_in", 0), usage.get("tokens_out", 0),
+                    usage["cost_usd"], "/v1/widget/chat/stream",
+                )
+            _um, assistant_msg = await append_messages(
+                db,
+                conversation_id=conv_id,
+                tenant_id=tenant.id,
+                user_content=body.query,
+                assistant_content=full_text,
+                source="llm_stream",
+                products_referenced=[],
+            )
+            await db.commit()
+            asst_msg_id = str(assistant_msg.id)
+        except Exception as exc:
+            logger.warning("widget_stream_save_error", error=str(exc))
+
         yield "data: " + json.dumps({
             "type": "products",
-            "items": pipeline.product_cards,
-            "referenced": pipeline.route.products_referenced,
+            "items": product_cards,
+            "referenced": [],
         }) + "\n\n"
         yield "data: " + json.dumps({
             "type": "done",
-            "source": pipeline.route.source,
-            "conversation_id": str(pipeline.conversation_id),
-            "assistant_message_id": str(pipeline.assistant_message_id),
+            "source": "llm_stream",
+            "conversation_id": str(conv_id),
+            "assistant_message_id": asst_msg_id,
         }) + "\n\n"
 
     return StreamingResponse(_events(), media_type="text/event-stream")

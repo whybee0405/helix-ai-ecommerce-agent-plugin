@@ -44,6 +44,16 @@ class Tenant(Base):
     branding_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     tier: Mapped[str] = mapped_column(String(32), nullable=False, default="free")
     daily_budget_usd: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
+    # Billing
+    billing_email: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
+    subscription_status: Mapped[str] = mapped_column(String(32), nullable=False, default="trialing")
+    trial_ends_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    paddle_customer_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    paddle_subscription_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    plan_query_limit: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    plan_ai_ops_limit: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    anthropic_api_key_enc: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
+    is_internal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
 class Product(Base):

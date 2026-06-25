@@ -76,29 +76,62 @@ class Helix_Sync {
         ];
     }
 
-    // Single-value string attributes (first term only, no array wrapping).
+    // Built-in type maps — covers kbeauty and automotive pack attributes.
+    // Store owners can extend or override these via the Helix settings
+    // (Appearance → Helix → Sync tab) without touching code.
     private const SCALAR_ATTRIBUTES = [
-        // k-beauty
         'step', 'spf', 'ph_level',
-        // automotive — identity fields that are always singular
         'make', 'model', 'condition', 'fuel_type', 'transmission',
         'body_type', 'colour', 'stock_number', 'vin',
     ];
-
-    // Single-value integer attributes.
     private const INT_ATTRIBUTES = [
         'year', 'mileage_km', 'engine_cc', 'doors',
         'ncap_stars', 'price_zar', 'finance_from_zar',
     ];
-
-    // Single-value float attributes.
     private const FLOAT_ATTRIBUTES = [ 'safety_rating' ];
+    private const BOOL_ATTRIBUTES  = [ 'certified_used' ];
 
-    // Single-value boolean attributes ('yes'/'true'/'1' → true, else false).
-    private const BOOL_ATTRIBUTES = [ 'certified_used' ];
+    /**
+     * Merge built-in type lists with any custom overrides stored in
+     * helix_custom_attr_types (a JSON object mapping slug → type string:
+     * "scalar" | "integer" | "number" | "boolean" | "array").
+     *
+     * @return array{scalar: string[], integer: string[], number: string[], boolean: string[]}
+     */
+    private static function get_type_map(): array {
+        $map = [
+            'scalar'  => self::SCALAR_ATTRIBUTES,
+            'integer' => self::INT_ATTRIBUTES,
+            'number'  => self::FLOAT_ATTRIBUTES,
+            'boolean' => self::BOOL_ATTRIBUTES,
+        ];
+
+        $raw = get_option( 'helix_custom_attr_types', '' );
+        if ( $raw ) {
+            $custom = json_decode( $raw, true );
+            if ( is_array( $custom ) ) {
+                foreach ( $custom as $slug => $type ) {
+                    $slug = sanitize_key( $slug );
+                    $type = in_array( $type, [ 'scalar', 'integer', 'number', 'boolean', 'array' ], true )
+                        ? $type : 'scalar';
+                    // Remove from all lists first (prevents duplicates), then add.
+                    foreach ( $map as $t => &$list ) {
+                        $list = array_values( array_diff( $list, [ $slug ] ) );
+                    }
+                    unset( $list );
+                    if ( $type !== 'array' ) {
+                        $map[ $type ][] = $slug;
+                    }
+                }
+            }
+        }
+
+        return $map;
+    }
 
     private static function extract_domain_attributes( WC_Product $wc_product ): array {
-        $attrs = [];
+        $attrs    = [];
+        $type_map = self::get_type_map();
 
         foreach ( $wc_product->get_attributes() as $slug => $attribute ) {
             $key     = str_replace( [ 'pa_', '-' ], [ '', '_' ], $slug );
@@ -115,9 +148,6 @@ class Helix_Sync {
                     $options
                 ), fn( $v ) => is_string( $v ) && $v !== '' ) );
             } elseif ( str_starts_with( $slug, 'pa_' ) ) {
-                // pa_* attribute saved without a taxonomy ID — options may be raw term IDs
-                // (happens when taxonomy was not registered at migration time). Resolve to
-                // names; skip any ID that can't be resolved rather than passing it through.
                 $options = array_values( array_filter( array_map(
                     function ( $opt ) use ( $slug ) {
                         if ( ! is_numeric( $opt ) ) {
@@ -134,22 +164,21 @@ class Helix_Sync {
                 continue;
             }
 
-            if ( in_array( $key, self::INT_ATTRIBUTES, true ) ) {
+            if ( in_array( $key, $type_map['integer'], true ) ) {
                 $attrs[ $key ] = (int) $options[0];
-            } elseif ( in_array( $key, self::FLOAT_ATTRIBUTES, true ) ) {
+            } elseif ( in_array( $key, $type_map['number'], true ) ) {
                 $attrs[ $key ] = (float) $options[0];
-            } elseif ( in_array( $key, self::BOOL_ATTRIBUTES, true ) ) {
+            } elseif ( in_array( $key, $type_map['boolean'], true ) ) {
                 $v = strtolower( (string) $options[0] );
                 $attrs[ $key ] = in_array( $v, [ 'yes', 'true', '1' ], true );
-            } elseif ( in_array( $key, self::SCALAR_ATTRIBUTES, true ) ) {
+            } elseif ( in_array( $key, $type_map['scalar'], true ) ) {
                 $attrs[ $key ] = (string) $options[0];
             } else {
-                // Multi-value attribute — return as lowercase array.
+                // Default: multi-value array (lowercase).
                 $attrs[ $key ] = array_map( 'strtolower', $options );
             }
         }
 
-        // Map WC SKU → stock_number if not already set via attribute.
         $sku = $wc_product->get_sku();
         if ( $sku && ! isset( $attrs['stock_number'] ) ) {
             $attrs['stock_number'] = $sku;

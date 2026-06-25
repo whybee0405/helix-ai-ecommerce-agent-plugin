@@ -85,8 +85,49 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from helix.api.routers import wp_agent
     app.include_router(wp_agent.router)
 
+    from helix.api.routers import alt_text
+    app.include_router(alt_text.router)
+
+    from helix.api.routers import seo_meta
+    app.include_router(seo_meta.router)
+
+    from helix.api.routers import reviews
+    app.include_router(reviews.router)
+
+    from helix.api.routers import internal_links
+    app.include_router(internal_links.router)
+
+    from helix.api.routers import digest
+    app.include_router(digest.router)
+
+    from helix.api.routers import blog_post
+    app.include_router(blog_post.router)
+
+    from helix.api.routers import product_descriptions as product_desc_router
+    app.include_router(product_desc_router.router)
+
+    from helix.api.routers import repurpose
+    app.include_router(repurpose.router)
+
+    from helix.api.routers import auth as auth_router
+    app.include_router(auth_router.router)
+
+    from helix.api.routers import billing as billing_router
+    app.include_router(billing_router.router)
+
     from helix.packs.registry import load_all_packs
     load_all_packs(s.packs_dir)
+
+    # Initialise Paddle price → tier mapping from settings.
+    from helix.billing.plans import init_paddle_price_map
+    price_map: dict[str, str] = {}
+    for tier in ("starter", "growth", "pro"):
+        for currency in ("usd", "zar"):
+            price_id = getattr(s, f"paddle_price_{tier}_{currency}", "")
+            if price_id:
+                price_map[price_id] = tier
+    if price_map:
+        init_paddle_price_map(price_map)
 
     from helix.api.middleware.rate_limit import RateLimitMiddleware
     from helix.api.middleware.quota import QuotaMiddleware
@@ -98,7 +139,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=s.cors_allowed_origins,
-        allow_methods=["GET", "POST", "PATCH"],
+        allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
         allow_headers=["Authorization", "Content-Type", "X-Helix-Tenant-Key",
                        "X-Helix-Provision-Key", "X-Helix-Tenant-Id",
                        "X-Helix-Timestamp", "X-Helix-Signature", "X-Request-Id"],

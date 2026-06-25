@@ -1,0 +1,111 @@
+{
+  "make": {
+    "label": "make",
+    "type": "scalar",
+    "embed": true,
+    "weight": 3
+  },
+  "model": {
+    "label": "model",
+    "type": "scalar",
+    "embed": true,
+    "weight": 3
+  },
+  "year": {
+    "label": "year",
+    "type": "integer",
+    "embed": true,
+    "weight": 2
+  },
+  "condition": {
+    "label": "condition",
+    "type": "scalar",
+    "embed": true,
+    "weight": 1
+  },
+  "mileage_km": {
+    "label": "mileage",
+    "type": "integer",
+    "embed": true,
+    "weight": 1
+  },
+  "fuel_type": {
+    "label": "fuel type",
+    "type": "scalar",
+    "embed": true,
+    "weight": 2
+  },
+  "transmission": {
+    "label": "transmission",
+    "type": "scalar",
+    "embed": true,
+    "weight": 1
+  },
+  "body_type": {
+    "label": "body type",
+    "type": "scalar",
+    "embed": true,
+    "weight": 2
+  },
+  "engine_cc": {
+    "label": "engine",
+    "type": "integer",
+    "embed": true,
+    "weight": 1
+  },
+  "colour": {
+    "label": "colour",
+    "type": "scalar",
+    "embed": true,
+    "weight": 1
+  },
+  "doors": {
+    "label": "doors",
+    "type": "integer",
+    "embed": false
+  },
+  "safety_rating": {
+    "label": "safety rating",
+    "type": "number",
+    "embed": true,
+    "weight": 1
+  },
+  "ncap_stars": {
+    "label": "NCAP stars",
+    "type": "integer",
+    "embed": true,
+    "weight": 1
+  },
+  "features": {
+    "label": "features",
+    "type": "array",
+    "embed": true,
+    "weight": 2
+  },
+  "certified_used": {
+    "label": "certified used",
+    "type": "boolean",
+    "embed": true,
+    "weight": 1
+  },
+  "vin": {
+    "label": "VIN",
+    "type": "scalar",
+    "embed": false
+  },
+  "stock_number": {
+    "label": "stock number",
+    "type": "scalar",
+    "embed": false
+  },
+  "price_zar": {
+    "label": "price",
+    "type": "integer",
+    "embed": false
+  },
+  "finance_from_zar": {
+    "label": "finance from",
+    "type": "integer",
+    "embed": false
+  }
+}
