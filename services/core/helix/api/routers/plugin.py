@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse, Response
 router = APIRouter(prefix="/v1/plugin", tags=["plugin"])
 
 _PLUGIN_DIR = Path("/plugin")
-_VERSION = "0.5.4"
+_VERSION = "0.5.5"
 
 
 def _build_zip() -> bytes:
@@ -31,7 +31,7 @@ async def plugin_manifest() -> JSONResponse:
         "download_url": "https://helix.cloudia.co.za/v1/plugin/download",
         "requires": "7.0",
         "tested": "6.5",
-        "last_updated": "2026-06-22",  # streaming + UX improvements
+        "last_updated": "2026-06-29",  # search bar loading states
     })
 
 

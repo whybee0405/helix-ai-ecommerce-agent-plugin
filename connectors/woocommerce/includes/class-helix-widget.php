@@ -73,6 +73,32 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hx-ls-price{font:700 12px/1 -apple-system,sans-serif;color:#7C3AED;margin-top:2px;}
 .hx-ls-hint{margin:0;padding:7px 14px;font:400 11px/1 -apple-system,sans-serif;
 color:#AEAEB2;text-align:center;background:rgba(0,0,0,.02);border-top:1px solid rgba(0,0,0,.04);}
+.hx-ls-loading{display:flex;align-items:center;gap:6px;padding:10px 14px 8px;
+border-bottom:1px solid rgba(0,0,0,.05);}
+.hx-ls-loading span{font:400 11px/1 -apple-system,sans-serif;color:#AEAEB2;}
+.hx-ls-dots{display:flex;gap:3px;align-items:center;}
+.hx-ls-dots i{display:inline-block;width:5px;height:5px;border-radius:50%;
+background:#7C3AED;animation:hx-ls-bounce .9s ease-in-out infinite;}
+.hx-ls-dots i:nth-child(2){animation-delay:.15s;}
+.hx-ls-dots i:nth-child(3){animation-delay:.3s;}
+@keyframes hx-ls-bounce{0%,60%,100%{transform:translateY(0);opacity:.4;}
+30%{transform:translateY(-4px);opacity:1;}}
+.hx-ls-skel{display:flex;align-items:center;gap:10px;padding:10px 14px;
+border-bottom:1px solid rgba(0,0,0,.05);}
+.hx-ls-skel:last-of-type{border-bottom:none;}
+.hx-ls-skel-img{width:44px;height:44px;border-radius:6px;flex-shrink:0;
+background:linear-gradient(90deg,#f0edff 25%,#e4dfff 50%,#f0edff 75%);
+background-size:200% 100%;animation:hx-ls-shimmer 1.2s ease-in-out infinite;}
+.hx-ls-skel-lines{display:flex;flex-direction:column;gap:6px;flex:1;}
+.hx-ls-skel-line{height:9px;border-radius:4px;
+background:linear-gradient(90deg,#f5f5f5 25%,#ebebeb 50%,#f5f5f5 75%);
+background-size:200% 100%;animation:hx-ls-shimmer 1.2s ease-in-out infinite;}
+.hx-ls-skel-line.w2{width:55%;}
+.hx-ls-skel-line.w3{width:35%;background:linear-gradient(90deg,#ede9ff 25%,#e0d9ff 50%,#ede9ff 75%);
+background-size:200% 100%;}
+@keyframes hx-ls-shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+#hx-ls-drop.hx-ls-ready{animation:hx-ls-fadein .18s ease;}
+@keyframes hx-ls-fadein{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
 </style>
 <script>
 (function(){
@@ -80,6 +106,20 @@ color:#AEAEB2;text-align:center;background:rgba(0,0,0,.02);border-top:1px solid 
   var AJAX='<?php echo $ajax_url; ?>';
   var _t,_ctrl;
   function close(){var d=document.getElementById('hx-ls-drop');if(d)d.remove();}
+  function skelHTML(){
+    var s='<div class="hx-ls-loading"><div class="hx-ls-dots"><i></i><i></i><i></i></div><span>Searching…</span></div>';
+    for(var i=0;i<3;i++)s+='<div class="hx-ls-skel"><div class="hx-ls-skel-img"></div><div class="hx-ls-skel-lines"><div class="hx-ls-skel-line"></div><div class="hx-ls-skel-line w2"></div><div class="hx-ls-skel-line w3"></div></div></div>';
+    return s;
+  }
+  function showSkeleton(inp){
+    close();
+    var d=document.createElement('div');
+    d.id='hx-ls-drop';
+    d.innerHTML=skelHTML();
+    var ref=inp.closest('form')||inp.parentElement;
+    if(getComputedStyle(ref).position==='static')ref.style.position='relative';
+    ref.appendChild(d);
+  }
   function render(inp,res){
     close();
     if(!res||!res.length)return;
@@ -94,6 +134,7 @@ color:#AEAEB2;text-align:center;background:rgba(0,0,0,.02);border-top:1px solid 
           '<span class="hx-ls-price">'+r.price+'</span>' +
         '</span></a>';
     }).join('')+'<p class="hx-ls-hint">Press ↵ to see all results</p>';
+    d.classList.add('hx-ls-ready');
     var ref=inp.closest('form')||inp.parentElement;
     if(getComputedStyle(ref).position==='static')ref.style.position='relative';
     ref.appendChild(d);
@@ -103,10 +144,11 @@ color:#AEAEB2;text-align:center;background:rgba(0,0,0,.02);border-top:1px solid 
     if(q.length<2){close();return;}
     if(_ctrl)_ctrl.abort();
     _ctrl=new AbortController();
+    showSkeleton(inp);
     fetch(AJAX+'?action=helix_live_search&q='+encodeURIComponent(q),{signal:_ctrl.signal})
       .then(function(r){return r.json();})
       .then(function(data){render(inp,data);})
-      .catch(function(){});
+      .catch(function(){close();});
   }
   function attach(inp){
     inp.setAttribute('autocomplete','off');
