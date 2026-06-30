@@ -12,6 +12,7 @@ class Eshopeo_Inline_Chat {
 
     public static function init(): void {
         add_shortcode( 'eshopeo_chat', [ self::class, 'shortcode' ] );
+        add_shortcode( 'helix_chat',   [ self::class, 'shortcode' ] ); // backward compat
     }
 
     public static function shortcode( array $atts ): string {

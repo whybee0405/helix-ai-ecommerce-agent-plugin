@@ -13,6 +13,7 @@ class Eshopeo_Product_Faq {
 
     public static function init(): void {
         add_shortcode( 'eshopeo_product_faq', [ self::class, 'shortcode' ] );
+        add_shortcode( 'helix_product_faq',   [ self::class, 'shortcode' ] ); // backward compat
         add_action( 'wp_head', [ self::class, 'inline_styles' ] );
     }
 

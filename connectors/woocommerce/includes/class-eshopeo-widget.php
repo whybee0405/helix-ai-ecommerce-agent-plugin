@@ -9,6 +9,7 @@ class Eshopeo_Widget {
         add_action( 'wp_footer', [ self::class, 'inject_live_search' ] );
         add_action( 'wp_footer', [ self::class, 'inject_cart_context' ] );
         add_shortcode( 'eshopeo_search', [ self::class, 'shortcode' ] );
+        add_shortcode( 'helix_search',   [ self::class, 'shortcode' ] ); // backward compat
         add_action( 'wp_ajax_nopriv_eshopeo_live_search', [ self::class, 'ajax_live_search' ] );
         add_action( 'wp_ajax_eshopeo_live_search', [ self::class, 'ajax_live_search' ] );
     }

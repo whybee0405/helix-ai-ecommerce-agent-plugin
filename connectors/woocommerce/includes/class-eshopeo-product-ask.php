@@ -15,6 +15,7 @@ class Eshopeo_Product_Ask {
     public static function init(): void {
         add_action( 'woocommerce_after_add_to_cart_button', [ self::class, 'render_ask_button' ] );
         add_shortcode( 'eshopeo_ask_ai', [ self::class, 'shortcode' ] );
+        add_shortcode( 'helix_ask_ai',   [ self::class, 'shortcode' ] ); // backward compat
     }
 
     /**
