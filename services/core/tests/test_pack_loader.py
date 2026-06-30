@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from helix.packs.loader import PackLoader, PackValidationError
+from eshopeo.packs.loader import PackLoader, PackValidationError
 
 KBEAUTY_PATH = Path(__file__).parent.parent.parent.parent / "packs" / "kbeauty"
 

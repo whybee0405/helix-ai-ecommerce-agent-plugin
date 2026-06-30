@@ -5,9 +5,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -40,8 +40,8 @@ def client(tenant):
     app.dependency_overrides[get_db] = lambda: mock_db
 
     with (
-        patch("helix.api.routers.tenants.get_tenant_by_id", side_effect=_get_by_id),
-        patch("helix.api.routers.tenants.update_tenant", side_effect=_update),
+        patch("eshopeo.api.routers.tenants.get_tenant_by_id", side_effect=_get_by_id),
+        patch("eshopeo.api.routers.tenants.update_tenant", side_effect=_update),
     ):
         yield TestClient(app), tenant, settings
 
@@ -50,7 +50,7 @@ def test_get_tenant_returns_details(client):
     c, tenant, settings = client
     r = c.get(
         f"/v1/tenants/{tenant.id}",
-        headers={"X-Helix-Provision-Key": settings.provision_key.get_secret_value()},
+        headers={"X-eShopeo-Provision-Key": settings.provision_key.get_secret_value()},
     )
     assert r.status_code == 200
     data = r.json()
@@ -62,7 +62,7 @@ def test_get_tenant_returns_details(client):
 
 def test_get_tenant_401_bad_key(client):
     c, tenant, _ = client
-    r = c.get(f"/v1/tenants/{tenant.id}", headers={"X-Helix-Provision-Key": "wrong"})
+    r = c.get(f"/v1/tenants/{tenant.id}", headers={"X-eShopeo-Provision-Key": "wrong"})
     assert r.status_code == 401
 
 
@@ -70,7 +70,7 @@ def test_get_tenant_404_unknown(client):
     c, _, settings = client
     r = c.get(
         f"/v1/tenants/{uuid4()}",
-        headers={"X-Helix-Provision-Key": settings.provision_key.get_secret_value()},
+        headers={"X-eShopeo-Provision-Key": settings.provision_key.get_secret_value()},
     )
     assert r.status_code == 404
 
@@ -80,7 +80,7 @@ def test_patch_tenant_updates_pack_id(client):
     r = c.patch(
         f"/v1/tenants/{tenant.id}",
         json={"pack_id": "haircare"},
-        headers={"X-Helix-Provision-Key": settings.provision_key.get_secret_value()},
+        headers={"X-eShopeo-Provision-Key": settings.provision_key.get_secret_value()},
     )
     assert r.status_code == 200
     assert r.json()["pack_id"] == "haircare"
@@ -91,7 +91,7 @@ def test_patch_tenant_updates_name(client):
     r = c.patch(
         f"/v1/tenants/{tenant.id}",
         json={"name": "New Name"},
-        headers={"X-Helix-Provision-Key": settings.provision_key.get_secret_value()},
+        headers={"X-eShopeo-Provision-Key": settings.provision_key.get_secret_value()},
     )
     assert r.status_code == 200
     assert r.json()["name"] == "New Name"

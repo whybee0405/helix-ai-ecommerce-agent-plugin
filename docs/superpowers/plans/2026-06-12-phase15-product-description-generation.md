@@ -4,7 +4,7 @@
 
 **Goal:** Merchants can trigger AI description generation per product or in bulk; drafts are stored for review; approving a draft writes `description_html` back to the product.
 
-**Architecture:** New `ContentDraft` model + migration 0004; new `helix/db/crud/content.py` CRUD; Celery task in `helix/workers/tasks/content.py` (sync, mirrors embedding task); new `helix/api/routers/content.py` (4 endpoints); `get_product_by_id` added to products CRUD.
+**Architecture:** New `ContentDraft` model + migration 0004; new `eshopeo/db/crud/content.py` CRUD; Celery task in `eshopeo/workers/tasks/content.py` (sync, mirrors embedding task); new `eshopeo/api/routers/content.py` (4 endpoints); `get_product_by_id` added to products CRUD.
 
 **Tech Stack:** Python 3.12, FastAPI, SQLAlchemy 2.x async (API layer) + sync (Celery task), Celery, Anthropic Claude (`generate` tier = Sonnet), pytest (asyncio_mode=auto)
 
@@ -18,7 +18,7 @@
 - Celery tasks: synchronous using `get_sync_session()` — NOT async — mirrors `embedding.py` pattern
 - LLM Gateway: `LLMGateway(settings, tenant_id).complete(ModelTier.GENERATE, system, user, schema, max_tokens=N)`
 - Gateway returns an instance of the Pydantic `response_schema` type — use `DescriptionDraft(html: str)` model
-- Migration dir: `helix/db/migrations/versions/` — filename `0004_content_draft.py`
+- Migration dir: `eshopeo/db/migrations/versions/` — filename `0004_content_draft.py`
 - Migration chain: `down_revision = "0003"`
 - `ContentDraft` status values: `"pending"` (initial), `"approved"`, `"rejected"`
 
@@ -27,13 +27,13 @@
 ## Task P15-1: ContentDraft model + migration + CRUD + `get_product_by_id`
 
 **Files:**
-- Modify: `helix/db/models.py`
-- Create: `helix/db/migrations/versions/0004_content_draft.py`
-- Create: `helix/db/crud/content.py`
-- Modify: `helix/db/crud/products.py`
+- Modify: `eshopeo/db/models.py`
+- Create: `eshopeo/db/migrations/versions/0004_content_draft.py`
+- Create: `eshopeo/db/crud/content.py`
+- Modify: `eshopeo/db/crud/products.py`
 - Create: `tests/test_content_draft_crud.py`
 
-### Step 1: Add `ContentDraft` to `helix/db/models.py`
+### Step 1: Add `ContentDraft` to `eshopeo/db/models.py`
 
 Read the file. Add `DateTime` to the sqlalchemy imports (it's not there yet; `TIMESTAMP` is used instead — check). The model uses `TIMESTAMP(timezone=True)` to match the existing pattern. Add to imports if needed.
 
@@ -64,7 +64,7 @@ class ContentDraft(Base):
     )
 ```
 
-### Step 2: Create migration `helix/db/migrations/versions/0004_content_draft.py`
+### Step 2: Create migration `eshopeo/db/migrations/versions/0004_content_draft.py`
 
 ```python
 """create content_draft table
@@ -108,7 +108,7 @@ def downgrade() -> None:
     op.drop_table("content_draft")
 ```
 
-### Step 3: Create `helix/db/crud/content.py`
+### Step 3: Create `eshopeo/db/crud/content.py`
 
 ```python
 from datetime import datetime, timezone
@@ -117,7 +117,7 @@ from uuid import UUID
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.db.models import ContentDraft, Product
+from eshopeo.db.models import ContentDraft, Product
 
 
 async def upsert_content_draft(
@@ -193,7 +193,7 @@ async def list_products_without_draft(
     return list(result.scalars().all())
 ```
 
-### Step 4: Add `get_product_by_id` to `helix/db/crud/products.py`
+### Step 4: Add `get_product_by_id` to `eshopeo/db/crud/products.py`
 
 Read the file. Append at the end:
 
@@ -219,13 +219,13 @@ from uuid import uuid4
 
 import pytest
 
-from helix.db.crud.content import (
+from eshopeo.db.crud.content import (
     approve_content_draft,
     get_content_draft,
     list_products_without_draft,
     upsert_content_draft,
 )
-from helix.db.models import ContentDraft, Product
+from eshopeo.db.models import ContentDraft, Product
 
 
 async def test_upsert_content_draft_creates_new():
@@ -275,7 +275,7 @@ async def test_get_content_draft_returns_none_when_missing():
 
 ```powershell
 cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"
-python -m py_compile helix/db/models.py helix/db/crud/content.py helix/db/crud/products.py helix/db/migrations/versions/0004_content_draft.py tests/test_content_draft_crud.py
+python -m py_compile eshopeo/db/models.py eshopeo/db/crud/content.py eshopeo/db/crud/products.py eshopeo/db/migrations/versions/0004_content_draft.py tests/test_content_draft_crud.py
 ```
 
 ### Step 7: Run tests
@@ -289,7 +289,7 @@ All 3 must pass.
 ### Step 8: Commit
 
 ```powershell
-git add helix/db/models.py helix/db/crud/content.py helix/db/crud/products.py helix/db/migrations/versions/0004_content_draft.py tests/test_content_draft_crud.py
+git add eshopeo/db/models.py eshopeo/db/crud/content.py eshopeo/db/crud/products.py eshopeo/db/migrations/versions/0004_content_draft.py tests/test_content_draft_crud.py
 git commit -m @'
 feat: ContentDraft model, migration 0004, content CRUD, get_product_by_id
 '@
@@ -300,12 +300,12 @@ feat: ContentDraft model, migration 0004, content CRUD, get_product_by_id
 ## Task P15-2: `generate_description` Celery task
 
 **Files:**
-- Create: `helix/workers/tasks/content.py`
+- Create: `eshopeo/workers/tasks/content.py`
 - Create: `tests/test_content_generation_task.py`
 
 ### Context: How the gateway works
 
-`LLMGateway` is in `helix.llm.gateway`. It takes `settings: Settings, tenant_id: UUID`. The `complete()` method signature:
+`LLMGateway` is in `eshopeo.llm.gateway`. It takes `settings: Settings, tenant_id: UUID`. The `complete()` method signature:
 
 ```python
 async def complete(
@@ -333,7 +333,7 @@ The gateway uses structured JSON output, so the LLM returns `{"html": "<p>...</p
 The existing `embed_product` task uses synchronous code (`get_sync_session()`) — NOT async. The description generation task follows the same pattern. It runs the async LLM gateway call inside `asyncio.run()`:
 
 ```python
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=60, name="helix.workers.tasks.content.generate_description")
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=60, name="eshopeo.workers.tasks.content.generate_description")
 def generate_description(self, tenant_id_str: str, product_id_str: str) -> None:
     try:
         import asyncio
@@ -342,7 +342,7 @@ def generate_description(self, tenant_id_str: str, product_id_str: str) -> None:
         raise self.retry(exc=exc)
 ```
 
-### Step 1: Create `helix/workers/tasks/content.py`
+### Step 1: Create `eshopeo/workers/tasks/content.py`
 
 ```python
 import asyncio
@@ -351,7 +351,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from helix.workers.celery_app import celery_app
+from eshopeo.workers.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
 
@@ -385,13 +385,13 @@ def _build_user_prompt(product) -> str:
 
 
 async def _generate_async(tenant_id_str: str, product_id_str: str) -> None:
-    from helix.config import get_settings
-    from helix.db.engine import async_session_factory
-    from helix.db.crud.products import get_product_by_id
-    from helix.db.crud.tenants import get_tenant_by_id
-    from helix.db.crud.content import upsert_content_draft
-    from helix.packs.loader import get_pack_for_tenant
-    from helix.llm.gateway import LLMGateway, ModelTier
+    from eshopeo.config import get_settings
+    from eshopeo.db.engine import async_session_factory
+    from eshopeo.db.crud.products import get_product_by_id
+    from eshopeo.db.crud.tenants import get_tenant_by_id
+    from eshopeo.db.crud.content import upsert_content_draft
+    from eshopeo.packs.loader import get_pack_for_tenant
+    from eshopeo.llm.gateway import LLMGateway, ModelTier
 
     tenant_id = UUID(tenant_id_str)
     product_id = UUID(product_id_str)
@@ -425,7 +425,7 @@ async def _generate_async(tenant_id_str: str, product_id_str: str) -> None:
     bind=True,
     max_retries=3,
     default_retry_delay=60,
-    name="helix.workers.tasks.content.generate_description",
+    name="eshopeo.workers.tasks.content.generate_description",
 )
 def generate_description(self, tenant_id_str: str, product_id_str: str) -> None:
     try:
@@ -444,7 +444,7 @@ from uuid import uuid4
 
 import pytest
 
-from helix.workers.tasks.content import _generate_async, _build_user_prompt, DescriptionDraft
+from eshopeo.workers.tasks.content import _generate_async, _build_user_prompt, DescriptionDraft
 
 
 async def test_generate_async_upserts_draft():
@@ -466,13 +466,13 @@ async def test_generate_async_upserts_draft():
     mock_draft = DescriptionDraft(html="<p>Great toner</p>")
 
     with (
-        patch("helix.workers.tasks.content.get_tenant_by_id", new_callable=AsyncMock, return_value=mock_tenant),
-        patch("helix.workers.tasks.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
-        patch("helix.workers.tasks.content.upsert_content_draft", new_callable=AsyncMock) as mock_upsert,
-        patch("helix.workers.tasks.content.get_pack_for_tenant", return_value=MagicMock()),
-        patch("helix.workers.tasks.content.LLMGateway") as mock_gw_cls,
-        patch("helix.workers.tasks.content.async_session_factory") as mock_factory,
-        patch("helix.workers.tasks.content.get_settings", return_value=MagicMock()),
+        patch("eshopeo.workers.tasks.content.get_tenant_by_id", new_callable=AsyncMock, return_value=mock_tenant),
+        patch("eshopeo.workers.tasks.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
+        patch("eshopeo.workers.tasks.content.upsert_content_draft", new_callable=AsyncMock) as mock_upsert,
+        patch("eshopeo.workers.tasks.content.get_pack_for_tenant", return_value=MagicMock()),
+        patch("eshopeo.workers.tasks.content.LLMGateway") as mock_gw_cls,
+        patch("eshopeo.workers.tasks.content.async_session_factory") as mock_factory,
+        patch("eshopeo.workers.tasks.content.get_settings", return_value=MagicMock()),
     ):
         mock_gw = AsyncMock()
         mock_gw.complete = AsyncMock(return_value=mock_draft)
@@ -496,11 +496,11 @@ async def test_generate_async_skips_when_product_not_found():
     product_id = uuid4()
 
     with (
-        patch("helix.workers.tasks.content.get_tenant_by_id", new_callable=AsyncMock, return_value=MagicMock()),
-        patch("helix.workers.tasks.content.get_product_by_id", new_callable=AsyncMock, return_value=None),
-        patch("helix.workers.tasks.content.upsert_content_draft", new_callable=AsyncMock) as mock_upsert,
-        patch("helix.workers.tasks.content.async_session_factory") as mock_factory,
-        patch("helix.workers.tasks.content.get_settings", return_value=MagicMock()),
+        patch("eshopeo.workers.tasks.content.get_tenant_by_id", new_callable=AsyncMock, return_value=MagicMock()),
+        patch("eshopeo.workers.tasks.content.get_product_by_id", new_callable=AsyncMock, return_value=None),
+        patch("eshopeo.workers.tasks.content.upsert_content_draft", new_callable=AsyncMock) as mock_upsert,
+        patch("eshopeo.workers.tasks.content.async_session_factory") as mock_factory,
+        patch("eshopeo.workers.tasks.content.get_settings", return_value=MagicMock()),
     ):
         mock_session = AsyncMock()
         mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
@@ -527,7 +527,7 @@ def test_build_user_prompt_includes_title():
 ### Step 3: Syntax check
 
 ```powershell
-python -m py_compile helix/workers/tasks/content.py tests/test_content_generation_task.py
+python -m py_compile eshopeo/workers/tasks/content.py tests/test_content_generation_task.py
 ```
 
 ### Step 4: Run tests
@@ -541,7 +541,7 @@ All 3 must pass.
 ### Step 5: Commit
 
 ```powershell
-git add helix/workers/tasks/content.py tests/test_content_generation_task.py
+git add eshopeo/workers/tasks/content.py tests/test_content_generation_task.py
 git commit -m @'
 feat: generate_description Celery task with LLM gateway integration
 '@
@@ -552,13 +552,13 @@ feat: generate_description Celery task with LLM gateway integration
 ## Task P15-3: Content router — 4 endpoints
 
 **Files:**
-- Create: `helix/api/routers/content.py`
-- Modify: `helix/api/app.py`
+- Create: `eshopeo/api/routers/content.py`
+- Modify: `eshopeo/api/app.py`
 - Create: `tests/test_content_generate_endpoint.py`
 - Create: `tests/test_content_approve_endpoint.py`
 - Create: `tests/test_content_bulk_endpoint.py`
 
-### Step 1: Create `helix/api/routers/content.py`
+### Step 1: Create `eshopeo/api/routers/content.py`
 
 ```python
 from uuid import UUID
@@ -567,16 +567,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
-from helix.db.crud.content import (
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.crud.content import (
     approve_content_draft,
     get_content_draft,
     list_products_without_draft,
     upsert_content_draft,
 )
-from helix.db.crud.products import get_product_by_id
-from helix.db.models import Tenant
-from helix.workers.tasks.content import generate_description
+from eshopeo.db.crud.products import get_product_by_id
+from eshopeo.db.models import Tenant
+from eshopeo.workers.tasks.content import generate_description
 
 router = APIRouter(prefix="/v1/content", tags=["content"])
 
@@ -667,12 +667,12 @@ async def bulk_generate_endpoint(
 
 **Route ordering note:** `POST /products/{product_id}/draft/approve` and `GET /products/{product_id}/draft` share the `{product_id}` path param — `approve` is a POST while `draft` is a GET, so no ordering conflict. `/bulk-generate` does not conflict with any product path.
 
-### Step 2: Register router in `helix/api/app.py`
+### Step 2: Register router in `eshopeo/api/app.py`
 
 Read the file. After the `customers` router block, add:
 
 ```python
-    from helix.api.routers import content
+    from eshopeo.api.routers import content
     app.include_router(content.router)
 ```
 
@@ -684,9 +684,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -715,8 +715,8 @@ def test_generate_returns_202():
 
     mock_task = MagicMock()
     with (
-        patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=product),
-        patch("helix.api.routers.content.generate_description", mock_task),
+        patch("eshopeo.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=product),
+        patch("eshopeo.api.routers.content.generate_description", mock_task),
     ):
         r = client.post(f"/v1/content/products/{product.id}/generate")
 
@@ -735,7 +735,7 @@ def test_generate_404_on_unknown_product():
     tenant = _make_tenant()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=None):
+    with patch("eshopeo.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=None):
         r = client.post(f"/v1/content/products/{uuid4()}/generate")
 
     app.dependency_overrides.clear()
@@ -760,9 +760,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import ContentDraft, Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import ContentDraft, Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -801,9 +801,9 @@ def test_approve_draft_returns_200():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with (
-        patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
-        patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
-        patch("helix.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
+        patch("eshopeo.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
+        patch("eshopeo.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
+        patch("eshopeo.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
     ):
         r = client.post(f"/v1/content/products/{product_id}/draft/approve")
 
@@ -824,7 +824,7 @@ def test_approve_draft_409_if_already_approved():
 
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft):
+    with patch("eshopeo.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft):
         r = client.post(f"/v1/content/products/{product_id}/draft/approve")
 
     app.dependency_overrides.clear()
@@ -839,7 +839,7 @@ def test_approve_draft_404_no_draft():
     tenant = _make_tenant()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=None):
+    with patch("eshopeo.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=None):
         r = client.post(f"/v1/content/products/{uuid4()}/draft/approve")
 
     app.dependency_overrides.clear()
@@ -854,9 +854,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -883,8 +883,8 @@ def test_bulk_generate_queues_products():
 
     mock_task = MagicMock()
     with (
-        patch("helix.api.routers.content.list_products_without_draft", new_callable=AsyncMock, return_value=products),
-        patch("helix.api.routers.content.generate_description", mock_task),
+        patch("eshopeo.api.routers.content.list_products_without_draft", new_callable=AsyncMock, return_value=products),
+        patch("eshopeo.api.routers.content.generate_description", mock_task),
     ):
         r = client.post("/v1/content/bulk-generate")
 
@@ -903,7 +903,7 @@ def test_bulk_generate_returns_zero_when_all_have_drafts():
     tenant = _make_tenant()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.content.list_products_without_draft", new_callable=AsyncMock, return_value=[]):
+    with patch("eshopeo.api.routers.content.list_products_without_draft", new_callable=AsyncMock, return_value=[]):
         r = client.post("/v1/content/bulk-generate")
 
     app.dependency_overrides.clear()
@@ -923,7 +923,7 @@ def test_bulk_generate_requires_auth():
 ### Step 6: Syntax check
 
 ```powershell
-python -m py_compile helix/api/routers/content.py helix/api/app.py tests/test_content_generate_endpoint.py tests/test_content_approve_endpoint.py tests/test_content_bulk_endpoint.py
+python -m py_compile eshopeo/api/routers/content.py eshopeo/api/app.py tests/test_content_generate_endpoint.py tests/test_content_approve_endpoint.py tests/test_content_bulk_endpoint.py
 ```
 
 ### Step 7: Run tests
@@ -937,7 +937,7 @@ All 9 must pass.
 ### Step 8: Commit
 
 ```powershell
-git add helix/api/routers/content.py helix/api/app.py tests/test_content_generate_endpoint.py tests/test_content_approve_endpoint.py tests/test_content_bulk_endpoint.py
+git add eshopeo/api/routers/content.py eshopeo/api/app.py tests/test_content_generate_endpoint.py tests/test_content_approve_endpoint.py tests/test_content_bulk_endpoint.py
 git commit -m @'
 feat: content router — generate, draft, approve, bulk-generate endpoints
 '@

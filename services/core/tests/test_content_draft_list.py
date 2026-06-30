@@ -4,9 +4,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import ContentDraft, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import ContentDraft, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -38,8 +38,8 @@ def test_list_drafts_returns_200():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with (
-        patch("helix.api.routers.content.list_content_drafts", new_callable=AsyncMock, return_value=drafts),
-        patch("helix.api.routers.content.count_content_drafts", new_callable=AsyncMock, return_value=2),
+        patch("eshopeo.api.routers.content.list_content_drafts", new_callable=AsyncMock, return_value=drafts),
+        patch("eshopeo.api.routers.content.count_content_drafts", new_callable=AsyncMock, return_value=2),
     ):
         r = client.get("/v1/content/drafts")
 
@@ -62,8 +62,8 @@ def test_list_drafts_passes_status_filter():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with (
-        patch("helix.api.routers.content.list_content_drafts", mock_list),
-        patch("helix.api.routers.content.count_content_drafts", mock_count),
+        patch("eshopeo.api.routers.content.list_content_drafts", mock_list),
+        patch("eshopeo.api.routers.content.count_content_drafts", mock_count),
     ):
         r = client.get("/v1/content/drafts?status=pending")
 

@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-12
 **Status:** Approved
-**Scope:** Two tightly related capabilities that close the content loop: (1) AI-generated SEO metadata (`meta_title`, `meta_description`) stored as ContentDraft rows alongside the existing description drafts, and (2) platform write-back — when a `description_html` draft is approved, Helix pushes the content directly to the merchant's WooCommerce or Shopify store via their respective REST APIs, eliminating the manual copy-paste step.
+**Scope:** Two tightly related capabilities that close the content loop: (1) AI-generated SEO metadata (`meta_title`, `meta_description`) stored as ContentDraft rows alongside the existing description drafts, and (2) platform write-back — when a `description_html` draft is approved, eShopeo pushes the content directly to the merchant's WooCommerce or Shopify store via their respective REST APIs, eliminating the manual copy-paste step.
 **Definition of done:** A merchant can trigger SEO generation for one or all products, retrieve the generated meta fields via the draft endpoint, approve any field type, and have `description_html` approvals automatically reflected in their live store.
 
 ---
@@ -11,7 +11,7 @@
 
 | Gap | Impact |
 |-----|--------|
-| Description approval is Helix-only — merchant still has to copy-paste to the live store | The content workflow is incomplete; the approved text isn't actually live without manual intervention |
+| Description approval is eShopeo-only — merchant still has to copy-paste to the live store | The content workflow is incomplete; the approved text isn't actually live without manual intervention |
 | No SEO metadata generation | Product pages lack AI-generated titles and descriptions for search engines |
 | Draft GET endpoint hardcodes `field="description_html"` | Merchants can't retrieve meta_title / meta_description drafts through the API |
 | Approve endpoint hardcodes `field="description_html"` | Only description drafts can be approved — no path for future field types |
@@ -22,7 +22,7 @@
 
 ## 2. SEO metadata generation (P17-1)
 
-### New Celery task — `helix/workers/tasks/seo.py`
+### New Celery task — `eshopeo/workers/tasks/seo.py`
 
 One LLM call produces both `meta_title` and `meta_description`. They are stored as two separate ContentDraft rows (same pattern as description drafts).
 
@@ -47,7 +47,7 @@ User prompt: same structure as description — title, price, categories, domain_
 Task:
 ```python
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60,
-                 name="helix.workers.tasks.seo.generate_seo_metadata")
+                 name="eshopeo.workers.tasks.seo.generate_seo_metadata")
 def generate_seo_metadata(self, tenant_id_str: str, product_id_str: str) -> None:
     try:
         asyncio.run(_generate_seo_async(tenant_id_str, product_id_str))
@@ -67,7 +67,7 @@ await session.commit()
 ### CRUD change — generalise `list_products_without_draft`
 
 ```python
-# helix/db/crud/content.py — backwards-compatible (field defaults to "description_html")
+# eshopeo/db/crud/content.py — backwards-compatible (field defaults to "description_html")
 async def list_products_without_draft(
     session: AsyncSession,
     tenant_id: UUID,
@@ -143,13 +143,13 @@ Route ordering: `bulk-generate-seo` is a literal path — register **before** `/
 
 ## 3. Platform write-back client (P17-2)
 
-New module `helix/connectors/writeback.py`. Supports WooCommerce and Shopify. **Never raises** — all failures are logged and a `bool` is returned.
+New module `eshopeo/connectors/writeback.py`. Supports WooCommerce and Shopify. **Never raises** — all failures are logged and a `bool` is returned.
 
 ```python
 import base64, json, httpx, structlog
 from cryptography.fernet import Fernet
-from helix.config import Settings
-from helix.db.models import Tenant
+from eshopeo.config import Settings
+from eshopeo.db.models import Tenant
 
 logger = structlog.get_logger(__name__)
 
@@ -292,8 +292,8 @@ async def approve_product_draft(
 ```
 
 **Key design decisions:**
-- `db.commit()` happens **before** write-back. The draft is approved in Helix regardless of whether the platform API is reachable.
-- Write-back failure → `platform_synced=False`, response is still `200`. Helix is the source of truth; the merchant can retry.
+- `db.commit()` happens **before** write-back. The draft is approved in eShopeo regardless of whether the platform API is reachable.
+- Write-back failure → `platform_synced=False`, response is still `200`. eShopeo is the source of truth; the merchant can retry.
 - Write-back is **not** called for non-`description_html` fields — no platform API supports meta fields generically.
 
 ---
@@ -301,15 +301,15 @@ async def approve_product_draft(
 ## 5. File map
 
 **New files:**
-- `services/core/helix/workers/tasks/seo.py` — `generate_seo_metadata` Celery task
-- `services/core/helix/connectors/writeback.py` — `write_back_to_platform`
+- `services/core/eshopeo/workers/tasks/seo.py` — `generate_seo_metadata` Celery task
+- `services/core/eshopeo/connectors/writeback.py` — `write_back_to_platform`
 - `services/core/tests/test_seo_generation.py` — 3 tests
 - `services/core/tests/test_writeback.py` — 3 tests
 - `services/core/tests/test_content_approve_writeback.py` — 3 tests
 
 **Modified files:**
-- `services/core/helix/db/crud/content.py` — `list_products_without_draft` gets `field` param
-- `services/core/helix/api/routers/content.py` — field param on GET draft + approve, 2 new endpoints, write-back import
+- `services/core/eshopeo/db/crud/content.py` — `list_products_without_draft` gets `field` param
+- `services/core/eshopeo/api/routers/content.py` — field param on GET draft + approve, 2 new endpoints, write-back import
 
 ---
 
@@ -327,6 +327,6 @@ async def approve_product_draft(
 | Task | Description | Tests |
 |------|-------------|-------|
 | P17-1 | `generate_seo_metadata` Celery task in `seo.py`; generalise `list_products_without_draft(field=)`; add `?field=` to GET draft; add `POST /generate-seo` and `POST /bulk-generate-seo` to content router | 3 |
-| P17-2 | `helix/connectors/writeback.py` — `write_back_to_platform`, `_write_woocommerce`, `_write_shopify`; never raises | 3 |
+| P17-2 | `eshopeo/connectors/writeback.py` — `write_back_to_platform`, `_write_woocommerce`, `_write_shopify`; never raises | 3 |
 | P17-3 | Add `?field=` to approve endpoint; import and call `write_back_to_platform`; new `ApproveDraftOut` with `platform_synced`; commit before write-back | 3 |
 | P17-4 | Full suite (expected 262 tests, 245 passing) + PROGRESS.md | — |

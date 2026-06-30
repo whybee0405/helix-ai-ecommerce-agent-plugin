@@ -15,7 +15,7 @@
 | No per-tenant usage visibility in admin | `GET /v1/admin/stats` is cross-tenant only; no drill-down per tenant |
 | No quota reset | When a tenant hits quota incorrectly or needs a grace reset, operators must manually delete the Redis key |
 
-**Already done:** `GET /health` checks DB and Redis. Admin stats `GET /v1/admin/stats` exists. Auth: `X-Helix-Provision-Key` header (`_auth_provision` dependency).
+**Already done:** `GET /health` checks DB and Redis. Admin stats `GET /v1/admin/stats` exists. Auth: `X-eShopeo-Provision-Key` header (`_auth_provision` dependency).
 
 ---
 
@@ -75,7 +75,7 @@ Both auth via `_auth_provision` dependency.
 
 Auth pattern: override `_auth_provision` dependency:
 ```python
-from helix.api.routers.admin import _auth_provision
+from eshopeo.api.routers.admin import _auth_provision
 app.dependency_overrides[_auth_provision] = lambda: "test-key"
 ```
 
@@ -179,10 +179,10 @@ Returns 200 with `{"reset": true, "key": "quota:uuid:2026-06"}`.
 
 ### Tests — `test_admin_quota_reset.py` (3 tests)
 
-Mock `aioredis.from_url` at `helix.api.routers.admin.aioredis`:
+Mock `aioredis.from_url` at `eshopeo.api.routers.admin.aioredis`:
 
 ```python
-with patch("helix.api.routers.admin.aioredis") as mock_aioredis:
+with patch("eshopeo.api.routers.admin.aioredis") as mock_aioredis:
     mock_redis = AsyncMock()
     mock_aioredis.from_url.return_value = mock_redis
     r = client.post(f"/v1/admin/tenants/{tenant_id}/quota/reset")
@@ -197,9 +197,9 @@ with patch("helix.api.routers.admin.aioredis") as mock_aioredis:
 ## 5. File map
 
 **Modified files:**
-- `services/core/helix/db/crud/tenants.py` — add `list_tenants`, `count_tenants`
-- `services/core/helix/db/crud/admin.py` — add `get_tenant_usage_summary`
-- `services/core/helix/api/routers/admin.py` — add 4 new endpoints + models
+- `services/core/eshopeo/db/crud/tenants.py` — add `list_tenants`, `count_tenants`
+- `services/core/eshopeo/db/crud/admin.py` — add `get_tenant_usage_summary`
+- `services/core/eshopeo/api/routers/admin.py` — add 4 new endpoints + models
 
 **New files:**
 - `services/core/tests/test_admin_tenant_list.py` (3 tests)

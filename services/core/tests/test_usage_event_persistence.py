@@ -4,8 +4,8 @@ from uuid import uuid4
 
 import pytest
 
-from helix.db.crud.usage_events import create_usage_event
-from helix.llm.gateway import RouteResult
+from eshopeo.db.crud.usage_events import create_usage_event
+from eshopeo.llm.gateway import RouteResult
 
 
 class TestRouteResultExtension:
@@ -59,28 +59,28 @@ class TestWidgetChatUsageEvent:
         mock_db = AsyncMock()
 
         with patch(
-            "helix.api.routers.widget.handle_query",
+            "eshopeo.api.routers.widget.handle_query",
             new_callable=AsyncMock,
             return_value=route_result,
         ) as mock_handle_query, patch(
-            "helix.api.routers.widget.create_usage_event",
+            "eshopeo.api.routers.widget.create_usage_event",
             new_callable=AsyncMock,
         ) as mock_create_usage_event, patch(
-            "helix.api.routers.widget.embed_query",
+            "eshopeo.api.routers.widget.embed_query",
             new_callable=AsyncMock,
             return_value=[1.0] * 100,
         ), patch(
-            "helix.api.routers.widget.vector_search_products",
+            "eshopeo.api.routers.widget.vector_search_products",
             new_callable=AsyncMock,
             return_value=[],
         ), patch(
-            "helix.api.routers.widget.get_pack_for_tenant",
+            "eshopeo.api.routers.widget.get_pack_for_tenant",
             return_value={},
         ), patch(
-            "helix.api.routers.widget.get_settings",
+            "eshopeo.api.routers.widget.get_settings",
         ):
-            from helix.api.routers.widget import widget_chat
-            from helix.db.models import Tenant
+            from eshopeo.api.routers.widget import widget_chat
+            from eshopeo.db.models import Tenant
 
             tenant = Tenant(
                 name="test",
@@ -122,28 +122,28 @@ class TestWidgetChatUsageEvent:
         mock_db = AsyncMock()
 
         with patch(
-            "helix.api.routers.widget.handle_query",
+            "eshopeo.api.routers.widget.handle_query",
             new_callable=AsyncMock,
             return_value=route_result,
         ), patch(
-            "helix.api.routers.widget.create_usage_event",
+            "eshopeo.api.routers.widget.create_usage_event",
             new_callable=AsyncMock,
         ) as mock_create_usage_event, patch(
-            "helix.api.routers.widget.embed_query",
+            "eshopeo.api.routers.widget.embed_query",
             new_callable=AsyncMock,
             return_value=[1.0] * 100,
         ), patch(
-            "helix.api.routers.widget.vector_search_products",
+            "eshopeo.api.routers.widget.vector_search_products",
             new_callable=AsyncMock,
             return_value=[],
         ), patch(
-            "helix.api.routers.widget.get_pack_for_tenant",
+            "eshopeo.api.routers.widget.get_pack_for_tenant",
             return_value={},
         ), patch(
-            "helix.api.routers.widget.get_settings",
+            "eshopeo.api.routers.widget.get_settings",
         ):
-            from helix.api.routers.widget import widget_chat
-            from helix.db.models import Tenant
+            from eshopeo.api.routers.widget import widget_chat
+            from eshopeo.db.models import Tenant
 
             tenant = Tenant(
                 name="test",
@@ -171,26 +171,26 @@ class TestWidgetRoutineUsageEvent:
         mock_db = AsyncMock()
 
         with patch(
-            "helix.api.routers.widget.embed_query",
+            "eshopeo.api.routers.widget.embed_query",
             new_callable=AsyncMock,
             return_value=[1.0] * 100,
         ), patch(
-            "helix.api.routers.widget.vector_search_products",
+            "eshopeo.api.routers.widget.vector_search_products",
             new_callable=AsyncMock,
             return_value=[],
         ), patch(
-            "helix.api.routers.widget.build_routine",
+            "eshopeo.api.routers.widget.build_routine",
             return_value=MagicMock(
                 steps=[], conflicts=[], cautions=[], missing_steps=[], llm_augmented=False
             ),
         ), patch(
-            "helix.api.routers.widget.get_pack_for_tenant",
+            "eshopeo.api.routers.widget.get_pack_for_tenant",
             return_value={},
         ), patch(
-            "helix.api.routers.widget.get_settings",
+            "eshopeo.api.routers.widget.get_settings",
         ):
-            from helix.api.routers.widget import widget_routine
-            from helix.db.models import Tenant
+            from eshopeo.api.routers.widget import widget_routine
+            from eshopeo.db.models import Tenant
 
             tenant = Tenant(
                 name="test",

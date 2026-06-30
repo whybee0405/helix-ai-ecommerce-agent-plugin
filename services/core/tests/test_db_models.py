@@ -1,4 +1,4 @@
-from helix.db.models import Base, Customer, Job, Order, Product, Tenant, UsageEvent
+from eshopeo.db.models import Base, Customer, Job, Order, Product, Tenant, UsageEvent
 
 
 def test_all_tables_defined():

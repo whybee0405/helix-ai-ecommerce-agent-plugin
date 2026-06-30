@@ -174,7 +174,7 @@ async def browse_products_endpoint(
     )
 ```
 
-Add `browse_products` to import from `helix.db.crud.products`.
+Add `browse_products` to import from `eshopeo.db.crud.products`.
 
 ### Tests — `test_search_browse.py` (3 tests)
 
@@ -205,8 +205,8 @@ async def list_products_without_embedding(
 ### New endpoint in `jobs.py`
 
 ```python
-from helix.db.crud.products import list_products_without_embedding
-from helix.workers.tasks.embedding import embed_product
+from eshopeo.db.crud.products import list_products_without_embedding
+from eshopeo.workers.tasks.embedding import embed_product
 
 
 class BulkEmbedResponse(BaseModel):
@@ -233,17 +233,17 @@ async def bulk_embed_endpoint(
 3. `test_bulk_embed_requires_auth` — 401
 
 Patch namespaces:
-- `helix.api.routers.jobs.list_products_without_embedding`
-- `helix.api.routers.jobs.embed_product`
+- `eshopeo.api.routers.jobs.list_products_without_embedding`
+- `eshopeo.api.routers.jobs.embed_product`
 
 ---
 
 ## 5. File map
 
 **Modified files:**
-- `services/core/helix/db/crud/products.py` — modify `vector_search_products` (add price filters), add `browse_products`, add `list_products_without_embedding`
-- `services/core/helix/api/routers/search.py` — add price params to `GET /v1/search/products`, add `GET /v1/search/browse` endpoint
-- `services/core/helix/api/routers/jobs.py` — add `POST /v1/jobs/embed/bulk`
+- `services/core/eshopeo/db/crud/products.py` — modify `vector_search_products` (add price filters), add `browse_products`, add `list_products_without_embedding`
+- `services/core/eshopeo/api/routers/search.py` — add price params to `GET /v1/search/products`, add `GET /v1/search/browse` endpoint
+- `services/core/eshopeo/api/routers/jobs.py` — add `POST /v1/jobs/embed/bulk`
 
 **New files:**
 - `services/core/tests/test_search_price_filter.py` (3 tests)

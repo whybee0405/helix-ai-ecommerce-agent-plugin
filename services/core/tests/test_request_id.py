@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from helix.api.app import create_app
+from eshopeo.api.app import create_app
 from tests.conftest import make_test_settings
 
 

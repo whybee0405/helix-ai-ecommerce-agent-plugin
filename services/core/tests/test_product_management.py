@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -39,7 +39,7 @@ def test_get_product_returns_200():
     product = _make_product(tenant.id)
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.products.get_product_by_id", new_callable=AsyncMock, return_value=product):
+    with patch("eshopeo.api.routers.products.get_product_by_id", new_callable=AsyncMock, return_value=product):
         r = client.get(f"/v1/products/{product.id}")
 
     app.dependency_overrides.clear()
@@ -56,7 +56,7 @@ def test_get_product_404_when_not_found():
     tenant = _make_tenant()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.products.get_product_by_id", new_callable=AsyncMock, return_value=None):
+    with patch("eshopeo.api.routers.products.get_product_by_id", new_callable=AsyncMock, return_value=None):
         r = client.get(f"/v1/products/{uuid4()}")
 
     app.dependency_overrides.clear()
@@ -76,9 +76,9 @@ def test_patch_product_returns_updated_product():
     mock_db.commit = AsyncMock()
 
     app.dependency_overrides[get_tenant] = lambda: tenant
-    app.dependency_overrides[__import__("helix.api.deps", fromlist=["get_db"]).get_db] = lambda: mock_db
+    app.dependency_overrides[__import__("eshopeo.api.deps", fromlist=["get_db"]).get_db] = lambda: mock_db
 
-    with patch("helix.api.routers.products.update_product", new_callable=AsyncMock, return_value=product):
+    with patch("eshopeo.api.routers.products.update_product", new_callable=AsyncMock, return_value=product):
         r = client.patch(f"/v1/products/{product.id}", json={"title": "Updated Title"})
 
     app.dependency_overrides.clear()

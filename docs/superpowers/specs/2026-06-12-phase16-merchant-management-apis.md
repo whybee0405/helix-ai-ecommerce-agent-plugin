@@ -21,7 +21,7 @@
 
 ## 2. Content draft list (P16-1)
 
-### New CRUD in `helix/db/crud/content.py`
+### New CRUD in `eshopeo/db/crud/content.py`
 
 ```python
 async def list_content_drafts(
@@ -58,7 +58,7 @@ async def count_content_drafts(
     return result.scalar_one()
 ```
 
-### New endpoint in `helix/api/routers/content.py`
+### New endpoint in `eshopeo/api/routers/content.py`
 
 ```python
 class ContentDraftListResponse(BaseModel):
@@ -91,9 +91,9 @@ async def list_drafts(
 
 ## 3. Product management router (P16-2)
 
-New router `helix/api/routers/products.py`, prefix `/v1/products`, registered in `app.py`.
+New router `eshopeo/api/routers/products.py`, prefix `/v1/products`, registered in `app.py`.
 
-### New CRUD in `helix/db/crud/products.py`
+### New CRUD in `eshopeo/db/crud/products.py`
 
 ```python
 async def update_product(
@@ -122,9 +122,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from helix.api.deps import get_db, get_tenant
-from helix.db.crud.products import get_product_by_id, update_product
-from helix.db.models import Tenant
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.crud.products import get_product_by_id, update_product
+from eshopeo.db.models import Tenant
 
 router = APIRouter(prefix="/v1/products", tags=["products"])
 
@@ -198,7 +198,7 @@ async def patch_product(
 
 ## 4. Merchant dashboard (P16-3)
 
-New file `helix/db/crud/dashboard.py`. New router `helix/api/routers/dashboard.py`, prefix `/v1/dashboard`, registered in `app.py`.
+New file `eshopeo/db/crud/dashboard.py`. New router `eshopeo/api/routers/dashboard.py`, prefix `/v1/dashboard`, registered in `app.py`.
 
 ### Dashboard CRUD
 
@@ -209,8 +209,8 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.db.crud.admin import get_tenant_usage_summary
-from helix.db.models import ContentDraft, Conversation, Customer, Product
+from eshopeo.db.crud.admin import get_tenant_usage_summary
+from eshopeo.db.models import ContentDraft, Conversation, Customer, Product
 
 
 async def get_dashboard_summary(
@@ -271,10 +271,10 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
-from helix.config import get_settings
-from helix.db.crud.dashboard import get_dashboard_summary
-from helix.db.models import Tenant
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.config import get_settings
+from eshopeo.db.crud.dashboard import get_dashboard_summary
+from eshopeo.db.models import Tenant
 
 router = APIRouter(prefix="/v1/dashboard", tags=["dashboard"])
 
@@ -315,18 +315,18 @@ async def get_dashboard(
 ## 5. File map
 
 **New files:**
-- `services/core/helix/api/routers/products.py` — `GET /v1/products/{id}`, `PATCH /v1/products/{id}`
-- `services/core/helix/api/routers/dashboard.py` — `GET /v1/dashboard`
-- `services/core/helix/db/crud/dashboard.py` — `get_dashboard_summary`
+- `services/core/eshopeo/api/routers/products.py` — `GET /v1/products/{id}`, `PATCH /v1/products/{id}`
+- `services/core/eshopeo/api/routers/dashboard.py` — `GET /v1/dashboard`
+- `services/core/eshopeo/db/crud/dashboard.py` — `get_dashboard_summary`
 - `services/core/tests/test_content_draft_list.py` — 3 tests
 - `services/core/tests/test_product_management.py` — 3 tests
 - `services/core/tests/test_dashboard.py` — 3 tests
 
 **Modified files:**
-- `services/core/helix/db/crud/content.py` — add `list_content_drafts`, `count_content_drafts`
-- `services/core/helix/db/crud/products.py` — add `update_product`
-- `services/core/helix/api/routers/content.py` — add `GET /v1/content/drafts` (register before `/products/...`)
-- `services/core/helix/api/app.py` — include `products.router`, `dashboard.router`
+- `services/core/eshopeo/db/crud/content.py` — add `list_content_drafts`, `count_content_drafts`
+- `services/core/eshopeo/db/crud/products.py` — add `update_product`
+- `services/core/eshopeo/api/routers/content.py` — add `GET /v1/content/drafts` (register before `/products/...`)
+- `services/core/eshopeo/api/app.py` — include `products.router`, `dashboard.router`
 
 ---
 

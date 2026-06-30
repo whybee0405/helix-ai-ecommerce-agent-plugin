@@ -22,7 +22,7 @@
 
 `POST /v1/webhooks/shopify/orders` — mirrors Shopify products webhook pattern.
 
-### Translator: `helix/connectors/shopify.py`
+### Translator: `eshopeo/connectors/shopify.py`
 
 New function `translate_shopify_order(payload, tenant_id) -> CanonicalOrder`:
 
@@ -55,17 +55,17 @@ def translate_shopify_order(payload: dict, tenant_id: UUID) -> CanonicalOrder:
 
 ### Router endpoint
 
-Extend `helix/api/routers/shopify_webhooks.py`:
+Extend `eshopeo/api/routers/shopify_webhooks.py`:
 - `POST /v1/webhooks/shopify/orders`
 - Same HMAC verification as products webhook (`verify_shopify_webhook`)
-- Same auth pattern: `X-Helix-Tenant-Id` + `X-Shopify-Hmac-Sha256`
+- Same auth pattern: `X-eShopeo-Tenant-Id` + `X-Shopify-Hmac-Sha256`
 - Call `upsert_order(db, order_obj)` then `db.commit()`
 
 ---
 
 ## 3. Admin platform stats (P5-2)
 
-`GET /v1/admin/stats` — auth: `X-Helix-Provision-Key`
+`GET /v1/admin/stats` — auth: `X-eShopeo-Provision-Key`
 
 Returns platform-wide aggregate data. All queries cross-tenant (no tenant_id filter).
 
@@ -80,7 +80,7 @@ Response:
 }
 ```
 
-### New CRUD: `helix/db/crud/admin.py`
+### New CRUD: `eshopeo/db/crud/admin.py`
 
 ```python
 async def get_platform_stats(session, year_month_start, year_month_end) -> dict:
@@ -88,7 +88,7 @@ async def get_platform_stats(session, year_month_start, year_month_end) -> dict:
     # SUM(usage_event.cost_usd) WHERE created_at in [start, end]
 ```
 
-### New router: `helix/api/routers/admin.py`
+### New router: `eshopeo/api/routers/admin.py`
 
 - `GET /v1/admin/stats` — provision key auth (same `_auth_provision_key` pattern from tenants router)
 - Default period: current month (first day to today)
@@ -100,7 +100,7 @@ async def get_platform_stats(session, year_month_start, year_month_end) -> dict:
 
 Operators need to know what packs are loaded without reading the file system.
 
-`GET /v1/packs` — auth: `X-Helix-Tenant-Key`
+`GET /v1/packs` — auth: `X-eShopeo-Tenant-Key`
 
 Response:
 ```json
@@ -113,7 +113,7 @@ Response:
 ]
 ```
 
-`GET /v1/packs/{pack_id}` — auth: `X-Helix-Tenant-Key`
+`GET /v1/packs/{pack_id}` — auth: `X-eShopeo-Tenant-Key`
 
 Response:
 ```json
@@ -129,9 +129,9 @@ Response:
 
 Returns `404` if pack not in registry.
 
-### New router: `helix/api/routers/packs.py`
+### New router: `eshopeo/api/routers/packs.py`
 
-- Uses `_registry` from `helix.packs.registry` directly (read-only)
+- Uses `_registry` from `eshopeo.packs.registry` directly (read-only)
 - No DB calls needed
 
 ---
@@ -142,7 +142,7 @@ Add `category: str | None = None` query param to `GET /v1/search/products`.
 
 When provided, filter results to products where the category appears in `Product.categories` (JSONB array).
 
-### Update `vector_search_products` in `helix/db/crud/products.py`
+### Update `vector_search_products` in `eshopeo/db/crud/products.py`
 
 Add `category: str | None = None` parameter. When set, add filter:
 ```python
@@ -150,7 +150,7 @@ if category:
     filters.append(Product.categories.contains([category]))
 ```
 
-### Update `GET /v1/search/products` in `helix/api/routers/search.py`
+### Update `GET /v1/search/products` in `eshopeo/api/routers/search.py`
 
 Add `category: str | None = Query(default=None)` param. Pass to `vector_search_products`.
 
@@ -159,16 +159,16 @@ Add `category: str | None = Query(default=None)` param. Pass to `vector_search_p
 ## 6. File map
 
 **New files:**
-- `services/core/helix/db/crud/admin.py`
-- `services/core/helix/api/routers/admin.py`
-- `services/core/helix/api/routers/packs.py`
+- `services/core/eshopeo/db/crud/admin.py`
+- `services/core/eshopeo/api/routers/admin.py`
+- `services/core/eshopeo/api/routers/packs.py`
 
 **Modified files:**
-- `services/core/helix/connectors/shopify.py` — add `translate_shopify_order()`
-- `services/core/helix/api/routers/shopify_webhooks.py` — add orders endpoint
-- `services/core/helix/db/crud/products.py` — add `category` filter to `vector_search_products`
-- `services/core/helix/api/routers/search.py` — add `category` query param
-- `services/core/helix/api/app.py` — register admin and packs routers
+- `services/core/eshopeo/connectors/shopify.py` — add `translate_shopify_order()`
+- `services/core/eshopeo/api/routers/shopify_webhooks.py` — add orders endpoint
+- `services/core/eshopeo/db/crud/products.py` — add `category` filter to `vector_search_products`
+- `services/core/eshopeo/api/routers/search.py` — add `category` query param
+- `services/core/eshopeo/api/app.py` — register admin and packs routers
 
 **New tests:**
 - `services/core/tests/test_shopify_order_webhook.py` (4 tests)

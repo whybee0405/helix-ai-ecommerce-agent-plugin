@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -43,12 +43,12 @@ async def test_usage_returns_summary(client, tenant):
         ],
     }
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.analytics.get_usage_summary", new_callable=AsyncMock, return_value=mock_summary):
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.analytics.get_usage_summary", new_callable=AsyncMock, return_value=mock_summary):
 
         resp = await client.get(
             "/v1/analytics/usage",
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -67,13 +67,13 @@ async def test_usage_with_date_range(client, tenant):
         "by_model": [],
     }
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.analytics.get_usage_summary", new_callable=AsyncMock, return_value=mock_summary):
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.analytics.get_usage_summary", new_callable=AsyncMock, return_value=mock_summary):
 
         resp = await client.get(
             "/v1/analytics/usage",
             params={"start_date": "2026-06-01", "end_date": "2026-06-11"},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200

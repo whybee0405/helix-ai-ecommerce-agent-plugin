@@ -15,9 +15,9 @@
 ### Task 1 (P6-1): Usage event persistence
 
 **Files:**
-- Create: `services/core/helix/db/crud/usage_events.py`
-- Modify: `services/core/helix/llm/gateway.py` — extend RouteResult, accumulate usage in _log_usage
-- Modify: `services/core/helix/api/routers/widget.py` — write UsageEvent after LLM calls
+- Create: `services/core/eshopeo/db/crud/usage_events.py`
+- Modify: `services/core/eshopeo/llm/gateway.py` — extend RouteResult, accumulate usage in _log_usage
+- Modify: `services/core/eshopeo/api/routers/widget.py` — write UsageEvent after LLM calls
 - Test: `services/core/tests/test_usage_event_persistence.py`
 
 **Context:**
@@ -38,10 +38,10 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_widget_tenant
-from helix.db.models import Tenant
-from helix.llm.gateway import RouteResult
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_widget_tenant
+from eshopeo.db.models import Tenant
+from eshopeo.llm.gateway import RouteResult
 from tests.conftest import make_test_settings
 
 
@@ -74,10 +74,10 @@ def test_widget_chat_creates_usage_event_when_llm_called(client):
         model="claude-sonnet-4-6", tokens_in=100, tokens_out=50, cost_usd=0.001,
     )
     with (
-        patch("helix.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
-        patch("helix.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
-        patch("helix.api.routers.widget.handle_query", AsyncMock(return_value=llm_result)),
-        patch("helix.api.routers.widget.create_usage_event", AsyncMock()) as mock_usage,
+        patch("eshopeo.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
+        patch("eshopeo.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
+        patch("eshopeo.api.routers.widget.handle_query", AsyncMock(return_value=llm_result)),
+        patch("eshopeo.api.routers.widget.create_usage_event", AsyncMock()) as mock_usage,
     ):
         r = c.post(
             "/v1/widget/chat",
@@ -100,10 +100,10 @@ def test_widget_chat_skips_usage_event_when_template_hit(client):
         model="", tokens_in=0, tokens_out=0, cost_usd=0.0,
     )
     with (
-        patch("helix.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
-        patch("helix.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
-        patch("helix.api.routers.widget.handle_query", AsyncMock(return_value=template_result)),
-        patch("helix.api.routers.widget.create_usage_event", AsyncMock()) as mock_usage,
+        patch("eshopeo.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
+        patch("eshopeo.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
+        patch("eshopeo.api.routers.widget.handle_query", AsyncMock(return_value=template_result)),
+        patch("eshopeo.api.routers.widget.create_usage_event", AsyncMock()) as mock_usage,
     ):
         r = c.post(
             "/v1/widget/chat",
@@ -127,10 +127,10 @@ def test_widget_routine_creates_usage_event(client):
     mock_routine_result.missing_steps = []
     mock_routine_result.llm_augmented = False
     with (
-        patch("helix.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
-        patch("helix.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
-        patch("helix.api.routers.widget.build_routine", return_value=mock_routine_result),
-        patch("helix.api.routers.widget.create_usage_event", AsyncMock()) as mock_usage,
+        patch("eshopeo.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
+        patch("eshopeo.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
+        patch("eshopeo.api.routers.widget.build_routine", return_value=mock_routine_result),
+        patch("eshopeo.api.routers.widget.create_usage_event", AsyncMock()) as mock_usage,
     ):
         r = c.post(
             "/v1/widget/routine",
@@ -142,7 +142,7 @@ def test_widget_routine_creates_usage_event(client):
 
 
 def test_create_usage_event_crud_sets_fields():
-    from helix.db.crud.usage_events import create_usage_event
+    from eshopeo.db.crud.usage_events import create_usage_event
     import inspect
     sig = inspect.signature(create_usage_event)
     params = list(sig.parameters.keys())
@@ -159,14 +159,14 @@ cd services/core && python -m pytest tests/test_usage_event_persistence.py -v
 ```
 Expected: ImportError or 4 FAIL
 
-- [ ] **Step 3: Create `helix/db/crud/usage_events.py`**
+- [ ] **Step 3: Create `eshopeo/db/crud/usage_events.py`**
 
 ```python
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.db.models import UsageEvent
+from eshopeo.db.models import UsageEvent
 
 
 async def create_usage_event(
@@ -266,7 +266,7 @@ async def route_query(self, ...) -> RouteResult:
 
 Add import:
 ```python
-from helix.db.crud.usage_events import create_usage_event
+from eshopeo.db.crud.usage_events import create_usage_event
 ```
 
 In `widget_chat`, after `result = await handle_query(...)`:
@@ -307,7 +307,7 @@ Expected: 137 PASS (133 + 4)
 - [ ] **Step 9: Commit**
 
 ```
-git add helix/db/crud/usage_events.py helix/llm/gateway.py helix/api/routers/widget.py \
+git add eshopeo/db/crud/usage_events.py eshopeo/llm/gateway.py eshopeo/api/routers/widget.py \
         tests/test_usage_event_persistence.py
 git commit -m "feat: persist LLM usage events to UsageEvent table after widget calls"
 ```
@@ -317,8 +317,8 @@ git commit -m "feat: persist LLM usage events to UsageEvent table after widget c
 ### Task 2 (P6-2): Customer profile in widget chat
 
 **Files:**
-- Modify: `services/core/helix/db/crud/customers.py` — add `get_customer_by_id()`
-- Modify: `services/core/helix/api/routers/widget.py` — add `customer_id` to ChatRequest, merge stored profile
+- Modify: `services/core/eshopeo/db/crud/customers.py` — add `get_customer_by_id()`
+- Modify: `services/core/eshopeo/api/routers/widget.py` — add `customer_id` to ChatRequest, merge stored profile
 - Test: `services/core/tests/test_widget_customer_profile.py`
 
 **Context:**
@@ -338,10 +338,10 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_widget_tenant
-from helix.db.models import Customer, Tenant
-from helix.llm.gateway import RouteResult
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_widget_tenant
+from eshopeo.db.models import Customer, Tenant
+from eshopeo.llm.gateway import RouteResult
 from tests.conftest import make_test_settings
 
 
@@ -382,11 +382,11 @@ CHAT_RESULT = RouteResult(response="Use retinol", source="template")
 def test_chat_uses_stored_profile_when_customer_id_provided(client, customer):
     c, tenant = client
     with (
-        patch("helix.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
-        patch("helix.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
-        patch("helix.api.routers.widget.handle_query", AsyncMock(return_value=CHAT_RESULT)) as mock_handle,
-        patch("helix.api.routers.widget.get_customer_by_id", AsyncMock(return_value=customer)),
-        patch("helix.api.routers.widget.create_usage_event", AsyncMock()),
+        patch("eshopeo.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
+        patch("eshopeo.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
+        patch("eshopeo.api.routers.widget.handle_query", AsyncMock(return_value=CHAT_RESULT)) as mock_handle,
+        patch("eshopeo.api.routers.widget.get_customer_by_id", AsyncMock(return_value=customer)),
+        patch("eshopeo.api.routers.widget.create_usage_event", AsyncMock()),
     ):
         r = c.post(
             "/v1/widget/chat",
@@ -402,11 +402,11 @@ def test_chat_uses_stored_profile_when_customer_id_provided(client, customer):
 def test_request_profile_overrides_stored_profile(client, customer):
     c, tenant = client
     with (
-        patch("helix.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
-        patch("helix.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
-        patch("helix.api.routers.widget.handle_query", AsyncMock(return_value=CHAT_RESULT)) as mock_handle,
-        patch("helix.api.routers.widget.get_customer_by_id", AsyncMock(return_value=customer)),
-        patch("helix.api.routers.widget.create_usage_event", AsyncMock()),
+        patch("eshopeo.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
+        patch("eshopeo.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
+        patch("eshopeo.api.routers.widget.handle_query", AsyncMock(return_value=CHAT_RESULT)) as mock_handle,
+        patch("eshopeo.api.routers.widget.get_customer_by_id", AsyncMock(return_value=customer)),
+        patch("eshopeo.api.routers.widget.create_usage_event", AsyncMock()),
     ):
         r = c.post(
             "/v1/widget/chat",
@@ -424,11 +424,11 @@ def test_request_profile_overrides_stored_profile(client, customer):
 def test_chat_works_without_customer_id(client):
     c, tenant = client
     with (
-        patch("helix.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
-        patch("helix.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
-        patch("helix.api.routers.widget.handle_query", AsyncMock(return_value=CHAT_RESULT)) as mock_handle,
-        patch("helix.api.routers.widget.get_customer_by_id", AsyncMock()) as mock_lookup,
-        patch("helix.api.routers.widget.create_usage_event", AsyncMock()),
+        patch("eshopeo.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
+        patch("eshopeo.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
+        patch("eshopeo.api.routers.widget.handle_query", AsyncMock(return_value=CHAT_RESULT)) as mock_handle,
+        patch("eshopeo.api.routers.widget.get_customer_by_id", AsyncMock()) as mock_lookup,
+        patch("eshopeo.api.routers.widget.create_usage_event", AsyncMock()),
     ):
         r = c.post(
             "/v1/widget/chat",
@@ -444,10 +444,10 @@ def test_chat_works_without_customer_id(client):
 def test_chat_ignores_invalid_customer_id(client):
     c, tenant = client
     with (
-        patch("helix.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
-        patch("helix.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
-        patch("helix.api.routers.widget.handle_query", AsyncMock(return_value=CHAT_RESULT)),
-        patch("helix.api.routers.widget.create_usage_event", AsyncMock()),
+        patch("eshopeo.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
+        patch("eshopeo.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
+        patch("eshopeo.api.routers.widget.handle_query", AsyncMock(return_value=CHAT_RESULT)),
+        patch("eshopeo.api.routers.widget.create_usage_event", AsyncMock()),
     ):
         r = c.post(
             "/v1/widget/chat",
@@ -464,7 +464,7 @@ cd services/core && python -m pytest tests/test_widget_customer_profile.py -v
 ```
 Expected: ImportError or 4 FAIL
 
-- [ ] **Step 3: Add `get_customer_by_id` to `helix/db/crud/customers.py`**
+- [ ] **Step 3: Add `get_customer_by_id` to `eshopeo/db/crud/customers.py`**
 
 ```python
 from sqlalchemy import select
@@ -498,7 +498,7 @@ class ChatRequest(BaseModel):
 
 Add import to widget.py:
 ```python
-from helix.db.crud.customers import get_customer_by_id
+from eshopeo.db.crud.customers import get_customer_by_id
 ```
 
 In `widget_chat`, before the `handle_query` call:
@@ -542,7 +542,7 @@ Expected: 141 PASS (137 + 4)
 - [ ] **Step 7: Commit**
 
 ```
-git add helix/db/crud/customers.py helix/api/routers/widget.py \
+git add eshopeo/db/crud/customers.py eshopeo/api/routers/widget.py \
         tests/test_widget_customer_profile.py
 git commit -m "feat: merge stored customer profile in widget chat when customer_id provided"
 ```
@@ -552,14 +552,14 @@ git commit -m "feat: merge stored customer profile in widget chat when customer_
 ### Task 3 (P6-3): Customer profile update endpoint
 
 **Files:**
-- Modify: `services/core/helix/db/crud/customers.py` — add `get_customer_by_platform_id()` and `update_customer_profile()`
-- Modify: `services/core/helix/api/routers/sync.py` — add `PATCH /v1/sync/customers/{platform_id}/profile`
+- Modify: `services/core/eshopeo/db/crud/customers.py` — add `get_customer_by_platform_id()` and `update_customer_profile()`
+- Modify: `services/core/eshopeo/api/routers/sync.py` — add `PATCH /v1/sync/customers/{platform_id}/profile`
 - Test: `services/core/tests/test_customer_profile_update.py`
 
 **Context:**
 - `orders.py` has `get_customer_id_by_platform_id` which returns UUID — we need the full Customer object, so add a new function in `customers.py`
 - Profile merge: `{**customer.profile, **body.profile}` — request keys override stored keys
-- Auth: `get_tenant` dep (X-Helix-Tenant-Key)
+- Auth: `get_tenant` dep (X-eShopeo-Tenant-Key)
 - Return: `{"customer_id": str(customer.id), "platform_id": customer.platform_id}`
 - `asyncio_mode = "auto"` — no `@pytest.mark.asyncio`
 
@@ -573,9 +573,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import Customer, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import Customer, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -620,15 +620,15 @@ def test_patch_profile_merges_and_returns(client, customer):
     )
     updated.id = customer.id
     with (
-        patch("helix.api.routers.sync.get_customer_by_platform_id",
+        patch("eshopeo.api.routers.sync.get_customer_by_platform_id",
               AsyncMock(return_value=customer)),
-        patch("helix.api.routers.sync.update_customer_profile",
+        patch("eshopeo.api.routers.sync.update_customer_profile",
               AsyncMock(return_value=updated)),
     ):
         r = c.patch(
             "/v1/sync/customers/plat-cust-1/profile",
             json={"profile": {"skin_type": "dry", "concerns": ["acne"]}},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
     assert r.status_code == 200
     data = r.json()
@@ -638,12 +638,12 @@ def test_patch_profile_merges_and_returns(client, customer):
 
 def test_patch_profile_404_unknown_customer(client):
     c, tenant = client
-    with patch("helix.api.routers.sync.get_customer_by_platform_id",
+    with patch("eshopeo.api.routers.sync.get_customer_by_platform_id",
                AsyncMock(return_value=None)):
         r = c.patch(
             "/v1/sync/customers/unknown-plat/profile",
             json={"profile": {"skin_type": "dry"}},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
     assert r.status_code == 404
 
@@ -664,7 +664,7 @@ cd services/core && python -m pytest tests/test_customer_profile_update.py -v
 ```
 Expected: 3 FAIL (route doesn't exist)
 
-- [ ] **Step 3: Add CRUD functions to `helix/db/crud/customers.py`**
+- [ ] **Step 3: Add CRUD functions to `eshopeo/db/crud/customers.py`**
 
 Add `select` to SQLAlchemy imports if not present.
 
@@ -698,11 +698,11 @@ async def update_customer_profile(
     return customer
 ```
 
-- [ ] **Step 4: Add PATCH endpoint to `helix/api/routers/sync.py`**
+- [ ] **Step 4: Add PATCH endpoint to `eshopeo/api/routers/sync.py`**
 
 Add imports:
 ```python
-from helix.db.crud.customers import get_customer_by_platform_id, update_customer_profile
+from eshopeo.db.crud.customers import get_customer_by_platform_id, update_customer_profile
 ```
 
 Add Pydantic model:
@@ -748,7 +748,7 @@ Expected: 144 PASS (141 + 3)
 - [ ] **Step 7: Commit**
 
 ```
-git add helix/db/crud/customers.py helix/api/routers/sync.py \
+git add eshopeo/db/crud/customers.py eshopeo/api/routers/sync.py \
         tests/test_customer_profile_update.py
 git commit -m "feat: customer profile update endpoint PATCH /v1/sync/customers/{platform_id}/profile"
 ```

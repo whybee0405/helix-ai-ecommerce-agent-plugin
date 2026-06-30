@@ -4,9 +4,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import ContentDraft, Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import ContentDraft, Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -50,11 +50,11 @@ def test_approve_draft_returns_200():
     app.dependency_overrides[get_db] = lambda: mock_db
 
     with (
-        patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
-        patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
-        patch("helix.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
-        patch("helix.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=False),
-        patch("helix.api.routers.content.get_settings", return_value=MagicMock()),
+        patch("eshopeo.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
+        patch("eshopeo.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
+        patch("eshopeo.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
+        patch("eshopeo.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=False),
+        patch("eshopeo.api.routers.content.get_settings", return_value=MagicMock()),
     ):
         r = client.post(f"/v1/content/products/{product_id}/draft/approve")
 
@@ -75,7 +75,7 @@ def test_approve_draft_409_if_already_approved():
 
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft):
+    with patch("eshopeo.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft):
         r = client.post(f"/v1/content/products/{product_id}/draft/approve")
 
     app.dependency_overrides.clear()
@@ -90,7 +90,7 @@ def test_approve_draft_404_no_draft():
     tenant = _make_tenant()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=None):
+    with patch("eshopeo.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=None):
         r = client.post(f"/v1/content/products/{uuid4()}/draft/approve")
 
     app.dependency_overrides.clear()

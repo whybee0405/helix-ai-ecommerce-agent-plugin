@@ -61,7 +61,7 @@ Protect widget endpoints (`/v1/widget/chat`, `/v1/widget/routine`) from abuse.
 - Limit: 30 requests per window per tenant (configurable via `Settings`)
 - Response on limit exceeded: `429 Too Many Requests` with `Retry-After` header
 
-Implementation: `helix/api/middleware/rate_limit.py`
+Implementation: `eshopeo/api/middleware/rate_limit.py`
 
 ```python
 class RateLimitMiddleware:
@@ -85,7 +85,7 @@ Register middleware in `create_app()` using `app.add_middleware(RateLimitMiddlew
 
 ## 5. Usage analytics endpoint
 
-`GET /v1/analytics/usage` — auth: `X-Helix-Tenant-Key`
+`GET /v1/analytics/usage` — auth: `X-eShopeo-Tenant-Key`
 
 Query params:
 - `start_date: date` (optional, default: 30 days ago)
@@ -107,7 +107,7 @@ Response:
 }
 ```
 
-Implementation: `helix/db/crud/usage.py` (extend), `helix/api/routers/analytics.py` (new).
+Implementation: `eshopeo/db/crud/usage.py` (extend), `eshopeo/api/routers/analytics.py` (new).
 
 ---
 
@@ -115,20 +115,20 @@ Implementation: `helix/db/crud/usage.py` (extend), `helix/api/routers/analytics.
 
 ### 6a. Python side — connector contract
 
-`helix/connectors/shopify.py`:
+`eshopeo/connectors/shopify.py`:
 - `ShopifyWebhookVerifier.verify(body: bytes, hmac_header: str, secret: str) -> bool` — HMAC-SHA256 of base64-encoded body digest (Shopify's scheme)
 - `translate_product(payload: dict) -> CanonicalProduct` — maps Shopify product payload to canonical model
 
-New router `helix/api/routers/shopify_webhooks.py`:
+New router `eshopeo/api/routers/shopify_webhooks.py`:
 - `POST /v1/webhooks/shopify/products` — same pattern as WooCommerce webhook router (verify, parse, upsert/delete)
 
 ### 6b. PHP Shopify App (connectors/shopify/)
 
 Minimal Shopify app (no Composer) following the same pattern as the WooCommerce plugin:
-- `helix-shopify.php` — main plugin file (admin + API client)
-- `includes/class-helix-shopify-api-client.php` — `provision()`, `sync_products()`  
-- `includes/class-helix-shopify-sync.php` — `run_full_sync()`, `translate_product()`
-- `includes/class-helix-shopify-webhooks.php` — register/remove product webhooks using Shopify Admin API
+- `eshopeo-shopify.php` — main plugin file (admin + API client)
+- `includes/class-eshopeo-shopify-api-client.php` — `provision()`, `sync_products()`  
+- `includes/class-eshopeo-shopify-sync.php` — `run_full_sync()`, `translate_product()`
+- `includes/class-eshopeo-shopify-webhooks.php` — register/remove product webhooks using Shopify Admin API
 
 Auth: Shopify uses `X-Shopify-Hmac-Sha256` header for webhooks (base64-encoded SHA-256 of the raw body using the secret).
 
@@ -137,22 +137,22 @@ Auth: Shopify uses `X-Shopify-Hmac-Sha256` header for webhooks (base64-encoded S
 ## 7. File map
 
 **New files:**
-- `services/core/helix/api/middleware/__init__.py`
-- `services/core/helix/api/middleware/rate_limit.py`
-- `services/core/helix/api/routers/analytics.py`
-- `services/core/helix/connectors/shopify.py`
-- `services/core/helix/api/routers/shopify_webhooks.py`
-- `connectors/shopify/helix-shopify.php`
-- `connectors/shopify/includes/class-helix-shopify-api-client.php`
-- `connectors/shopify/includes/class-helix-shopify-sync.php`
-- `connectors/shopify/includes/class-helix-shopify-webhooks.php`
+- `services/core/eshopeo/api/middleware/__init__.py`
+- `services/core/eshopeo/api/middleware/rate_limit.py`
+- `services/core/eshopeo/api/routers/analytics.py`
+- `services/core/eshopeo/connectors/shopify.py`
+- `services/core/eshopeo/api/routers/shopify_webhooks.py`
+- `connectors/shopify/eshopeo-shopify.php`
+- `connectors/shopify/includes/class-eshopeo-shopify-api-client.php`
+- `connectors/shopify/includes/class-eshopeo-shopify-sync.php`
+- `connectors/shopify/includes/class-eshopeo-shopify-webhooks.php`
 
 **Modified files:**
-- `services/core/helix/llm/layers.py` — implement `TemplateLayer.query()` and `VectorSearchLayer.query()`
-- `services/core/helix/llm/gateway.py` — update `route_query()` to pass session+settings to `VectorSearchLayer`
-- `services/core/helix/db/crud/usage.py` — add `get_usage_summary()`
-- `services/core/helix/config.py` — add `widget_rate_limit: int = 30`
-- `services/core/helix/api/app.py` — register analytics router, shopify webhook router, rate limit middleware
+- `services/core/eshopeo/llm/layers.py` — implement `TemplateLayer.query()` and `VectorSearchLayer.query()`
+- `services/core/eshopeo/llm/gateway.py` — update `route_query()` to pass session+settings to `VectorSearchLayer`
+- `services/core/eshopeo/db/crud/usage.py` — add `get_usage_summary()`
+- `services/core/eshopeo/config.py` — add `widget_rate_limit: int = 30`
+- `services/core/eshopeo/api/app.py` — register analytics router, shopify webhook router, rate limit middleware
 
 **New tests:**
 - `services/core/tests/test_template_layer.py`

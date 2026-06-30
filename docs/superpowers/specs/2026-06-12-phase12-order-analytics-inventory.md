@@ -215,9 +215,9 @@ Response:
 ## 5. File map
 
 **Modified files:**
-- `services/core/helix/db/crud/orders.py` — add `get_order_analytics`, `get_orders_by_status`
-- `services/core/helix/db/crud/products.py` — add `get_inventory_snapshot`
-- `services/core/helix/api/routers/analytics.py` — add 3 new endpoints
+- `services/core/eshopeo/db/crud/orders.py` — add `get_order_analytics`, `get_orders_by_status`
+- `services/core/eshopeo/db/crud/products.py` — add `get_inventory_snapshot`
+- `services/core/eshopeo/api/routers/analytics.py` — add 3 new endpoints
 
 **New files:**
 - `services/core/tests/test_order_analytics.py` (3 tests)

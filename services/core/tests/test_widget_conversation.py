@@ -3,10 +3,10 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_widget_tenant
-from helix.db.models import Tenant
-from helix.llm.gateway import RouteResult
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_widget_tenant
+from eshopeo.db.models import Tenant
+from eshopeo.llm.gateway import RouteResult
 from tests.conftest import make_test_settings
 
 
@@ -22,14 +22,14 @@ def test_chat_response_includes_conversation_id():
     conv_id = uuid4()
     msg_id = uuid4()
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack, \
-         patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
-         patch("helix.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
-         patch("helix.api.routers.widget.get_conversation", new_callable=AsyncMock, return_value=None), \
-         patch("helix.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack, \
+         patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
+         patch("eshopeo.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
+         patch("eshopeo.api.routers.widget.get_conversation", new_callable=AsyncMock, return_value=None), \
+         patch("eshopeo.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(response="Use toner", source="template")
         mock_conv = MagicMock()
@@ -59,14 +59,14 @@ def test_chat_response_includes_assistant_message_id():
 
     msg_id = uuid4()
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack, \
-         patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
-         patch("helix.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
-         patch("helix.api.routers.widget.get_conversation", new_callable=AsyncMock, return_value=None), \
-         patch("helix.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack, \
+         patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
+         patch("eshopeo.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
+         patch("eshopeo.api.routers.widget.get_conversation", new_callable=AsyncMock, return_value=None), \
+         patch("eshopeo.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(response="Use toner", source="template")
         mock_conv = MagicMock()
@@ -93,14 +93,14 @@ def test_chat_creates_new_conversation_when_none_provided():
     tenant.id = uuid4()
     app.dependency_overrides[get_widget_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack, \
-         patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
-         patch("helix.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
-         patch("helix.api.routers.widget.get_conversation", new_callable=AsyncMock) as mock_get_conv, \
-         patch("helix.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack, \
+         patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
+         patch("eshopeo.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
+         patch("eshopeo.api.routers.widget.get_conversation", new_callable=AsyncMock) as mock_get_conv, \
+         patch("eshopeo.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(response="Use toner", source="template")
         mock_conv = MagicMock()
@@ -129,14 +129,14 @@ def test_chat_appends_to_existing_conversation():
 
     existing_conv_id = uuid4()
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack, \
-         patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
-         patch("helix.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
-         patch("helix.api.routers.widget.get_conversation", new_callable=AsyncMock) as mock_get_conv, \
-         patch("helix.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack, \
+         patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
+         patch("eshopeo.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
+         patch("eshopeo.api.routers.widget.get_conversation", new_callable=AsyncMock) as mock_get_conv, \
+         patch("eshopeo.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(response="Use toner", source="template")
         existing_conv = MagicMock()

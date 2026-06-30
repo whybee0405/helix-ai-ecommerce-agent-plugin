@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Customer, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Customer, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -45,9 +45,9 @@ async def test_customer_sync_without_key_returns_401(client):
 async def test_customer_sync_valid(client, tenant):
     customers = [make_canonical_customer(str(tenant.id))]
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.sync.upsert_customer", new_callable=AsyncMock) as mock_upsert, \
-         patch("helix.api.routers.sync.get_pack_for_tenant") as mock_pack:
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.sync.upsert_customer", new_callable=AsyncMock) as mock_upsert, \
+         patch("eshopeo.api.routers.sync.get_pack_for_tenant") as mock_pack:
         mock_pack.return_value = MagicMock(profile_schema={
             "type": "object",
             "properties": {"skin_type": {"type": "string"}},
@@ -58,7 +58,7 @@ async def test_customer_sync_valid(client, tenant):
         resp = await client.post(
             "/v1/sync/customers",
             json={"customers": customers},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -78,8 +78,8 @@ async def test_customer_sync_invalid_profile_fails(client, tenant):
         }
     ]
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.sync.get_pack_for_tenant") as mock_pack:
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.sync.get_pack_for_tenant") as mock_pack:
         mock_pack.return_value = MagicMock(profile_schema={
             "type": "object",
             "properties": {
@@ -91,7 +91,7 @@ async def test_customer_sync_invalid_profile_fails(client, tenant):
         resp = await client.post(
             "/v1/sync/customers",
             json={"customers": customers},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200

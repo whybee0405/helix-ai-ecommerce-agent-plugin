@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.crud.products import vector_search_products
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.db.crud.products import vector_search_products
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -41,14 +41,14 @@ async def test_search_with_category_passes_param(client, tenant):
     fake_product.categories = ["toner", "hydrating"]
     fake_product.domain_attributes = {}
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.search.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.search.vector_search_products", new_callable=AsyncMock, return_value=[(fake_product, 0.95)]) as mock_search:
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.search.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.search.vector_search_products", new_callable=AsyncMock, return_value=[(fake_product, 0.95)]) as mock_search:
 
         resp = await client.get(
             "/v1/search/products",
             params={"q": "toner", "category": "toner"},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -73,14 +73,14 @@ async def test_search_without_category_still_works(client, tenant):
     fake_product.categories = ["cream", "skincare"]
     fake_product.domain_attributes = {}
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.search.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.search.vector_search_products", new_callable=AsyncMock, return_value=[(fake_product, 0.95)]):
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.search.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.search.vector_search_products", new_callable=AsyncMock, return_value=[(fake_product, 0.95)]):
 
         resp = await client.get(
             "/v1/search/products",
             params={"q": "skincare"},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200

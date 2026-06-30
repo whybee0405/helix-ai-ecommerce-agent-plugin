@@ -13,7 +13,7 @@
 ## Context for all tasks
 
 - `asyncio_mode = "auto"` — NEVER add `@pytest.mark.asyncio`
-- Patch at namespace where name is USED (`helix.api.routers.analytics.X`)
+- Patch at namespace where name is USED (`eshopeo.api.routers.analytics.X`)
 - Tests call `app.dependency_overrides.clear()` after running (every test that sets overrides)
 - `Order` model fields: `id`, `tenant_id`, `platform_id`, `customer_id`, `total_minor (int)`, `currency (str)`, `status (str)`, `line_items (JSONB)`, `placed_at (datetime with tz)`
 - `Product` model fields include `in_stock: bool`
@@ -26,8 +26,8 @@
 ## Task P12-1: Order analytics
 
 **Files:**
-- Modify: `services/core/helix/db/crud/orders.py`
-- Modify: `services/core/helix/api/routers/analytics.py`
+- Modify: `services/core/eshopeo/db/crud/orders.py`
+- Modify: `services/core/eshopeo/api/routers/analytics.py`
 - Create: `services/core/tests/test_order_analytics.py`
 
 ### Step 1: Add CRUD to `orders.py`
@@ -71,7 +71,7 @@ Note: `select`, `UUID`, `AsyncSession`, `Order` are already imported. Add `datet
 Read the file first. Add import alongside the other orders CRUD imports (or as a new import if none exist):
 
 ```python
-from helix.db.crud.orders import get_order_analytics
+from eshopeo.db.crud.orders import get_order_analytics
 ```
 
 Add models and endpoint at the end:
@@ -113,9 +113,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -135,7 +135,7 @@ def test_order_analytics_returns_200():
     }
 
     with patch(
-        "helix.api.routers.analytics.get_order_analytics",
+        "eshopeo.api.routers.analytics.get_order_analytics",
         new_callable=AsyncMock,
         return_value=mock_analytics,
     ):
@@ -176,7 +176,7 @@ def test_order_analytics_zero_orders():
     }
 
     with patch(
-        "helix.api.routers.analytics.get_order_analytics",
+        "eshopeo.api.routers.analytics.get_order_analytics",
         new_callable=AsyncMock,
         return_value=mock_analytics,
     ):
@@ -192,13 +192,13 @@ def test_order_analytics_zero_orders():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile helix/db/crud/orders.py helix/api/routers/analytics.py tests/test_order_analytics.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile eshopeo/db/crud/orders.py eshopeo/api/routers/analytics.py tests/test_order_analytics.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/orders.py services/core/helix/api/routers/analytics.py services/core/tests/test_order_analytics.py
+git add services/core/eshopeo/db/crud/orders.py services/core/eshopeo/api/routers/analytics.py services/core/tests/test_order_analytics.py
 git commit -m "feat: order revenue analytics GET /v1/analytics/orders"
 ```
 
@@ -207,8 +207,8 @@ git commit -m "feat: order revenue analytics GET /v1/analytics/orders"
 ## Task P12-2: Orders by status breakdown
 
 **Files:**
-- Modify: `services/core/helix/db/crud/orders.py`
-- Modify: `services/core/helix/api/routers/analytics.py`
+- Modify: `services/core/eshopeo/db/crud/orders.py`
+- Modify: `services/core/eshopeo/api/routers/analytics.py`
 - Create: `services/core/tests/test_orders_by_status.py`
 
 ### Step 1: Add CRUD to `orders.py`
@@ -248,7 +248,7 @@ async def get_orders_by_status(
 
 Update the orders import line to include `get_orders_by_status`:
 ```python
-from helix.db.crud.orders import get_order_analytics, get_orders_by_status
+from eshopeo.db.crud.orders import get_order_analytics, get_orders_by_status
 ```
 
 Add models and endpoint at the end:
@@ -287,9 +287,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -308,7 +308,7 @@ def test_orders_by_status_returns_200():
     ]
 
     with patch(
-        "helix.api.routers.analytics.get_orders_by_status",
+        "eshopeo.api.routers.analytics.get_orders_by_status",
         new_callable=AsyncMock,
         return_value=mock_statuses,
     ):
@@ -343,7 +343,7 @@ def test_orders_by_status_empty():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
-        "helix.api.routers.analytics.get_orders_by_status",
+        "eshopeo.api.routers.analytics.get_orders_by_status",
         new_callable=AsyncMock,
         return_value=[],
     ):
@@ -358,13 +358,13 @@ def test_orders_by_status_empty():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile helix/db/crud/orders.py helix/api/routers/analytics.py tests/test_orders_by_status.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile eshopeo/db/crud/orders.py eshopeo/api/routers/analytics.py tests/test_orders_by_status.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/orders.py services/core/helix/api/routers/analytics.py services/core/tests/test_orders_by_status.py
+git add services/core/eshopeo/db/crud/orders.py services/core/eshopeo/api/routers/analytics.py services/core/tests/test_orders_by_status.py
 git commit -m "feat: orders by status analytics GET /v1/analytics/orders/by-status"
 ```
 
@@ -373,8 +373,8 @@ git commit -m "feat: orders by status analytics GET /v1/analytics/orders/by-stat
 ## Task P12-3: Inventory snapshot
 
 **Files:**
-- Modify: `services/core/helix/db/crud/products.py`
-- Modify: `services/core/helix/api/routers/analytics.py`
+- Modify: `services/core/eshopeo/db/crud/products.py`
+- Modify: `services/core/eshopeo/api/routers/analytics.py`
 - Create: `services/core/tests/test_inventory_snapshot.py`
 
 ### Step 1: Add `get_inventory_snapshot` to `products.py`
@@ -412,7 +412,7 @@ async def get_inventory_snapshot(
 
 Update the products CRUD import line to include `get_inventory_snapshot`:
 ```python
-from helix.db.crud.products import get_embedding_coverage, get_inventory_snapshot
+from eshopeo.db.crud.products import get_embedding_coverage, get_inventory_snapshot
 ```
 
 Add models and endpoint at the end:
@@ -442,9 +442,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -465,7 +465,7 @@ def test_inventory_snapshot_returns_200():
     }
 
     with patch(
-        "helix.api.routers.analytics.get_inventory_snapshot",
+        "eshopeo.api.routers.analytics.get_inventory_snapshot",
         new_callable=AsyncMock,
         return_value=mock_snapshot,
     ):
@@ -507,7 +507,7 @@ def test_inventory_snapshot_zero_products():
     }
 
     with patch(
-        "helix.api.routers.analytics.get_inventory_snapshot",
+        "eshopeo.api.routers.analytics.get_inventory_snapshot",
         new_callable=AsyncMock,
         return_value=mock_snapshot,
     ):
@@ -522,13 +522,13 @@ def test_inventory_snapshot_zero_products():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile helix/db/crud/products.py helix/api/routers/analytics.py tests/test_inventory_snapshot.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile eshopeo/db/crud/products.py eshopeo/api/routers/analytics.py tests/test_inventory_snapshot.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/products.py services/core/helix/api/routers/analytics.py services/core/tests/test_inventory_snapshot.py
+git add services/core/eshopeo/db/crud/products.py services/core/eshopeo/api/routers/analytics.py services/core/tests/test_inventory_snapshot.py
 git commit -m "feat: inventory snapshot GET /v1/analytics/products/inventory"
 ```
 

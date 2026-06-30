@@ -63,11 +63,11 @@ class ConversationMessage(Base):
     )
 ```
 
-Both models go in `helix/db/models.py` alongside existing models.
+Both models go in `eshopeo/db/models.py` alongside existing models.
 
 ### Migration 0003
 
-New file `helix/db/migrations/versions/0003_conversations.py`:
+New file `eshopeo/db/migrations/versions/0003_conversations.py`:
 - Creates `conversation` table
 - Creates `conversation_message` table
 
@@ -75,7 +75,7 @@ New file `helix/db/migrations/versions/0003_conversations.py`:
 
 ## 3. CRUD layer (P8-1)
 
-New file `helix/db/crud/conversations.py`:
+New file `eshopeo/db/crud/conversations.py`:
 
 ```python
 async def create_conversation(session, tenant_id, customer_id=None) -> Conversation
@@ -160,7 +160,7 @@ Returns a `ConversationInfo` named tuple (or simple object) with `conversation_i
 
 ## 5. Conversation list + detail endpoints (P8-3)
 
-New router `helix/api/routers/conversations.py` registered at `/v1/conversations`.
+New router `eshopeo/api/routers/conversations.py` registered at `/v1/conversations`.
 
 Auth: `get_tenant` (merchant-facing).
 
@@ -235,18 +235,18 @@ The endpoint is on the widget router (`/v1/widget/conversations/{message_id}/fee
 ## 7. File map
 
 **New files:**
-- `services/core/helix/db/crud/conversations.py`
-- `services/core/helix/db/migrations/versions/0003_conversations.py`
-- `services/core/helix/api/routers/conversations.py`
+- `services/core/eshopeo/db/crud/conversations.py`
+- `services/core/eshopeo/db/migrations/versions/0003_conversations.py`
+- `services/core/eshopeo/api/routers/conversations.py`
 - `services/core/tests/test_conversation_crud.py` (5 tests)
 - `services/core/tests/test_widget_conversation.py` (4 tests)
 - `services/core/tests/test_conversations_endpoint.py` (4 tests)
 - `services/core/tests/test_message_feedback.py` (3 tests)
 
 **Modified files:**
-- `services/core/helix/db/models.py` — add `Conversation` and `ConversationMessage`
-- `services/core/helix/api/routers/widget.py` — `ChatRequest` + `ChatResponse` + `_run_chat_pipeline` return type
-- `services/core/helix/api/app.py` — register conversations router
+- `services/core/eshopeo/db/models.py` — add `Conversation` and `ConversationMessage`
+- `services/core/eshopeo/api/routers/widget.py` — `ChatRequest` + `ChatResponse` + `_run_chat_pipeline` return type
+- `services/core/eshopeo/api/app.py` — register conversations router
 
 ---
 
@@ -269,7 +269,7 @@ The endpoint is on the widget router (`/v1/widget/conversations/{message_id}/fee
 1. `test_list_conversations_returns_200` — mock list_conversations returning 1 item, assert 200 + structure
 2. `test_get_conversation_returns_messages` — mock get_conversation + get_messages, assert message list in response
 3. `test_get_conversation_404_when_not_found` — mock get_conversation returning None → 404
-4. `test_conversations_requires_auth` — no X-Helix-Tenant-Key → 401
+4. `test_conversations_requires_auth` — no X-eShopeo-Tenant-Key → 401
 
 ### test_message_feedback.py (3 tests)
 1. `test_feedback_accepted_thumbs_up` — mock get_message returning assistant message, set_message_feedback called, 200

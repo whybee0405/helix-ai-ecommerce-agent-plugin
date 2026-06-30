@@ -1,8 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
-from helix.api.app import create_app
+from eshopeo.api.app import create_app
 from tests.conftest import make_test_settings
-import helix.config as config_module
+import eshopeo.config as config_module
 
 
 def test_embed_js_returns_javascript():
@@ -35,7 +35,7 @@ def test_demo_html_available_in_development():
 
 
 def test_demo_html_404_in_production(monkeypatch):
-    from helix.api.routers import widget as widget_module
+    from eshopeo.api.routers import widget as widget_module
 
     settings = make_test_settings(environment="production")
     # Monkeypatch get_settings in the widget module where it's used

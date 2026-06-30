@@ -9,13 +9,13 @@
 
 ## 1. Monorepo scaffold
 
-Single `pyproject.toml` at `services/core/` defines the `helix` package. Ruff handles both linting and formatting (replaces Black — Ruff 0.4+ covers all Black rules). mypy runs in strict mode. pytest is the test runner.
+Single `pyproject.toml` at `services/core/` defines the `eshopeo` package. Ruff handles both linting and formatting (replaces Black — Ruff 0.4+ covers all Black rules). mypy runs in strict mode. pytest is the test runner.
 
 ```
 services/core/
-├── pyproject.toml          # helix package, Ruff, mypy, pytest config
+├── pyproject.toml          # eshopeo package, Ruff, mypy, pytest config
 ├── Dockerfile
-├── helix/
+├── eshopeo/
 │   ├── __init__.py
 │   ├── config.py
 │   ├── api/
@@ -56,13 +56,13 @@ docker compose -f infra/compose.yaml up --build
 
 ## 3. Core API skeleton
 
-FastAPI app in `helix/api/`. Routers are thin — they translate HTTP to a call into `helix/domain/` or `helix/connectors/` and back. No business logic in routers.
+FastAPI app in `eshopeo/api/`. Routers are thin — they translate HTTP to a call into `eshopeo/domain/` or `eshopeo/connectors/` and back. No business logic in routers.
 
 **Health check:** `GET /health` returns `{"status": "ok", "db": bool, "redis": bool}` — checks both connections. Used by compose health checks and future load balancers.
 
 **Structured JSON logging:** every log line is a JSON object with `timestamp`, `level`, `logger`, `message`, and optional context fields. No PII at info level. Configured at startup from `LOG_LEVEL` env var.
 
-**Settings** (`helix/config.py`):
+**Settings** (`eshopeo/config.py`):
 
 ```python
 class Settings(BaseSettings):
@@ -84,7 +84,7 @@ class Settings(BaseSettings):
 
 ## 4. Database layer
 
-SQLAlchemy 2.0 mapped classes. Alembic for migrations. All migrations are in `helix/db/migrations/`.
+SQLAlchemy 2.0 mapped classes. Alembic for migrations. All migrations are in `eshopeo/db/migrations/`.
 
 ### Tables
 
@@ -190,7 +190,7 @@ def decrypt_credentials(enc: bytes) -> dict: ...
 
 ### Connector authentication
 
-Connectors authenticate with `X-Helix-Tenant-Key: <uuid>` header. This UUID is `tenant.public_key` — issued at provisioning, stored in the connector. A FastAPI dependency (`get_tenant`) validates the header, loads the tenant row, and returns it. Fails with 401 if missing or unknown.
+Connectors authenticate with `X-eShopeo-Tenant-Key: <uuid>` header. This UUID is `tenant.public_key` — issued at provisioning, stored in the connector. A FastAPI dependency (`get_tenant`) validates the header, loads the tenant row, and returns it. Fails with 401 if missing or unknown.
 
 ### Widget session tokens
 
@@ -204,7 +204,7 @@ All data-layer functions accept a `tenant_id: UUID` parameter. A `TenantScope` c
 
 ## 6. LLM gateway — layered routing
 
-All Claude calls go through `helix/llm/`. No router, worker, or domain function calls the Anthropic SDK directly.
+All Claude calls go through `eshopeo/llm/`. No router, worker, or domain function calls the Anthropic SDK directly.
 
 > **Phase 0 scope note:** The full gateway — including layered routing — is built and tested in Phase 0. The query path (Layers 1–3 serving customer queries) is not exercised until Phase 1. In Phase 0 the gateway handles only the LLM calls needed during sync (if any). Building the routing structure now means Phase 1 adds query handling without touching gateway internals.
 
@@ -267,7 +267,7 @@ For any query that includes factual claims about products, ingredients, or order
 
 ## 7. Domain-pack loader
 
-`helix/packs/` loads and validates packs at startup. Packs are stored in `packs/<name>/`.
+`eshopeo/packs/` loads and validates packs at startup. Packs are stored in `packs/<name>/`.
 
 ### Pack structure
 
@@ -308,7 +308,7 @@ Packs are loaded at API/worker startup and cached in memory. Per-tenant pack sel
 
 ## 8. Connector contract
 
-`helix/connectors/` owns the canonical models and the HTTP contract.
+`eshopeo/connectors/` owns the canonical models and the HTTP contract.
 
 ### Canonical models
 
@@ -349,16 +349,16 @@ class CanonicalOrder(BaseModel):
 ### API endpoints (`/v1/`)
 
 **`POST /v1/tenants`** — Provisioning  
-Authenticated with a shared provisioning secret (`X-Helix-Provision-Key`). Body: `{name, platform, store_url, credentials}`. Creates `tenant` row, encrypts credentials, returns `{tenant_id, public_key}`.
+Authenticated with a shared provisioning secret (`X-eShopeo-Provision-Key`). Body: `{name, platform, store_url, credentials}`. Creates `tenant` row, encrypts credentials, returns `{tenant_id, public_key}`.
 
 **`POST /v1/sync/products`** — Batch upsert  
-Authenticated with `X-Helix-Tenant-Key`. Body: `{products: list[CanonicalProduct]}`. Validates each product's `domain_attributes` against the pack's `product_schema`. Upserts to `product` table (insert or update on `(tenant_id, platform_id)`). Enqueues `embed_product` Celery task for each upserted product. Returns `{synced: int, failed: int, errors: list}`.
+Authenticated with `X-eShopeo-Tenant-Key`. Body: `{products: list[CanonicalProduct]}`. Validates each product's `domain_attributes` against the pack's `product_schema`. Upserts to `product` table (insert or update on `(tenant_id, platform_id)`). Enqueues `embed_product` Celery task for each upserted product. Returns `{synced: int, failed: int, errors: list}`.
 
 **`POST /v1/webhooks/products`** — Single product event  
-Unauthenticated route — verified by HMAC. Header `X-WC-Webhook-Signature` contains `base64(HMAC-SHA256(body, webhook_secret))`. Webhook secret is the tenant's stored credential secret, looked up by `X-Helix-Tenant-Id` header. Rejects with 401 on signature mismatch. Processes create/update/delete events.
+Unauthenticated route — verified by HMAC. Header `X-WC-Webhook-Signature` contains `base64(HMAC-SHA256(body, webhook_secret))`. Webhook secret is the tenant's stored credential secret, looked up by `X-eShopeo-Tenant-Id` header. Rejects with 401 on signature mismatch. Processes create/update/delete events.
 
 **`POST /v1/widget/session`** — Issue widget token  
-Authenticated with `X-Helix-Tenant-Key`. Returns `{token: str, expires_in: 900}`.
+Authenticated with `X-eShopeo-Tenant-Key`. Returns `{token: str, expires_in: 900}`.
 
 ---
 
@@ -370,13 +370,13 @@ Authenticated with `X-Helix-Tenant-Key`. Returns `{token: str, expires_in: 900}`
 
 1. Reads WooCommerce consumer key/secret from plugin settings.
 2. Calls `POST /v1/tenants` with `{name: get_bloginfo('name'), platform: 'woocommerce', store_url: site_url(), credentials: {consumer_key, consumer_secret}}`.
-3. Stores returned `public_key` and `tenant_id` in WordPress options (`helix_public_key`, `helix_tenant_id`).
-4. Registers WooCommerce webhooks for `product.created`, `product.updated`, `product.deleted` pointing at `{HELIX_API_URL}/v1/webhooks/products`.
-5. Stores the webhook delivery secret in options (`helix_webhook_secret`).
+3. Stores returned `public_key` and `tenant_id` in WordPress options (`eshopeo_public_key`, `eshopeo_tenant_id`).
+4. Registers WooCommerce webhooks for `product.created`, `product.updated`, `product.deleted` pointing at `{ESHOPEO_API_URL}/v1/webhooks/products`.
+5. Stores the webhook delivery secret in options (`eshopeo_webhook_secret`).
 
 ### Settings page
 
-WordPress admin settings page under WooCommerce → Helix. Fields: API URL, consumer key/secret. Shows: connection status, last sync time, product count synced.
+WordPress admin settings page under WooCommerce → eShopeo. Fields: API URL, consumer key/secret. Shows: connection status, last sync time, product count synced.
 
 ### Full catalog sync
 
@@ -385,15 +385,15 @@ Triggered from settings page ("Sync now") or on activation. Paginates WooCommerc
 ### Translation: WooCommerce → CanonicalProduct
 
 ```php
-function helix_translate_product(array $wc_product): array {
+function eshopeo_translate_product(array $wc_product): array {
     // price: WC stores as string decimal; convert to minor units (cents/cents)
     $price_minor = (int) round((float) $wc_product['price'] * 100);
     
     // domain_attributes: extract from WC attributes and meta
-    $domain_attrs = helix_extract_domain_attributes($wc_product);
+    $domain_attrs = eshopeo_extract_domain_attributes($wc_product);
     
     return [
-        'tenant_id'         => get_option('helix_tenant_id'),
+        'tenant_id'         => get_option('eshopeo_tenant_id'),
         'platform'          => 'woocommerce',
         'platform_id'       => (string) $wc_product['id'],
         'title'             => $wc_product['name'],
@@ -408,7 +408,7 @@ function helix_translate_product(array $wc_product): array {
 }
 ```
 
-`helix_extract_domain_attributes()` maps WooCommerce product attributes (`pa_skin-type`, `pa_concerns`, etc.) and meta fields directly to the pack schema fields — no AI call needed. Pure array mapping.
+`eshopeo_extract_domain_attributes()` maps WooCommerce product attributes (`pa_skin-type`, `pa_concerns`, etc.) and meta fields directly to the pack schema fields — no AI call needed. Pure array mapping.
 
 ### Webhook forwarding
 

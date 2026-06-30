@@ -9,7 +9,7 @@
 
 ## 1. Gap analysis from Phase 2
 
-Four issues remain before Helix is operator-ready:
+Four issues remain before eShopeo is operator-ready:
 
 | Gap | Impact |
 |-----|--------|
@@ -37,7 +37,7 @@ ALTER TABLE tenant ADD COLUMN pack_id VARCHAR;
 
 ### 2c. Pack routing
 
-New function in `helix/packs/registry.py`:
+New function in `eshopeo/packs/registry.py`:
 
 ```python
 def get_pack_for_tenant(tenant: Tenant) -> LoadedPack:
@@ -53,7 +53,7 @@ All four callers of `default_pack()` in `widget.py` (×2) and `search.py` and `s
 
 ## 3. Tenant management endpoints (P3-3)
 
-Auth: `X-Helix-Provision-Key` header (same as provisioning).
+Auth: `X-eShopeo-Provision-Key` header (same as provisioning).
 
 ### `GET /v1/tenants/{tenant_id}`
 
@@ -93,7 +93,7 @@ The `Job` model is fully defined but has no read path. Operators need this to mo
 
 ### `GET /v1/jobs/{job_id}`
 
-Auth: `X-Helix-Tenant-Key` (tenant scoped — tenants can only see their own jobs).
+Auth: `X-eShopeo-Tenant-Key` (tenant scoped — tenants can only see their own jobs).
 
 Response:
 ```json
@@ -113,7 +113,7 @@ Returns `404` if job not found or belongs to a different tenant.
 
 ### `GET /v1/jobs`
 
-Auth: `X-Helix-Tenant-Key`. Optional query param `type` to filter. Returns list, most recent first, limit 50.
+Auth: `X-eShopeo-Tenant-Key`. Optional query param `type` to filter. Returns list, most recent first, limit 50.
 
 **New CRUD functions:**
 - `get_job(session, tenant_id, job_id) -> Job | None`
@@ -130,8 +130,8 @@ Query param: `key=<public_key>` (the tenant's `public_key` UUID).
 Returns vanilla JS with `Content-Type: application/javascript`. No auth required — the public_key is safe to expose client-side (it's a non-secret identifier).
 
 The script:
-1. Reads `key` from its own `src` URL params (or falls back to a `data-helix-key` attribute on the script tag)
-2. Calls `/v1/widget/session` with `X-Helix-Tenant-Key: <key>` to get a JWT
+1. Reads `key` from its own `src` URL params (or falls back to a `data-eshopeo-key` attribute on the script tag)
+2. Calls `/v1/widget/session` with `X-eShopeo-Tenant-Key: <key>` to get a JWT
 3. Injects a floating button (bottom-right) and a chat panel (hidden by default)
 4. On button click: toggles the panel
 5. On submit: POSTs to `/v1/widget/chat` with the JWT in `Authorization: Bearer <token>`
@@ -149,19 +149,19 @@ Returns a minimal HTML page that includes the embed script (for development/test
 ## 6. File map
 
 **New files:**
-- `services/core/helix/db/migrations/versions/0002_tenant_pack_id.py`
-- `services/core/helix/api/routers/jobs.py`
+- `services/core/eshopeo/db/migrations/versions/0002_tenant_pack_id.py`
+- `services/core/eshopeo/api/routers/jobs.py`
 
 **Modified files:**
-- `services/core/helix/db/models.py` — add `pack_id: Mapped[Optional[str]]` to Tenant
-- `services/core/helix/db/crud/tenants.py` — add `get_tenant_by_id()` if missing, add `update_tenant()`; add `get_job()`, `list_jobs()` to new `jobs.py` CRUD file
-- `services/core/helix/db/crud/jobs.py` — new: `get_job()`, `list_jobs()`
-- `services/core/helix/packs/registry.py` — add `get_pack_for_tenant()`
-- `services/core/helix/api/routers/tenants.py` — add GET + PATCH endpoints
-- `services/core/helix/api/routers/widget.py` — replace `default_pack()` calls with `get_pack_for_tenant(tenant)`; add `embed.js` and `demo.html` endpoints
-- `services/core/helix/api/routers/search.py` — replace `default_pack()` call
-- `services/core/helix/api/routers/sync.py` — replace `default_pack()` call
-- `services/core/helix/api/app.py` — register jobs router
+- `services/core/eshopeo/db/models.py` — add `pack_id: Mapped[Optional[str]]` to Tenant
+- `services/core/eshopeo/db/crud/tenants.py` — add `get_tenant_by_id()` if missing, add `update_tenant()`; add `get_job()`, `list_jobs()` to new `jobs.py` CRUD file
+- `services/core/eshopeo/db/crud/jobs.py` — new: `get_job()`, `list_jobs()`
+- `services/core/eshopeo/packs/registry.py` — add `get_pack_for_tenant()`
+- `services/core/eshopeo/api/routers/tenants.py` — add GET + PATCH endpoints
+- `services/core/eshopeo/api/routers/widget.py` — replace `default_pack()` calls with `get_pack_for_tenant(tenant)`; add `embed.js` and `demo.html` endpoints
+- `services/core/eshopeo/api/routers/search.py` — replace `default_pack()` call
+- `services/core/eshopeo/api/routers/sync.py` — replace `default_pack()` call
+- `services/core/eshopeo/api/app.py` — register jobs router
 
 **New tests:**
 - `services/core/tests/test_tenant_pack.py` — pack routing (4 tests)

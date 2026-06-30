@@ -48,7 +48,7 @@ async def count_customers(
     return result.scalar_one()
 ```
 
-### New router: `services/core/helix/api/routers/customers.py`
+### New router: `services/core/eshopeo/api/routers/customers.py`
 
 Prefix: `/v1/customers`, tag: `customers`, auth: `get_tenant`
 
@@ -85,7 +85,7 @@ Returns 404 if not found.
 ### Register in `app.py`
 
 ```python
-from helix.api.routers import customers
+from eshopeo.api.routers import customers
 app.include_router(customers.router)
 ```
 
@@ -151,7 +151,7 @@ Uses `ConversationSummary` model (same shape as the one in `conversations.py` ro
 
 1. `test_customer_conversations_returns_200` — mock `get_customer_by_id` + `list_conversations_by_customer` returning 2 convs; assert 200 + list length
 2. `test_customer_conversations_404_on_unknown_customer` — mock `get_customer_by_id` returns `None`; assert 404
-3. `test_customer_conversations_requires_auth` — no `X-Helix-Tenant-Key`; assert 401
+3. `test_customer_conversations_requires_auth` — no `X-eShopeo-Tenant-Key`; assert 401
 
 ---
 
@@ -187,7 +187,7 @@ async def get_customer_segments(
 
 Auth: `get_tenant`
 
-Import: `from helix.db.crud.customers import get_customer_segments`
+Import: `from eshopeo.db.crud.customers import get_customer_segments`
 
 Response:
 ```json
@@ -211,16 +211,16 @@ Response:
 ## 5. File map
 
 **New files:**
-- `services/core/helix/api/routers/customers.py` — `GET /v1/customers`, `GET /v1/customers/{id}`, `GET /v1/customers/{id}/conversations`
+- `services/core/eshopeo/api/routers/customers.py` — `GET /v1/customers`, `GET /v1/customers/{id}`, `GET /v1/customers/{id}/conversations`
 - `services/core/tests/test_customer_list.py` (3 tests)
 - `services/core/tests/test_customer_conversations.py` (3 tests)
 - `services/core/tests/test_customer_segments.py` (3 tests)
 
 **Modified files:**
-- `services/core/helix/db/crud/customers.py` — add `list_customers`, `count_customers`, `get_customer_segments`
-- `services/core/helix/db/crud/conversations.py` — add `list_conversations_by_customer`
-- `services/core/helix/api/routers/analytics.py` — add `GET /v1/analytics/customers/segments`
-- `services/core/helix/api/app.py` — register `customers` router
+- `services/core/eshopeo/db/crud/customers.py` — add `list_customers`, `count_customers`, `get_customer_segments`
+- `services/core/eshopeo/db/crud/conversations.py` — add `list_conversations_by_customer`
+- `services/core/eshopeo/api/routers/analytics.py` — add `GET /v1/analytics/customers/segments`
+- `services/core/eshopeo/api/app.py` — register `customers` router
 
 ---
 

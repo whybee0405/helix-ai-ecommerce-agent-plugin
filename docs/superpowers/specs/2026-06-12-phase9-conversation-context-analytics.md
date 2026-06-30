@@ -71,7 +71,7 @@ _user_msg, assistant_msg = await append_messages(
 )
 ```
 
-Import `get_messages` from `helix.db.crud.conversations`.
+Import `get_messages` from `eshopeo.db.crud.conversations`.
 
 ### Change: `consultant.py` — `handle_query`
 
@@ -204,7 +204,7 @@ Response:
 ### Tests — `test_conversation_analytics.py` (3 tests)
 
 1. `test_conversation_analytics_returns_200` — mock `get_conversation_analytics`, assert 200 + metrics keys present
-2. `test_conversation_analytics_requires_auth` — no `X-Helix-Tenant-Key` → 401
+2. `test_conversation_analytics_requires_auth` — no `X-eShopeo-Tenant-Key` → 401
 3. `test_conversation_analytics_zero_when_no_data` — mock returns zero counts, assert `feedback_positive_rate` is null/None
 
 ---
@@ -253,7 +253,7 @@ Response:
 ### Tests — `test_top_queries.py` (3 tests)
 
 1. `test_top_queries_returns_200` — mock `get_top_queries` returning 2 items, assert 200 + queries list
-2. `test_top_queries_requires_auth` — no `X-Helix-Tenant-Key` → 401
+2. `test_top_queries_requires_auth` — no `X-eShopeo-Tenant-Key` → 401
 3. `test_top_queries_empty_list` — mock returns empty list, assert `queries: []`
 
 ---
@@ -261,11 +261,11 @@ Response:
 ## 5. File map
 
 **Modified files:**
-- `services/core/helix/llm/gateway.py` — `complete` + `route_query` gain `message_history`/`conversation_history` params
-- `services/core/helix/domain/consultant.py` — `handle_query` gains `conversation_history` param
-- `services/core/helix/api/routers/widget.py` — `_run_chat_pipeline` restructured (resolve conversation before handle_query, fetch history, pass to handle_query)
-- `services/core/helix/db/crud/conversations.py` — add `get_conversation_analytics`, `get_top_queries`
-- `services/core/helix/api/routers/analytics.py` — add two new endpoints
+- `services/core/eshopeo/llm/gateway.py` — `complete` + `route_query` gain `message_history`/`conversation_history` params
+- `services/core/eshopeo/domain/consultant.py` — `handle_query` gains `conversation_history` param
+- `services/core/eshopeo/api/routers/widget.py` — `_run_chat_pipeline` restructured (resolve conversation before handle_query, fetch history, pass to handle_query)
+- `services/core/eshopeo/db/crud/conversations.py` — add `get_conversation_analytics`, `get_top_queries`
+- `services/core/eshopeo/api/routers/analytics.py` — add two new endpoints
 
 **New files:**
 - `services/core/tests/test_conversation_context.py` (4 tests)

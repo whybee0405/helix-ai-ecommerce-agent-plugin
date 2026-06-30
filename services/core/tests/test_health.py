@@ -1,7 +1,7 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from helix.api.app import create_app
+from eshopeo.api.app import create_app
 from tests.conftest import make_test_settings
 
 

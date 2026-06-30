@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -24,7 +24,7 @@ def test_customer_segments_returns_200():
     ]
 
     with patch(
-        "helix.api.routers.analytics.get_customer_segments",
+        "eshopeo.api.routers.analytics.get_customer_segments",
         new_callable=AsyncMock,
         return_value=mock_segments,
     ):
@@ -59,7 +59,7 @@ def test_customer_segments_empty():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
-        "helix.api.routers.analytics.get_customer_segments",
+        "eshopeo.api.routers.analytics.get_customer_segments",
         new_callable=AsyncMock,
         return_value=[],
     ):

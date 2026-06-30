@@ -15,9 +15,9 @@
 ### Task 1 (P4-1): CORS + Request ID middleware
 
 **Files:**
-- Modify: `services/core/helix/config.py`
-- Create: `services/core/helix/api/middleware/request_id.py`
-- Modify: `services/core/helix/api/app.py`
+- Modify: `services/core/eshopeo/config.py`
+- Create: `services/core/eshopeo/api/middleware/request_id.py`
+- Modify: `services/core/eshopeo/api/app.py`
 - Test: `services/core/tests/test_cors.py`, `services/core/tests/test_request_id.py`
 
 **Context:**
@@ -31,7 +31,7 @@
 ```python
 # services/core/tests/test_cors.py
 from fastapi.testclient import TestClient
-from helix.api.app import create_app
+from eshopeo.api.app import create_app
 from tests.conftest import make_test_settings
 
 
@@ -70,7 +70,7 @@ def test_cors_exposes_request_id():
 ```python
 # services/core/tests/test_request_id.py
 from fastapi.testclient import TestClient
-from helix.api.app import create_app
+from eshopeo.api.app import create_app
 from tests.conftest import make_test_settings
 
 
@@ -109,13 +109,13 @@ Expected: FAIL (CORS headers missing, request-id missing)
 
 - [ ] **Step 3: Add settings fields**
 
-In `services/core/helix/config.py`, add to `Settings`:
+In `services/core/eshopeo/config.py`, add to `Settings`:
 ```python
 cors_allowed_origins: list[str] = ["*"]
 default_monthly_query_limit: int = 10_000
 ```
 
-- [ ] **Step 4: Create `helix/api/middleware/request_id.py`**
+- [ ] **Step 4: Create `eshopeo/api/middleware/request_id.py`**
 
 ```python
 import uuid
@@ -136,14 +136,14 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
 In `create_app()`, add BEFORE the existing `app.add_middleware(RateLimitMiddleware, ...)` call:
 ```python
 from starlette.middleware.cors import CORSMiddleware
-from helix.api.middleware.request_id import RequestIdMiddleware
+from eshopeo.api.middleware.request_id import RequestIdMiddleware
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=s.cors_allowed_origins,
     allow_methods=["GET", "POST", "PATCH"],
-    allow_headers=["Authorization", "Content-Type", "X-Helix-Tenant-Key",
-                   "X-Helix-Provision-Key", "X-Request-Id"],
+    allow_headers=["Authorization", "Content-Type", "X-eShopeo-Tenant-Key",
+                   "X-eShopeo-Provision-Key", "X-Request-Id"],
     expose_headers=["X-Request-Id"],
 )
 app.add_middleware(RequestIdMiddleware)
@@ -168,7 +168,7 @@ Expected: 105 PASS
 - [ ] **Step 8: Commit**
 
 ```
-git add helix/config.py helix/api/middleware/request_id.py helix/api/app.py \
+git add eshopeo/config.py eshopeo/api/middleware/request_id.py eshopeo/api/app.py \
         tests/test_cors.py tests/test_request_id.py
 git commit -m "feat: CORS middleware and X-Request-Id correlation header"
 ```
@@ -178,16 +178,16 @@ git commit -m "feat: CORS middleware and X-Request-Id correlation header"
 ### Task 2 (P4-2): Orders sync endpoint
 
 **Files:**
-- Create: `services/core/helix/db/crud/orders.py`
-- Modify: `services/core/helix/api/routers/sync.py`
+- Create: `services/core/eshopeo/db/crud/orders.py`
+- Modify: `services/core/eshopeo/api/routers/sync.py`
 - Test: `services/core/tests/test_orders_sync.py`
 
 **Context:**
-- `CanonicalOrder` in `helix/connectors/models.py` has: `tenant_id, platform, platform_id, customer_platform_id, total_minor, currency, status, line_items, placed_at`
-- `Order` model (`helix/db/models.py`) unique constraint: `uq_order_tenant_platform` on `(tenant_id, platform_id)`
+- `CanonicalOrder` in `eshopeo/connectors/models.py` has: `tenant_id, platform, platform_id, customer_platform_id, total_minor, currency, status, line_items, placed_at`
+- `Order` model (`eshopeo/db/models.py`) unique constraint: `uq_order_tenant_platform` on `(tenant_id, platform_id)`
 - `Order.customer_id` is nullable — lookup Customer by `customer_platform_id` if provided
 - `upsert_product` in `crud/products.py` shows the exact INSERT … ON CONFLICT pattern to follow
-- Auth: `get_tenant` dep (X-Helix-Tenant-Key header)
+- Auth: `get_tenant` dep (X-eShopeo-Tenant-Key header)
 - `asyncio_mode = "auto"` — no `@pytest.mark.asyncio`
 
 - [ ] **Step 1: Write failing tests**
@@ -201,9 +201,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import Order, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import Order, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -233,7 +233,7 @@ def client(tenant):
     app.dependency_overrides[get_db] = lambda: mock_db
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.sync.upsert_order", AsyncMock(return_value=upserted)):
+    with patch("eshopeo.api.routers.sync.upsert_order", AsyncMock(return_value=upserted)):
         yield TestClient(app), tenant, settings
 
 
@@ -254,7 +254,7 @@ def test_sync_orders_returns_synced_count(client):
     r = c.post(
         "/v1/sync/orders",
         json={"orders": [ORDER_PAYLOAD]},
-        headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+        headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
     )
     assert r.status_code == 200
     assert r.json()["synced"] == 1
@@ -266,7 +266,7 @@ def test_sync_orders_empty_list(client):
     r = c.post(
         "/v1/sync/orders",
         json={"orders": []},
-        headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+        headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
     )
     assert r.status_code == 200
     assert r.json()["synced"] == 0
@@ -280,12 +280,12 @@ def test_sync_orders_requires_auth(client):
 
 def test_sync_orders_handles_upsert_error(client):
     c, tenant, _ = client
-    with patch("helix.api.routers.sync.upsert_order",
+    with patch("eshopeo.api.routers.sync.upsert_order",
                AsyncMock(side_effect=Exception("DB error"))):
         r = c.post(
             "/v1/sync/orders",
             json={"orders": [ORDER_PAYLOAD]},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
     assert r.status_code == 200
     assert r.json()["failed"] == 1
@@ -299,7 +299,7 @@ cd services/core && python -m pytest tests/test_orders_sync.py -v
 ```
 Expected: FAIL (endpoint doesn't exist)
 
-- [ ] **Step 3: Create `services/core/helix/db/crud/orders.py`**
+- [ ] **Step 3: Create `services/core/eshopeo/db/crud/orders.py`**
 
 ```python
 from uuid import UUID, uuid4
@@ -308,7 +308,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.db.models import Customer, Order
+from eshopeo.db.models import Customer, Order
 
 
 async def upsert_order(session: AsyncSession, order: Order) -> Order:
@@ -358,9 +358,9 @@ async def get_customer_id_by_platform_id(
 
 Add these imports (if not already present):
 ```python
-from helix.connectors.models import CanonicalOrder
-from helix.db.crud.orders import get_customer_id_by_platform_id, upsert_order
-from helix.db.models import Order
+from eshopeo.connectors.models import CanonicalOrder
+from eshopeo.db.crud.orders import get_customer_id_by_platform_id, upsert_order
+from eshopeo.db.models import Order
 ```
 
 Add the endpoint:
@@ -430,7 +430,7 @@ Expected: 109 PASS
 - [ ] **Step 7: Commit**
 
 ```
-git add helix/db/crud/orders.py helix/api/routers/sync.py tests/test_orders_sync.py
+git add eshopeo/db/crud/orders.py eshopeo/api/routers/sync.py tests/test_orders_sync.py
 git commit -m "feat: POST /v1/sync/orders closes the order data loop"
 ```
 
@@ -439,8 +439,8 @@ git commit -m "feat: POST /v1/sync/orders closes the order data loop"
 ### Task 3 (P4-3): Monthly quota middleware
 
 **Files:**
-- Create: `services/core/helix/api/middleware/quota.py`
-- Modify: `services/core/helix/api/app.py`
+- Create: `services/core/eshopeo/api/middleware/quota.py`
+- Modify: `services/core/eshopeo/api/app.py`
 - Test: `services/core/tests/test_quota.py`
 
 **Context:**
@@ -464,9 +464,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant, get_widget_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant, get_widget_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -498,7 +498,7 @@ def test_quota_allows_request_under_limit():
     mock_redis.incr = AsyncMock(return_value=50)
     mock_redis.expire = AsyncMock()
 
-    with patch("helix.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
         app2 = create_app(settings)
         token = _make_jwt("some-tenant", settings)
         c = TestClient(app2)
@@ -518,7 +518,7 @@ def test_quota_blocks_request_over_limit(tenant):
     mock_redis.incr = AsyncMock(return_value=11)
     mock_redis.expire = AsyncMock()
 
-    with patch("helix.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
         app2 = create_app(settings)
         token = _make_jwt(str(tenant.id), settings)
         c = TestClient(app2)
@@ -545,7 +545,7 @@ def test_quota_fails_open_on_redis_error():
     mock_redis = AsyncMock()
     mock_redis.incr = AsyncMock(side_effect=Exception("Redis down"))
 
-    with patch("helix.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
         app = create_app(settings)
         token = _make_jwt("some-tenant", settings)
         c = TestClient(app)
@@ -564,7 +564,7 @@ cd services/core && python -m pytest tests/test_quota.py -v
 ```
 Expected: FAIL (quota middleware doesn't exist)
 
-- [ ] **Step 3: Create `helix/api/middleware/quota.py`**
+- [ ] **Step 3: Create `eshopeo/api/middleware/quota.py`**
 
 ```python
 from datetime import datetime, timezone
@@ -575,7 +575,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from helix.config import Settings
+from eshopeo.config import Settings
 
 logger = structlog.get_logger(__name__)
 
@@ -632,7 +632,7 @@ class QuotaMiddleware(BaseHTTPMiddleware):
 
 In `create_app()`, add QuotaMiddleware registration BETWEEN RequestId and RateLimit:
 ```python
-from helix.api.middleware.quota import QuotaMiddleware
+from eshopeo.api.middleware.quota import QuotaMiddleware
 app.add_middleware(QuotaMiddleware, settings=s)
 ```
 
@@ -661,7 +661,7 @@ Expected: 113 PASS
 - [ ] **Step 7: Commit**
 
 ```
-git add helix/api/middleware/quota.py helix/api/app.py tests/test_quota.py
+git add eshopeo/api/middleware/quota.py eshopeo/api/app.py tests/test_quota.py
 git commit -m "feat: monthly quota middleware (Redis counter, 429 on limit)"
 ```
 
@@ -670,14 +670,14 @@ git commit -m "feat: monthly quota middleware (Redis counter, 429 on limit)"
 ### Task 4 (P4-4): WooCommerce orders webhook
 
 **Files:**
-- Modify: `services/core/helix/api/routers/webhooks.py`
+- Modify: `services/core/eshopeo/api/routers/webhooks.py`
 - Test: `services/core/tests/test_woocommerce_order_webhook.py`
 
 **Context:**
 - `_verify_wc_signature(body, signature, secret)` already in `webhooks.py` — reuse it
 - `get_tenant_by_id`, `decrypt_credentials`, `get_settings` already imported in `webhooks.py`
-- `CanonicalOrder` in `helix/connectors/models.py`
-- `upsert_order` in `helix/db/crud/orders.py` (created in Task 2)
+- `CanonicalOrder` in `eshopeo/connectors/models.py`
+- `upsert_order` in `eshopeo/db/crud/orders.py` (created in Task 2)
 - WooCommerce order payload structure: `{"id": 123, "customer_id": 456, "total": "250.00", "currency": "ZAR", "status": "processing", "line_items": [...], "date_created": "2026-06-11T10:00:00"}`
 - `asyncio_mode = "auto"`
 
@@ -696,9 +696,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db
-from helix.db.models import Order, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db
+from eshopeo.db.models import Order, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -748,10 +748,10 @@ def client(tenant):
     app.dependency_overrides[get_db] = lambda: mock_db
 
     with (
-        patch("helix.api.routers.webhooks.get_tenant_by_id", AsyncMock(return_value=tenant)),
-        patch("helix.api.routers.webhooks.decrypt_credentials",
+        patch("eshopeo.api.routers.webhooks.get_tenant_by_id", AsyncMock(return_value=tenant)),
+        patch("eshopeo.api.routers.webhooks.decrypt_credentials",
               return_value={"webhook_secret": SECRET}),
-        patch("helix.api.routers.webhooks.upsert_order", AsyncMock(return_value=upserted)),
+        patch("eshopeo.api.routers.webhooks.upsert_order", AsyncMock(return_value=upserted)),
     ):
         yield TestClient(app), tenant
 
@@ -763,7 +763,7 @@ def test_wc_order_webhook_accepts_valid_payload(client):
         "/v1/webhooks/orders",
         content=body,
         headers={
-            "X-Helix-Tenant-Id": str(tenant.id),
+            "X-eShopeo-Tenant-Id": str(tenant.id),
             "X-WC-Webhook-Signature": _sign(body),
             "Content-Type": "application/json",
         },
@@ -779,7 +779,7 @@ def test_wc_order_webhook_rejects_bad_signature(client):
         "/v1/webhooks/orders",
         content=body,
         headers={
-            "X-Helix-Tenant-Id": str(tenant.id),
+            "X-eShopeo-Tenant-Id": str(tenant.id),
             "X-WC-Webhook-Signature": "bad-sig",
             "Content-Type": "application/json",
         },
@@ -790,12 +790,12 @@ def test_wc_order_webhook_rejects_bad_signature(client):
 def test_wc_order_webhook_rejects_unknown_tenant(client):
     c, _ = client
     body = json.dumps(WC_ORDER).encode()
-    with patch("helix.api.routers.webhooks.get_tenant_by_id", AsyncMock(return_value=None)):
+    with patch("eshopeo.api.routers.webhooks.get_tenant_by_id", AsyncMock(return_value=None)):
         r = c.post(
             "/v1/webhooks/orders",
             content=body,
             headers={
-                "X-Helix-Tenant-Id": str(uuid4()),
+                "X-eShopeo-Tenant-Id": str(uuid4()),
                 "X-WC-Webhook-Signature": _sign(body),
                 "Content-Type": "application/json",
             },
@@ -815,8 +815,8 @@ Expected: FAIL (404 — route doesn't exist)
 Add these imports to `webhooks.py` (check for duplicates first):
 ```python
 from datetime import datetime
-from helix.db.crud.orders import upsert_order
-from helix.db.models import Order
+from eshopeo.db.crud.orders import upsert_order
+from eshopeo.db.models import Order
 ```
 
 Add the new endpoint and translator function:
@@ -844,14 +844,14 @@ def _translate_wc_order(payload: dict[str, Any], tenant_id: UUID) -> Order:
 @router.post("/orders")
 async def order_webhook(
     request: Request,
-    x_helix_tenant_id: str = Header(...),
+    x_eshopeo_tenant_id: str = Header(...),
     x_wc_webhook_signature: str = Header(...),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
     body = await request.body()
 
     try:
-        tenant_id = UUID(x_helix_tenant_id)
+        tenant_id = UUID(x_eshopeo_tenant_id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid tenant ID")
 
@@ -890,7 +890,7 @@ Expected: 116 PASS
 - [ ] **Step 6: Commit**
 
 ```
-git add helix/api/routers/webhooks.py helix/db/crud/orders.py \
+git add eshopeo/api/routers/webhooks.py eshopeo/db/crud/orders.py \
         tests/test_woocommerce_order_webhook.py
 git commit -m "feat: WooCommerce order webhook POST /v1/webhooks/orders"
 ```
@@ -900,8 +900,8 @@ git commit -m "feat: WooCommerce order webhook POST /v1/webhooks/orders"
 ### Task 5 (P4-5): Clean up dead code + fix shopify webhook pack routing
 
 **Files:**
-- Modify: `services/core/helix/api/routers/webhooks.py` — remove dead `pack = default_pack()` line
-- Modify: `services/core/helix/api/routers/shopify_webhooks.py` — replace `default_pack()` with `get_pack_for_tenant(tenant)`
+- Modify: `services/core/eshopeo/api/routers/webhooks.py` — remove dead `pack = default_pack()` line
+- Modify: `services/core/eshopeo/api/routers/shopify_webhooks.py` — replace `default_pack()` with `get_pack_for_tenant(tenant)`
 
 **Context:**
 - In `webhooks.py` (WooCommerce product webhook): `pack = default_pack()` is assigned but never used — dead code, remove it
@@ -911,15 +911,15 @@ git commit -m "feat: WooCommerce order webhook POST /v1/webhooks/orders"
 
 - [ ] **Step 1: Read both files to see exact current state**
 
-Read `helix/api/routers/webhooks.py` and `helix/api/routers/shopify_webhooks.py`.
+Read `eshopeo/api/routers/webhooks.py` and `eshopeo/api/routers/shopify_webhooks.py`.
 
 - [ ] **Step 2: Fix `webhooks.py`**
 
-Remove the line `pack = default_pack()` from the `product_webhook` function. Also remove `from helix.packs.registry import default_pack` if that import is now unused.
+Remove the line `pack = default_pack()` from the `product_webhook` function. Also remove `from eshopeo.packs.registry import default_pack` if that import is now unused.
 
 - [ ] **Step 3: Fix `shopify_webhooks.py`**
 
-Change `from helix.packs.registry import default_pack` → `from helix.packs.registry import get_pack_for_tenant`
+Change `from eshopeo.packs.registry import default_pack` → `from eshopeo.packs.registry import get_pack_for_tenant`
 
 Replace `pack = default_pack()` with `pack = get_pack_for_tenant(tenant)`.
 
@@ -933,7 +933,7 @@ Expected: 116 PASS (no test count change — this is a refactor)
 - [ ] **Step 5: Commit**
 
 ```
-git add helix/api/routers/webhooks.py helix/api/routers/shopify_webhooks.py
+git add eshopeo/api/routers/webhooks.py eshopeo/api/routers/shopify_webhooks.py
 git commit -m "refactor: remove dead pack call in WC webhook; shopify webhook uses get_pack_for_tenant"
 ```
 

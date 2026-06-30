@@ -15,19 +15,19 @@
 - `asyncio_mode = "auto"` — NEVER add `@pytest.mark.asyncio`
 - Mock namespace rule: patch at the namespace where the name is USED, not where it is defined
 - Test pattern: `app.dependency_overrides[dep] = lambda: mock`; always call `app.dependency_overrides.clear()` after
-- Existing CRUD in `helix/db/crud/conversations.py`: `create_conversation`, `append_messages`, `get_conversation`, `list_conversations`, `get_messages`, `get_message`, `set_message_feedback`
-- `_run_chat_pipeline` is in `services/core/helix/api/routers/widget.py`
-- `handle_query` is in `services/core/helix/domain/consultant.py`
-- `route_query` and `complete` are in `services/core/helix/llm/gateway.py` (`LLMGateway` class)
+- Existing CRUD in `eshopeo/db/crud/conversations.py`: `create_conversation`, `append_messages`, `get_conversation`, `list_conversations`, `get_messages`, `get_message`, `set_message_feedback`
+- `_run_chat_pipeline` is in `services/core/eshopeo/api/routers/widget.py`
+- `handle_query` is in `services/core/eshopeo/domain/consultant.py`
+- `route_query` and `complete` are in `services/core/eshopeo/llm/gateway.py` (`LLMGateway` class)
 
 ---
 
 ## Task P9-1: Multi-turn conversation context injection
 
 **Files:**
-- Modify: `services/core/helix/llm/gateway.py`
-- Modify: `services/core/helix/domain/consultant.py`
-- Modify: `services/core/helix/api/routers/widget.py`
+- Modify: `services/core/eshopeo/llm/gateway.py`
+- Modify: `services/core/eshopeo/domain/consultant.py`
+- Modify: `services/core/eshopeo/api/routers/widget.py`
 - Create: `services/core/tests/test_conversation_context.py`
 
 ### Step 1: Modify `gateway.py` — add `message_history` to `complete`
@@ -104,7 +104,7 @@ async def handle_query(
 
 ### Step 4: Modify `widget.py` — restructure `_run_chat_pipeline`
 
-Add `get_messages` to the import from `helix.db.crud.conversations`.
+Add `get_messages` to the import from `eshopeo.db.crud.conversations`.
 
 Restructure `_run_chat_pipeline` so the conversation is resolved BEFORE `handle_query` is called:
 
@@ -188,8 +188,8 @@ from uuid import uuid4
 
 import pytest
 
-from helix.llm.gateway import LLMGateway, ModelTier, ConsultantResponse
-from helix.config import Settings
+from eshopeo.llm.gateway import LLMGateway, ModelTier, ConsultantResponse
+from eshopeo.config import Settings
 
 
 def _make_mock_message(role: str, content: str):
@@ -201,9 +201,9 @@ def _make_mock_message(role: str, content: str):
 
 def test_context_injected_when_conversation_id_provided():
     from fastapi.testclient import TestClient
-    from helix.api.app import create_app
-    from helix.api.deps import get_widget_tenant, get_db
-    from helix.db.models import Tenant
+    from eshopeo.api.app import create_app
+    from eshopeo.api.deps import get_widget_tenant, get_db
+    from eshopeo.db.models import Tenant
     from tests.conftest import make_test_settings
 
     settings = make_test_settings()
@@ -228,14 +228,14 @@ def test_context_injected_when_conversation_id_provided():
     app.dependency_overrides[get_db] = fake_db
 
     with (
-        patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024),
-        patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]),
-        patch("helix.api.routers.widget.get_customer_by_id", new_callable=AsyncMock, return_value=None),
-        patch("helix.api.routers.widget.get_conversation", new_callable=AsyncMock, return_value=mock_conv),
-        patch("helix.api.routers.widget.get_messages", new_callable=AsyncMock, return_value=[prior_msg_user, prior_msg_asst]),
-        patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle,
-        patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock),
-        patch("helix.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append,
+        patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024),
+        patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]),
+        patch("eshopeo.api.routers.widget.get_customer_by_id", new_callable=AsyncMock, return_value=None),
+        patch("eshopeo.api.routers.widget.get_conversation", new_callable=AsyncMock, return_value=mock_conv),
+        patch("eshopeo.api.routers.widget.get_messages", new_callable=AsyncMock, return_value=[prior_msg_user, prior_msg_asst]),
+        patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle,
+        patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock),
+        patch("eshopeo.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append,
     ):
         mock_result = MagicMock()
         mock_result.response = "reply"
@@ -267,9 +267,9 @@ def test_context_injected_when_conversation_id_provided():
 
 def test_context_empty_when_no_conversation_id():
     from fastapi.testclient import TestClient
-    from helix.api.app import create_app
-    from helix.api.deps import get_widget_tenant, get_db
-    from helix.db.models import Tenant
+    from eshopeo.api.app import create_app
+    from eshopeo.api.deps import get_widget_tenant, get_db
+    from eshopeo.db.models import Tenant
     from tests.conftest import make_test_settings
 
     settings = make_test_settings()
@@ -290,14 +290,14 @@ def test_context_empty_when_no_conversation_id():
     app.dependency_overrides[get_db] = fake_db
 
     with (
-        patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024),
-        patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]),
-        patch("helix.api.routers.widget.get_customer_by_id", new_callable=AsyncMock, return_value=None),
-        patch("helix.api.routers.widget.create_conversation", new_callable=AsyncMock, return_value=new_conv),
-        patch("helix.api.routers.widget.get_messages", new_callable=AsyncMock, return_value=[]),
-        patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle,
-        patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock),
-        patch("helix.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append,
+        patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024),
+        patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]),
+        patch("eshopeo.api.routers.widget.get_customer_by_id", new_callable=AsyncMock, return_value=None),
+        patch("eshopeo.api.routers.widget.create_conversation", new_callable=AsyncMock, return_value=new_conv),
+        patch("eshopeo.api.routers.widget.get_messages", new_callable=AsyncMock, return_value=[]),
+        patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle,
+        patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock),
+        patch("eshopeo.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append,
     ):
         mock_result = MagicMock()
         mock_result.response = "hello"
@@ -323,9 +323,9 @@ def test_context_empty_when_no_conversation_id():
 
 def test_context_truncated_to_last_10_messages():
     from fastapi.testclient import TestClient
-    from helix.api.app import create_app
-    from helix.api.deps import get_widget_tenant, get_db
-    from helix.db.models import Tenant
+    from eshopeo.api.app import create_app
+    from eshopeo.api.deps import get_widget_tenant, get_db
+    from eshopeo.db.models import Tenant
     from tests.conftest import make_test_settings
 
     settings = make_test_settings()
@@ -348,14 +348,14 @@ def test_context_truncated_to_last_10_messages():
     app.dependency_overrides[get_db] = fake_db
 
     with (
-        patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024),
-        patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]),
-        patch("helix.api.routers.widget.get_customer_by_id", new_callable=AsyncMock, return_value=None),
-        patch("helix.api.routers.widget.get_conversation", new_callable=AsyncMock, return_value=mock_conv),
-        patch("helix.api.routers.widget.get_messages", new_callable=AsyncMock, return_value=many_messages),
-        patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle,
-        patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock),
-        patch("helix.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append,
+        patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024),
+        patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]),
+        patch("eshopeo.api.routers.widget.get_customer_by_id", new_callable=AsyncMock, return_value=None),
+        patch("eshopeo.api.routers.widget.get_conversation", new_callable=AsyncMock, return_value=mock_conv),
+        patch("eshopeo.api.routers.widget.get_messages", new_callable=AsyncMock, return_value=many_messages),
+        patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle,
+        patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock),
+        patch("eshopeo.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append,
     ):
         mock_result = MagicMock()
         mock_result.response = "reply"
@@ -386,7 +386,7 @@ def test_context_truncated_to_last_10_messages():
 
 async def test_gateway_complete_prepends_history():
     import anthropic
-    from helix.config import Settings
+    from eshopeo.config import Settings
 
     settings = Settings(
         anthropic_api_key="sk-ant-test",
@@ -410,7 +410,7 @@ async def test_gateway_complete_prepends_history():
 
     history = [{"role": "user", "content": "prior question"}]
 
-    with patch("helix.llm.gateway.anthropic.AsyncAnthropic") as mock_cls:
+    with patch("eshopeo.llm.gateway.anthropic.AsyncAnthropic") as mock_cls:
         mock_client = AsyncMock()
         mock_cls.return_value = mock_client
         mock_client.messages.create = fake_create
@@ -431,15 +431,15 @@ async def test_gateway_complete_prepends_history():
 ### Step 6: Run syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile helix/llm/gateway.py helix/domain/consultant.py helix/api/routers/widget.py tests/test_conversation_context.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile eshopeo/llm/gateway.py eshopeo/domain/consultant.py eshopeo/api/routers/widget.py tests/test_conversation_context.py
 ```
 
 ### Step 7: Commit
 
 ```bash
-git add services/core/helix/llm/gateway.py \
-        services/core/helix/domain/consultant.py \
-        services/core/helix/api/routers/widget.py \
+git add services/core/eshopeo/llm/gateway.py \
+        services/core/eshopeo/domain/consultant.py \
+        services/core/eshopeo/api/routers/widget.py \
         services/core/tests/test_conversation_context.py
 git commit -m "feat: multi-turn conversation context injection into LLM layer"
 ```
@@ -449,8 +449,8 @@ git commit -m "feat: multi-turn conversation context injection into LLM layer"
 ## Task P9-2: Conversation analytics endpoint
 
 **Files:**
-- Modify: `services/core/helix/db/crud/conversations.py`
-- Modify: `services/core/helix/api/routers/analytics.py`
+- Modify: `services/core/eshopeo/db/crud/conversations.py`
+- Modify: `services/core/eshopeo/api/routers/analytics.py`
 - Create: `services/core/tests/test_conversation_analytics.py`
 
 ### Step 1: Add `get_conversation_analytics` to `conversations.py`
@@ -521,7 +521,7 @@ async def get_conversation_analytics(
 
 ### Step 2: Add endpoint to `analytics.py`
 
-Add import: `from helix.db.crud.conversations import get_conversation_analytics`
+Add import: `from eshopeo.db.crud.conversations import get_conversation_analytics`
 
 Add models and endpoint:
 
@@ -561,9 +561,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -585,7 +585,7 @@ def test_conversation_analytics_returns_200():
     }
 
     with patch(
-        "helix.api.routers.analytics.get_conversation_analytics",
+        "eshopeo.api.routers.analytics.get_conversation_analytics",
         new_callable=AsyncMock,
         return_value=mock_stats,
     ):
@@ -628,7 +628,7 @@ def test_conversation_analytics_zero_when_no_data():
     }
 
     with patch(
-        "helix.api.routers.analytics.get_conversation_analytics",
+        "eshopeo.api.routers.analytics.get_conversation_analytics",
         new_callable=AsyncMock,
         return_value=mock_stats,
     ):
@@ -643,14 +643,14 @@ def test_conversation_analytics_zero_when_no_data():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile helix/db/crud/conversations.py helix/api/routers/analytics.py tests/test_conversation_analytics.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile eshopeo/db/crud/conversations.py eshopeo/api/routers/analytics.py tests/test_conversation_analytics.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/conversations.py \
-        services/core/helix/api/routers/analytics.py \
+git add services/core/eshopeo/db/crud/conversations.py \
+        services/core/eshopeo/api/routers/analytics.py \
         services/core/tests/test_conversation_analytics.py
 git commit -m "feat: conversation analytics endpoint GET /v1/analytics/conversations"
 ```
@@ -660,8 +660,8 @@ git commit -m "feat: conversation analytics endpoint GET /v1/analytics/conversat
 ## Task P9-3: Top queries endpoint
 
 **Files:**
-- Modify: `services/core/helix/db/crud/conversations.py`
-- Modify: `services/core/helix/api/routers/analytics.py`
+- Modify: `services/core/eshopeo/db/crud/conversations.py`
+- Modify: `services/core/eshopeo/api/routers/analytics.py`
 - Create: `services/core/tests/test_top_queries.py`
 
 ### Step 1: Add `get_top_queries` to `conversations.py`
@@ -702,7 +702,7 @@ async def get_top_queries(
 
 ### Step 2: Add endpoint to `analytics.py`
 
-Add import: `from helix.db.crud.conversations import get_conversation_analytics, get_top_queries`
+Add import: `from eshopeo.db.crud.conversations import get_conversation_analytics, get_top_queries`
 
 Add models and endpoint:
 
@@ -736,9 +736,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -757,7 +757,7 @@ def test_top_queries_returns_200():
     ]
 
     with patch(
-        "helix.api.routers.analytics.get_top_queries",
+        "eshopeo.api.routers.analytics.get_top_queries",
         new_callable=AsyncMock,
         return_value=mock_queries,
     ):
@@ -792,7 +792,7 @@ def test_top_queries_empty_list():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
-        "helix.api.routers.analytics.get_top_queries",
+        "eshopeo.api.routers.analytics.get_top_queries",
         new_callable=AsyncMock,
         return_value=[],
     ):
@@ -807,14 +807,14 @@ def test_top_queries_empty_list():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile helix/db/crud/conversations.py helix/api/routers/analytics.py tests/test_top_queries.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile eshopeo/db/crud/conversations.py eshopeo/api/routers/analytics.py tests/test_top_queries.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/conversations.py \
-        services/core/helix/api/routers/analytics.py \
+git add services/core/eshopeo/db/crud/conversations.py \
+        services/core/eshopeo/api/routers/analytics.py \
         services/core/tests/test_top_queries.py
 git commit -m "feat: top queries analytics endpoint GET /v1/analytics/top-queries"
 ```

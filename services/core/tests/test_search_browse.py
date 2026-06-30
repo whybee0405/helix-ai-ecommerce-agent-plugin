@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -34,7 +34,7 @@ def test_browse_returns_200():
     mock_products = [_make_mock_product(), _make_mock_product()]
 
     with patch(
-        "helix.api.routers.search.browse_products",
+        "eshopeo.api.routers.search.browse_products",
         new_callable=AsyncMock,
         return_value=(mock_products, 2),
     ):
@@ -58,7 +58,7 @@ def test_browse_empty_catalog():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
-        "helix.api.routers.search.browse_products",
+        "eshopeo.api.routers.search.browse_products",
         new_callable=AsyncMock,
         return_value=([], 0),
     ):

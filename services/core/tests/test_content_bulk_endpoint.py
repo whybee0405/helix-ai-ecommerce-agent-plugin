@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -32,8 +32,8 @@ def test_bulk_generate_queues_products():
 
     mock_task = MagicMock()
     with (
-        patch("helix.api.routers.content.list_products_without_draft", new_callable=AsyncMock, return_value=products),
-        patch("helix.api.routers.content.generate_description", mock_task),
+        patch("eshopeo.api.routers.content.list_products_without_draft", new_callable=AsyncMock, return_value=products),
+        patch("eshopeo.api.routers.content.generate_description", mock_task),
     ):
         r = client.post("/v1/content/bulk-generate")
 
@@ -52,7 +52,7 @@ def test_bulk_generate_returns_zero_when_all_have_drafts():
     tenant = _make_tenant()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.content.list_products_without_draft", new_callable=AsyncMock, return_value=[]):
+    with patch("eshopeo.api.routers.content.list_products_without_draft", new_callable=AsyncMock, return_value=[]):
         r = client.post("/v1/content/bulk-generate")
 
     app.dependency_overrides.clear()

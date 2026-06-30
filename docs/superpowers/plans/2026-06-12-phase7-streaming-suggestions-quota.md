@@ -15,11 +15,11 @@
 ### Task 1 (P7-1): Streaming widget chat
 
 **Files:**
-- Modify: `services/core/helix/api/routers/widget.py` — add `POST /v1/widget/chat/stream`
+- Modify: `services/core/eshopeo/api/routers/widget.py` — add `POST /v1/widget/chat/stream`
 - Test: `services/core/tests/test_widget_chat_stream.py`
 
 **Context:**
-- `widget_chat` in `helix/api/routers/widget.py` — existing endpoint to mirror
+- `widget_chat` in `eshopeo/api/routers/widget.py` — existing endpoint to mirror
 - `handle_query` returns `RouteResult(response, source, model, tokens_in, tokens_out, cost_usd)`
 - `create_usage_event` already imported; `get_customer_by_id` already imported; `UUID` already imported
 - `json` must be imported if not present
@@ -39,10 +39,10 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_widget_tenant
-from helix.db.models import Tenant
-from helix.llm.gateway import RouteResult
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_widget_tenant
+from eshopeo.db.models import Tenant
+from eshopeo.llm.gateway import RouteResult
 from tests.conftest import make_test_settings
 
 
@@ -78,10 +78,10 @@ TEMPLATE_RESULT = RouteResult(response="We ship worldwide", source="template")
 def test_chat_stream_returns_event_stream_content_type(client):
     c, tenant = client
     with (
-        patch("helix.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
-        patch("helix.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
-        patch("helix.api.routers.widget.handle_query", AsyncMock(return_value=TEMPLATE_RESULT)),
-        patch("helix.api.routers.widget.create_usage_event", AsyncMock()),
+        patch("eshopeo.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
+        patch("eshopeo.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
+        patch("eshopeo.api.routers.widget.handle_query", AsyncMock(return_value=TEMPLATE_RESULT)),
+        patch("eshopeo.api.routers.widget.create_usage_event", AsyncMock()),
     ):
         r = c.post(
             "/v1/widget/chat/stream",
@@ -95,10 +95,10 @@ def test_chat_stream_returns_event_stream_content_type(client):
 def test_chat_stream_contains_token_and_done_events(client):
     c, tenant = client
     with (
-        patch("helix.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
-        patch("helix.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
-        patch("helix.api.routers.widget.handle_query", AsyncMock(return_value=TEMPLATE_RESULT)),
-        patch("helix.api.routers.widget.create_usage_event", AsyncMock()),
+        patch("eshopeo.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
+        patch("eshopeo.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
+        patch("eshopeo.api.routers.widget.handle_query", AsyncMock(return_value=TEMPLATE_RESULT)),
+        patch("eshopeo.api.routers.widget.create_usage_event", AsyncMock()),
     ):
         r = c.post(
             "/v1/widget/chat/stream",
@@ -118,10 +118,10 @@ def test_chat_stream_passes_source_in_done_event(client):
     llm_result = RouteResult(response="Use retinol", source="llm",
                               model="claude-sonnet-4-6", tokens_in=50, tokens_out=20, cost_usd=0.001)
     with (
-        patch("helix.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
-        patch("helix.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
-        patch("helix.api.routers.widget.handle_query", AsyncMock(return_value=llm_result)),
-        patch("helix.api.routers.widget.create_usage_event", AsyncMock()),
+        patch("eshopeo.api.routers.widget.embed_query", AsyncMock(return_value=[0.1] * 1024)),
+        patch("eshopeo.api.routers.widget.vector_search_products", AsyncMock(return_value=[])),
+        patch("eshopeo.api.routers.widget.handle_query", AsyncMock(return_value=llm_result)),
+        patch("eshopeo.api.routers.widget.create_usage_event", AsyncMock()),
     ):
         r = c.post(
             "/v1/widget/chat/stream",
@@ -136,7 +136,7 @@ def test_chat_stream_passes_source_in_done_event(client):
 def test_chat_stream_requires_auth(client):
     c, _ = client
     # Remove the widget tenant dep override for this test
-    from helix.api.deps import get_widget_tenant as real_dep
+    from eshopeo.api.deps import get_widget_tenant as real_dep
     settings = make_test_settings()
     app = create_app(settings)
     r = TestClient(app).post(
@@ -237,7 +237,7 @@ Expected: 151 PASS (147 + 4)
 - [ ] **Step 6: Commit**
 
 ```
-git add helix/api/routers/widget.py tests/test_widget_chat_stream.py
+git add eshopeo/api/routers/widget.py tests/test_widget_chat_stream.py
 git commit -m "feat: SSE streaming chat endpoint POST /v1/widget/chat/stream"
 ```
 
@@ -246,14 +246,14 @@ git commit -m "feat: SSE streaming chat endpoint POST /v1/widget/chat/stream"
 ### Task 2 (P7-2): Search product title suggestions
 
 **Files:**
-- Modify: `services/core/helix/db/crud/products.py` — add `suggest_product_titles()`
-- Modify: `services/core/helix/api/routers/search.py` — add `GET /v1/search/suggest`
+- Modify: `services/core/eshopeo/db/crud/products.py` — add `suggest_product_titles()`
+- Modify: `services/core/eshopeo/api/routers/search.py` — add `GET /v1/search/suggest`
 - Test: `services/core/tests/test_search_suggest.py`
 
 **Context:**
 - `Product.title.ilike(f"{prefix}%")` — SQLAlchemy ILIKE (case-insensitive) prefix match
 - `select(Product.title)` — only fetch the title column, not the full model
-- Auth: `get_tenant` (X-Helix-Tenant-Key)
+- Auth: `get_tenant` (X-eShopeo-Tenant-Key)
 - Response: `{"suggestions": [...], "prefix": "ton"}`
 - `asyncio_mode = "auto"` — NEVER `@pytest.mark.asyncio`
 
@@ -267,9 +267,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -296,11 +296,11 @@ def client(tenant):
 
 def test_suggest_returns_matching_titles(client):
     c, tenant = client
-    with patch("helix.api.routers.search.suggest_product_titles",
+    with patch("eshopeo.api.routers.search.suggest_product_titles",
                AsyncMock(return_value=["Toner A", "Toner Serum"])):
         r = c.get(
             "/v1/search/suggest?q=ton",
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
     assert r.status_code == 200
     data = r.json()
@@ -310,11 +310,11 @@ def test_suggest_returns_matching_titles(client):
 
 def test_suggest_empty_results_ok(client):
     c, tenant = client
-    with patch("helix.api.routers.search.suggest_product_titles",
+    with patch("eshopeo.api.routers.search.suggest_product_titles",
                AsyncMock(return_value=[])):
         r = c.get(
             "/v1/search/suggest?q=xyz",
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
     assert r.status_code == 200
     assert r.json()["suggestions"] == []
@@ -333,7 +333,7 @@ cd services/core && python -m pytest tests/test_search_suggest.py -v
 ```
 Expected: 3 FAIL
 
-- [ ] **Step 3: Add `suggest_product_titles` to `helix/db/crud/products.py`**
+- [ ] **Step 3: Add `suggest_product_titles` to `eshopeo/db/crud/products.py`**
 
 ```python
 async def suggest_product_titles(
@@ -356,11 +356,11 @@ async def suggest_product_titles(
 
 (Verify `select` is already imported at top of products.py — it should be.)
 
-- [ ] **Step 4: Add `GET /v1/search/suggest` to `helix/api/routers/search.py`**
+- [ ] **Step 4: Add `GET /v1/search/suggest` to `eshopeo/api/routers/search.py`**
 
 Add import:
 ```python
-from helix.db.crud.products import suggest_product_titles, vector_search_products
+from eshopeo.db.crud.products import suggest_product_titles, vector_search_products
 ```
 (Check for duplicates — `vector_search_products` may already be imported separately.)
 
@@ -401,7 +401,7 @@ Expected: 154 PASS (151 + 3)
 - [ ] **Step 7: Commit**
 
 ```
-git add helix/db/crud/products.py helix/api/routers/search.py tests/test_search_suggest.py
+git add eshopeo/db/crud/products.py eshopeo/api/routers/search.py tests/test_search_suggest.py
 git commit -m "feat: product title suggestions GET /v1/search/suggest"
 ```
 
@@ -410,7 +410,7 @@ git commit -m "feat: product title suggestions GET /v1/search/suggest"
 ### Task 3 (P7-3): Quota status endpoint
 
 **Files:**
-- Modify: `services/core/helix/api/routers/analytics.py` — add `GET /v1/analytics/quota`
+- Modify: `services/core/eshopeo/api/routers/analytics.py` — add `GET /v1/analytics/quota`
 - Test: `services/core/tests/test_quota_status.py`
 
 **Context:**
@@ -432,9 +432,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -464,10 +464,10 @@ def test_quota_status_returns_used_count(client):
     mock_redis = AsyncMock()
     mock_redis.get = AsyncMock(return_value="3421")
     mock_redis.aclose = AsyncMock()
-    with patch("helix.api.routers.analytics.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.routers.analytics.aioredis.from_url", return_value=mock_redis):
         r = c.get(
             "/v1/analytics/quota",
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
     assert r.status_code == 200
     data = r.json()
@@ -482,10 +482,10 @@ def test_quota_status_zero_when_key_missing(client):
     mock_redis = AsyncMock()
     mock_redis.get = AsyncMock(return_value=None)
     mock_redis.aclose = AsyncMock()
-    with patch("helix.api.routers.analytics.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.routers.analytics.aioredis.from_url", return_value=mock_redis):
         r = c.get(
             "/v1/analytics/quota",
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
     assert r.status_code == 200
     data = r.json()
@@ -506,7 +506,7 @@ cd services/core && python -m pytest tests/test_quota_status.py -v
 ```
 Expected: 3 FAIL
 
-- [ ] **Step 3: Add `GET /v1/analytics/quota` to `helix/api/routers/analytics.py`**
+- [ ] **Step 3: Add `GET /v1/analytics/quota` to `eshopeo/api/routers/analytics.py`**
 
 Read the current analytics.py first to understand existing imports.
 
@@ -514,7 +514,7 @@ Add imports (check for duplicates):
 ```python
 import redis.asyncio as aioredis
 from datetime import datetime, timezone
-from helix.config import get_settings
+from eshopeo.config import get_settings
 ```
 
 Add Pydantic model:
@@ -569,7 +569,7 @@ Expected: 157 PASS (154 + 3)
 - [ ] **Step 6: Commit**
 
 ```
-git add helix/api/routers/analytics.py tests/test_quota_status.py
+git add eshopeo/api/routers/analytics.py tests/test_quota_status.py
 git commit -m "feat: quota status endpoint GET /v1/analytics/quota"
 ```
 

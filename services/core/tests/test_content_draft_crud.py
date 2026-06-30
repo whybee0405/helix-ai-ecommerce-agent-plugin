@@ -4,13 +4,13 @@ from uuid import uuid4
 
 import pytest
 
-from helix.db.crud.content import (
+from eshopeo.db.crud.content import (
     approve_content_draft,
     get_content_draft,
     list_products_without_draft,
     upsert_content_draft,
 )
-from helix.db.models import ContentDraft, Product
+from eshopeo.db.models import ContentDraft, Product
 
 
 async def test_upsert_content_draft_creates_new():

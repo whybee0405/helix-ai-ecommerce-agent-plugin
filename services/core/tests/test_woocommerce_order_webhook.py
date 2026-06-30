@@ -9,9 +9,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db
-from helix.db.models import Order, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db
+from eshopeo.db.models import Order, Tenant
 from tests.conftest import make_test_settings
 
 SECRET = "wc-secret-123"
@@ -60,10 +60,10 @@ def client(tenant):
     app.dependency_overrides[get_db] = lambda: mock_db
 
     with (
-        patch("helix.api.routers.webhooks.get_tenant_by_id", AsyncMock(return_value=tenant)),
-        patch("helix.api.routers.webhooks.decrypt_credentials",
+        patch("eshopeo.api.routers.webhooks.get_tenant_by_id", AsyncMock(return_value=tenant)),
+        patch("eshopeo.api.routers.webhooks.decrypt_credentials",
               return_value={"webhook_secret": SECRET}),
-        patch("helix.api.routers.webhooks.upsert_order", AsyncMock(return_value=upserted)),
+        patch("eshopeo.api.routers.webhooks.upsert_order", AsyncMock(return_value=upserted)),
     ):
         yield TestClient(app), tenant
 
@@ -75,7 +75,7 @@ def test_wc_order_webhook_accepts_valid_payload(client):
         "/v1/webhooks/orders",
         content=body,
         headers={
-            "X-Helix-Tenant-Id": str(tenant.id),
+            "X-eShopeo-Tenant-Id": str(tenant.id),
             "X-WC-Webhook-Signature": _sign(body),
             "Content-Type": "application/json",
         },
@@ -91,7 +91,7 @@ def test_wc_order_webhook_rejects_bad_signature(client):
         "/v1/webhooks/orders",
         content=body,
         headers={
-            "X-Helix-Tenant-Id": str(tenant.id),
+            "X-eShopeo-Tenant-Id": str(tenant.id),
             "X-WC-Webhook-Signature": "bad-sig",
             "Content-Type": "application/json",
         },
@@ -102,12 +102,12 @@ def test_wc_order_webhook_rejects_bad_signature(client):
 def test_wc_order_webhook_rejects_unknown_tenant(client):
     c, _ = client
     body = json.dumps(WC_ORDER).encode()
-    with patch("helix.api.routers.webhooks.get_tenant_by_id", AsyncMock(return_value=None)):
+    with patch("eshopeo.api.routers.webhooks.get_tenant_by_id", AsyncMock(return_value=None)):
         r = c.post(
             "/v1/webhooks/orders",
             content=body,
             headers={
-                "X-Helix-Tenant-Id": str(uuid4()),
+                "X-eShopeo-Tenant-Id": str(uuid4()),
                 "X-WC-Webhook-Signature": _sign(body),
                 "Content-Type": "application/json",
             },

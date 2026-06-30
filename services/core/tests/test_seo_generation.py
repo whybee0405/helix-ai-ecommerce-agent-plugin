@@ -3,10 +3,10 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import Product, Tenant
-from helix.workers.tasks.seo import SeoMeta, _generate_seo_async
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import Product, Tenant
+from eshopeo.workers.tasks.seo import SeoMeta, _generate_seo_async
 from tests.conftest import make_test_settings
 
 
@@ -53,12 +53,12 @@ async def test_generate_seo_async_upserts_two_drafts():
     mock_session.commit = AsyncMock()
 
     with (
-        patch("helix.workers.tasks.seo.get_tenant_by_id", new_callable=AsyncMock, return_value=mock_tenant),
-        patch("helix.workers.tasks.seo.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
-        patch("helix.workers.tasks.seo.upsert_content_draft", new_callable=AsyncMock) as mock_upsert,
-        patch("helix.workers.tasks.seo.LLMGateway") as mock_gw_cls,
-        patch("helix.workers.tasks.seo.async_session_factory") as mock_factory,
-        patch("helix.workers.tasks.seo.get_settings", return_value=MagicMock()),
+        patch("eshopeo.workers.tasks.seo.get_tenant_by_id", new_callable=AsyncMock, return_value=mock_tenant),
+        patch("eshopeo.workers.tasks.seo.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
+        patch("eshopeo.workers.tasks.seo.upsert_content_draft", new_callable=AsyncMock) as mock_upsert,
+        patch("eshopeo.workers.tasks.seo.LLMGateway") as mock_gw_cls,
+        patch("eshopeo.workers.tasks.seo.async_session_factory") as mock_factory,
+        patch("eshopeo.workers.tasks.seo.get_settings", return_value=MagicMock()),
     ):
         mock_gw = AsyncMock()
         mock_gw.complete = AsyncMock(return_value=mock_seo_result)
@@ -87,11 +87,11 @@ async def test_generate_seo_async_skips_when_product_not_found():
     mock_session.commit = AsyncMock()
 
     with (
-        patch("helix.workers.tasks.seo.get_tenant_by_id", new_callable=AsyncMock, return_value=MagicMock()),
-        patch("helix.workers.tasks.seo.get_product_by_id", new_callable=AsyncMock, return_value=None),
-        patch("helix.workers.tasks.seo.upsert_content_draft", new_callable=AsyncMock) as mock_upsert,
-        patch("helix.workers.tasks.seo.async_session_factory") as mock_factory,
-        patch("helix.workers.tasks.seo.get_settings", return_value=MagicMock()),
+        patch("eshopeo.workers.tasks.seo.get_tenant_by_id", new_callable=AsyncMock, return_value=MagicMock()),
+        patch("eshopeo.workers.tasks.seo.get_product_by_id", new_callable=AsyncMock, return_value=None),
+        patch("eshopeo.workers.tasks.seo.upsert_content_draft", new_callable=AsyncMock) as mock_upsert,
+        patch("eshopeo.workers.tasks.seo.async_session_factory") as mock_factory,
+        patch("eshopeo.workers.tasks.seo.get_settings", return_value=MagicMock()),
     ):
         mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
         mock_factory.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -122,8 +122,8 @@ def test_generate_seo_endpoint_queues_task():
     mock_task.delay = MagicMock()
 
     with (
-        patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=product),
-        patch("helix.api.routers.content.generate_seo_metadata", mock_task),
+        patch("eshopeo.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=product),
+        patch("eshopeo.api.routers.content.generate_seo_metadata", mock_task),
     ):
         r = client.post(f"/v1/content/products/{product_id}/generate-seo")
 

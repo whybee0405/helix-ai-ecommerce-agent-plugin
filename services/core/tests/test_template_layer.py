@@ -1,5 +1,5 @@
 import pytest
-from helix.llm.layers import TemplateLayer, LayerResult
+from eshopeo.llm.layers import TemplateLayer, LayerResult
 
 TEMPLATES = {
     "return policy": "We accept returns within 30 days.",

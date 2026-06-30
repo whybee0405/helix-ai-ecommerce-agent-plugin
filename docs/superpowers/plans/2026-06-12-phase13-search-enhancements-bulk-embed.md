@@ -18,15 +18,15 @@
 - `vector_search_products` already has `in_stock_only` and `category` — add `min_price`/`max_price` as keyword-only args with default `None`
 - `Product.embedding.is_(None)` — correct SQLAlchemy null check for vector column
 - `Product.categories.contains([category])` — JSONB array containment (already in codebase)
-- `embed_product` is a Celery task from `helix.workers.tasks.embedding`; `.delay(tenant_id_str, product_id_str)` queues it
+- `embed_product` is a Celery task from `eshopeo.workers.tasks.embedding`; `.delay(tenant_id_str, product_id_str)` queues it
 
 ---
 
 ## Task P13-1: Price range filters on semantic search
 
 **Files:**
-- Modify: `services/core/helix/db/crud/products.py`
-- Modify: `services/core/helix/api/routers/search.py`
+- Modify: `services/core/eshopeo/db/crud/products.py`
+- Modify: `services/core/eshopeo/api/routers/search.py`
 - Create: `services/core/tests/test_search_price_filter.py`
 
 ### Step 1: Modify `vector_search_products` in `products.py`
@@ -92,9 +92,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -124,12 +124,12 @@ def test_search_with_price_filter_returns_200():
 
     with (
         patch(
-            "helix.api.routers.search.embed_query",
+            "eshopeo.api.routers.search.embed_query",
             new_callable=AsyncMock,
             return_value=[0.1] * 1024,
         ),
         patch(
-            "helix.api.routers.search.vector_search_products",
+            "eshopeo.api.routers.search.vector_search_products",
             new_callable=AsyncMock,
             return_value=mock_rows,
         ),
@@ -154,8 +154,8 @@ def test_search_price_filter_passed_to_crud():
     mock_search = AsyncMock(return_value=[])
 
     with (
-        patch("helix.api.routers.search.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024),
-        patch("helix.api.routers.search.vector_search_products", mock_search),
+        patch("eshopeo.api.routers.search.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024),
+        patch("eshopeo.api.routers.search.vector_search_products", mock_search),
     ):
         client.get("/v1/search/products?q=serum&min_price=1000&max_price=5000")
 
@@ -179,13 +179,13 @@ def test_search_price_filter_requires_auth():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile helix/db/crud/products.py helix/api/routers/search.py tests/test_search_price_filter.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile eshopeo/db/crud/products.py eshopeo/api/routers/search.py tests/test_search_price_filter.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/products.py services/core/helix/api/routers/search.py services/core/tests/test_search_price_filter.py
+git add services/core/eshopeo/db/crud/products.py services/core/eshopeo/api/routers/search.py services/core/tests/test_search_price_filter.py
 git commit -m "feat: price range filters on semantic search GET /v1/search/products"
 ```
 
@@ -194,8 +194,8 @@ git commit -m "feat: price range filters on semantic search GET /v1/search/produ
 ## Task P13-2: Product browse endpoint
 
 **Files:**
-- Modify: `services/core/helix/db/crud/products.py`
-- Modify: `services/core/helix/api/routers/search.py`
+- Modify: `services/core/eshopeo/db/crud/products.py`
+- Modify: `services/core/eshopeo/api/routers/search.py`
 - Create: `services/core/tests/test_search_browse.py`
 
 ### Step 1: Add `browse_products` to `products.py`
@@ -242,9 +242,9 @@ async def browse_products(
 
 ### Step 2: Add browse endpoint to `search.py`
 
-Read the file. Add `browse_products` to the import from `helix.db.crud.products`:
+Read the file. Add `browse_products` to the import from `eshopeo.db.crud.products`:
 ```python
-from helix.db.crud.products import browse_products, get_similar_products, suggest_product_titles, vector_search_products
+from eshopeo.db.crud.products import browse_products, get_similar_products, suggest_product_titles, vector_search_products
 ```
 
 Add new models (after `SuggestResponse`):
@@ -317,9 +317,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -348,7 +348,7 @@ def test_browse_returns_200():
     mock_products = [_make_mock_product(), _make_mock_product()]
 
     with patch(
-        "helix.api.routers.search.browse_products",
+        "eshopeo.api.routers.search.browse_products",
         new_callable=AsyncMock,
         return_value=(mock_products, 2),
     ):
@@ -372,7 +372,7 @@ def test_browse_empty_catalog():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
-        "helix.api.routers.search.browse_products",
+        "eshopeo.api.routers.search.browse_products",
         new_callable=AsyncMock,
         return_value=([], 0),
     ):
@@ -398,13 +398,13 @@ def test_browse_requires_auth():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile helix/db/crud/products.py helix/api/routers/search.py tests/test_search_browse.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile eshopeo/db/crud/products.py eshopeo/api/routers/search.py tests/test_search_browse.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/products.py services/core/helix/api/routers/search.py services/core/tests/test_search_browse.py
+git add services/core/eshopeo/db/crud/products.py services/core/eshopeo/api/routers/search.py services/core/tests/test_search_browse.py
 git commit -m "feat: product browse endpoint GET /v1/search/browse"
 ```
 
@@ -413,8 +413,8 @@ git commit -m "feat: product browse endpoint GET /v1/search/browse"
 ## Task P13-3: Bulk re-embedding trigger
 
 **Files:**
-- Modify: `services/core/helix/db/crud/products.py`
-- Modify: `services/core/helix/api/routers/jobs.py`
+- Modify: `services/core/eshopeo/db/crud/products.py`
+- Modify: `services/core/eshopeo/api/routers/jobs.py`
 - Create: `services/core/tests/test_bulk_embed.py`
 
 ### Step 1: Add `list_products_without_embedding` to `products.py`
@@ -440,8 +440,8 @@ async def list_products_without_embedding(
 Read the file first. Add imports at the top (after existing imports):
 
 ```python
-from helix.db.crud.products import list_products_without_embedding
-from helix.workers.tasks.embedding import embed_product
+from eshopeo.db.crud.products import list_products_without_embedding
+from eshopeo.workers.tasks.embedding import embed_product
 ```
 
 Add model and endpoint (before the existing `GET /{job_id}` endpoint — `POST /embed/bulk` is a POST so there's no route conflict, but placing it first is cleaner):
@@ -470,9 +470,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -497,12 +497,12 @@ def test_bulk_embed_queues_products():
 
     with (
         patch(
-            "helix.api.routers.jobs.list_products_without_embedding",
+            "eshopeo.api.routers.jobs.list_products_without_embedding",
             new_callable=AsyncMock,
             return_value=mock_products,
         ),
         patch(
-            "helix.api.routers.jobs.embed_product",
+            "eshopeo.api.routers.jobs.embed_product",
             delay=mock_delay,
         ) as mock_task,
     ):
@@ -527,11 +527,11 @@ def test_bulk_embed_no_products():
 
     with (
         patch(
-            "helix.api.routers.jobs.list_products_without_embedding",
+            "eshopeo.api.routers.jobs.list_products_without_embedding",
             new_callable=AsyncMock,
             return_value=[],
         ),
-        patch("helix.api.routers.jobs.embed_product"),
+        patch("eshopeo.api.routers.jobs.embed_product"),
     ):
         r = client.post("/v1/jobs/embed/bulk")
 
@@ -554,13 +554,13 @@ def test_bulk_embed_requires_auth():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile helix/db/crud/products.py helix/api/routers/jobs.py tests/test_bulk_embed.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile eshopeo/db/crud/products.py eshopeo/api/routers/jobs.py tests/test_bulk_embed.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/products.py services/core/helix/api/routers/jobs.py services/core/tests/test_bulk_embed.py
+git add services/core/eshopeo/db/crud/products.py services/core/eshopeo/api/routers/jobs.py services/core/tests/test_bulk_embed.py
 git commit -m "feat: bulk re-embedding trigger POST /v1/jobs/embed/bulk"
 ```
 

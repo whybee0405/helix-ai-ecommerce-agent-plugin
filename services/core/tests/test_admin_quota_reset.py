@@ -4,8 +4,8 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.routers.admin import _auth_provision
+from eshopeo.api.app import create_app
+from eshopeo.api.routers.admin import _auth_provision
 from tests.conftest import make_test_settings
 
 
@@ -19,7 +19,7 @@ def test_quota_reset_returns_200():
     tenant_id = uuid4()
     mock_redis = AsyncMock()
 
-    with patch("helix.api.routers.admin.aioredis") as mock_aioredis:
+    with patch("eshopeo.api.routers.admin.aioredis") as mock_aioredis:
         mock_aioredis.from_url.return_value = mock_redis
         r = client.post(f"/v1/admin/tenants/{tenant_id}/quota/reset")
 
@@ -41,7 +41,7 @@ def test_quota_reset_calls_delete():
     tenant_id = uuid4()
     mock_redis = AsyncMock()
 
-    with patch("helix.api.routers.admin.aioredis") as mock_aioredis:
+    with patch("eshopeo.api.routers.admin.aioredis") as mock_aioredis:
         mock_aioredis.from_url.return_value = mock_redis
         client.post(f"/v1/admin/tenants/{tenant_id}/quota/reset")
 

@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -55,17 +55,17 @@ async def test_sync_without_tenant_key_returns_401(client, tenant):
 async def test_sync_valid_products_returns_summary(client, tenant):
     products = [make_canonical_product(str(tenant.id))]
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.sync.upsert_product", new_callable=AsyncMock) as mock_upsert, \
-         patch("helix.api.routers.sync.embed_product") as mock_task, \
-         patch("helix.api.routers.sync.get_pack_for_tenant") as mock_pack:
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.sync.upsert_product", new_callable=AsyncMock) as mock_upsert, \
+         patch("eshopeo.api.routers.sync.embed_product") as mock_task, \
+         patch("eshopeo.api.routers.sync.get_pack_for_tenant") as mock_pack:
         mock_pack.return_value = MagicMock(product_schema={"type": "object", "properties": {}, "required": []})
         mock_upsert.return_value = MagicMock(id=uuid4())
 
         resp = await client.post(
             "/v1/sync/products",
             json={"products": products},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -78,15 +78,15 @@ async def test_sync_valid_products_returns_summary(client, tenant):
 async def test_sync_delete_flag_removes_product(client, tenant):
     products = [make_canonical_product(str(tenant.id)) | {"deleted": True}]
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.sync.delete_product", new_callable=AsyncMock, return_value=True) as mock_del, \
-         patch("helix.api.routers.sync.get_pack_for_tenant") as mock_pack:
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.sync.delete_product", new_callable=AsyncMock, return_value=True) as mock_del, \
+         patch("eshopeo.api.routers.sync.get_pack_for_tenant") as mock_pack:
         mock_pack.return_value = MagicMock(product_schema={"type": "object", "properties": {}, "required": []})
 
         resp = await client.post(
             "/v1/sync/products",
             json={"products": products},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200

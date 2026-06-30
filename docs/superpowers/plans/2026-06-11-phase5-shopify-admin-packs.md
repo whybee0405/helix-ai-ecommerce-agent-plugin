@@ -15,14 +15,14 @@
 ### Task 1 (P5-1): Shopify orders webhook
 
 **Files:**
-- Modify: `services/core/helix/connectors/shopify.py` — add `translate_shopify_order()`
-- Modify: `services/core/helix/api/routers/shopify_webhooks.py` — add `POST /v1/webhooks/shopify/orders`
+- Modify: `services/core/eshopeo/connectors/shopify.py` — add `translate_shopify_order()`
+- Modify: `services/core/eshopeo/api/routers/shopify_webhooks.py` — add `POST /v1/webhooks/shopify/orders`
 - Test: `services/core/tests/test_shopify_order_webhook.py`
 
 **Context:**
-- `verify_shopify_webhook(body, hmac_header, secret)` already in `helix/connectors/shopify.py` — Shopify uses base64-encoded HMAC-SHA256 (different from WooCommerce which uses hex)
-- `upsert_order` in `helix/db/crud/orders.py` (from Phase 4)
-- `CanonicalOrder` in `helix/connectors/models.py`
+- `verify_shopify_webhook(body, hmac_header, secret)` already in `eshopeo/connectors/shopify.py` — Shopify uses base64-encoded HMAC-SHA256 (different from WooCommerce which uses hex)
+- `upsert_order` in `eshopeo/db/crud/orders.py` (from Phase 4)
+- `CanonicalOrder` in `eshopeo/connectors/models.py`
 - `shopify_webhooks.py` already imports: `verify_shopify_webhook`, `decrypt_credentials`, `get_tenant_by_id`, `get_pack_for_tenant`, `json`, `UUID`, `structlog`, `get_db`, `Request`, `Header`, `HTTPException`, `status`
 - Shopify order payload: `{"id": 12345, "customer": {"id": 67890}, "total_price": "250.00", "currency": "USD", "financial_status": "paid", "line_items": [...], "created_at": "2026-06-11T10:00:00+00:00"}`
 - `asyncio_mode = "auto"` — never `@pytest.mark.asyncio`
@@ -42,9 +42,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db
-from helix.db.models import Order, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db
+from eshopeo.db.models import Order, Tenant
 from tests.conftest import make_test_settings
 
 SECRET = "shopify-secret-abc"
@@ -93,11 +93,11 @@ def client(tenant):
     app.dependency_overrides[get_db] = lambda: mock_db
 
     with (
-        patch("helix.api.routers.shopify_webhooks.get_tenant_by_id",
+        patch("eshopeo.api.routers.shopify_webhooks.get_tenant_by_id",
               AsyncMock(return_value=tenant)),
-        patch("helix.api.routers.shopify_webhooks.decrypt_credentials",
+        patch("eshopeo.api.routers.shopify_webhooks.decrypt_credentials",
               return_value={"webhook_secret": SECRET}),
-        patch("helix.api.routers.shopify_webhooks.upsert_order",
+        patch("eshopeo.api.routers.shopify_webhooks.upsert_order",
               AsyncMock(return_value=upserted)),
     ):
         yield TestClient(app), tenant
@@ -110,7 +110,7 @@ def test_shopify_order_webhook_accepts_valid_payload(client):
         "/v1/webhooks/shopify/orders",
         content=body,
         headers={
-            "X-Helix-Tenant-Id": str(tenant.id),
+            "X-eShopeo-Tenant-Id": str(tenant.id),
             "X-Shopify-Hmac-Sha256": _sign(body),
             "Content-Type": "application/json",
         },
@@ -126,7 +126,7 @@ def test_shopify_order_webhook_rejects_bad_signature(client):
         "/v1/webhooks/shopify/orders",
         content=body,
         headers={
-            "X-Helix-Tenant-Id": str(tenant.id),
+            "X-eShopeo-Tenant-Id": str(tenant.id),
             "X-Shopify-Hmac-Sha256": "bad-sig",
             "Content-Type": "application/json",
         },
@@ -137,13 +137,13 @@ def test_shopify_order_webhook_rejects_bad_signature(client):
 def test_shopify_order_webhook_rejects_unknown_tenant(client):
     c, _ = client
     body = json.dumps(SHOPIFY_ORDER).encode()
-    with patch("helix.api.routers.shopify_webhooks.get_tenant_by_id",
+    with patch("eshopeo.api.routers.shopify_webhooks.get_tenant_by_id",
                AsyncMock(return_value=None)):
         r = c.post(
             "/v1/webhooks/shopify/orders",
             content=body,
             headers={
-                "X-Helix-Tenant-Id": str(uuid4()),
+                "X-eShopeo-Tenant-Id": str(uuid4()),
                 "X-Shopify-Hmac-Sha256": _sign(body),
                 "Content-Type": "application/json",
             },
@@ -152,7 +152,7 @@ def test_shopify_order_webhook_rejects_unknown_tenant(client):
 
 
 def test_shopify_order_translates_fields():
-    from helix.connectors.shopify import translate_shopify_order
+    from eshopeo.connectors.shopify import translate_shopify_order
     tenant_id = uuid4()
     order = translate_shopify_order(SHOPIFY_ORDER, tenant_id)
     assert order.platform == "shopify"
@@ -174,7 +174,7 @@ Expected: 4 FAIL
 Add these imports at top of `shopify.py`:
 ```python
 from datetime import datetime, timezone
-from helix.connectors.models import CanonicalOrder
+from eshopeo.connectors.models import CanonicalOrder
 ```
 
 Add function:
@@ -209,9 +209,9 @@ def translate_shopify_order(payload: dict, tenant_id: UUID) -> CanonicalOrder:
 
 Add these imports (check for duplicates):
 ```python
-from helix.connectors.shopify import translate_shopify_order, verify_shopify_webhook
-from helix.db.crud.orders import upsert_order
-from helix.db.models import Order
+from eshopeo.connectors.shopify import translate_shopify_order, verify_shopify_webhook
+from eshopeo.db.crud.orders import upsert_order
+from eshopeo.db.models import Order
 ```
 
 Add endpoint:
@@ -219,17 +219,17 @@ Add endpoint:
 @router.post("/orders")
 async def shopify_order_webhook(
     request: Request,
-    x_helix_tenant_id: str | None = Header(default=None),
+    x_eshopeo_tenant_id: str | None = Header(default=None),
     x_shopify_hmac_sha256: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ):
-    if x_helix_tenant_id is None:
+    if x_eshopeo_tenant_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing tenant ID")
     if x_shopify_hmac_sha256 is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing HMAC header")
 
     try:
-        tenant_id = UUID(x_helix_tenant_id)
+        tenant_id = UUID(x_eshopeo_tenant_id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid tenant ID")
 
@@ -251,7 +251,7 @@ async def shopify_order_webhook(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload")
 
     co = translate_shopify_order(payload, tenant_id)
-    from helix.db.crud.orders import get_customer_id_by_platform_id
+    from eshopeo.db.crud.orders import get_customer_id_by_platform_id
     customer_id = None
     if co.customer_platform_id:
         customer_id = await get_customer_id_by_platform_id(db, tenant_id, co.customer_platform_id)
@@ -288,7 +288,7 @@ Expected: 123 PASS
 - [ ] **Step 7: Commit**
 
 ```
-git add helix/connectors/shopify.py helix/api/routers/shopify_webhooks.py \
+git add eshopeo/connectors/shopify.py eshopeo/api/routers/shopify_webhooks.py \
         tests/test_shopify_order_webhook.py
 git commit -m "feat: Shopify orders webhook + translate_shopify_order()"
 ```
@@ -298,13 +298,13 @@ git commit -m "feat: Shopify orders webhook + translate_shopify_order()"
 ### Task 2 (P5-2): Admin platform stats
 
 **Files:**
-- Create: `services/core/helix/db/crud/admin.py`
-- Create: `services/core/helix/api/routers/admin.py`
-- Modify: `services/core/helix/api/app.py`
+- Create: `services/core/eshopeo/db/crud/admin.py`
+- Create: `services/core/eshopeo/api/routers/admin.py`
+- Modify: `services/core/eshopeo/api/app.py`
 - Test: `services/core/tests/test_admin_stats.py`
 
 **Context:**
-- Auth: `X-Helix-Provision-Key` — use the same `_auth_provision_key` dep from `tenants.py` BUT don't import it from there (define inline or replicate the dep). Actually, just replicate the 4-line dep inline — simpler than cross-router import.
+- Auth: `X-eShopeo-Provision-Key` — use the same `_auth_provision_key` dep from `tenants.py` BUT don't import it from there (define inline or replicate the dep). Actually, just replicate the 4-line dep inline — simpler than cross-router import.
 - Cross-tenant queries: all COUNT/SUM queries have NO tenant_id filter
 - `UsageEvent` table: `cost_usd`, `created_at` columns; use `func.count`, `func.sum` from sqlalchemy
 - `asyncio_mode = "auto"` — no `@pytest.mark.asyncio`
@@ -320,8 +320,8 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db
 from tests.conftest import make_test_settings
 
 
@@ -347,11 +347,11 @@ MOCK_STATS = {
 
 def test_admin_stats_returns_data(client):
     c, settings = client
-    with patch("helix.api.routers.admin.get_platform_stats",
+    with patch("eshopeo.api.routers.admin.get_platform_stats",
                AsyncMock(return_value=MOCK_STATS)):
         r = c.get(
             "/v1/admin/stats",
-            headers={"X-Helix-Provision-Key": settings.provision_key.get_secret_value()},
+            headers={"X-eShopeo-Provision-Key": settings.provision_key.get_secret_value()},
         )
     assert r.status_code == 200
     data = r.json()
@@ -362,7 +362,7 @@ def test_admin_stats_returns_data(client):
 
 def test_admin_stats_401_bad_key(client):
     c, _ = client
-    r = c.get("/v1/admin/stats", headers={"X-Helix-Provision-Key": "wrong"})
+    r = c.get("/v1/admin/stats", headers={"X-eShopeo-Provision-Key": "wrong"})
     assert r.status_code == 401
 
 
@@ -379,7 +379,7 @@ cd services/core && python -m pytest tests/test_admin_stats.py -v
 ```
 Expected: 3 FAIL (route doesn't exist)
 
-- [ ] **Step 3: Create `helix/db/crud/admin.py`**
+- [ ] **Step 3: Create `eshopeo/db/crud/admin.py`**
 
 ```python
 from datetime import datetime, timezone
@@ -387,7 +387,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.db.models import Customer, Product, Tenant, UsageEvent
+from eshopeo.db.models import Customer, Product, Tenant, UsageEvent
 
 
 async def get_platform_stats(
@@ -428,7 +428,7 @@ async def get_platform_stats(
     }
 ```
 
-- [ ] **Step 4: Create `helix/api/routers/admin.py`**
+- [ ] **Step 4: Create `eshopeo/api/routers/admin.py`**
 
 ```python
 from datetime import date, datetime, timezone
@@ -438,9 +438,9 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db
-from helix.config import get_settings
-from helix.db.crud.admin import get_platform_stats
+from eshopeo.api.deps import get_db
+from eshopeo.config import get_settings
+from eshopeo.db.crud.admin import get_platform_stats
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
@@ -454,12 +454,12 @@ class PlatformStats(BaseModel):
 
 
 def _auth_provision(
-    x_helix_provision_key: Annotated[str | None, Header()] = None,
+    x_eshopeo_provision_key: Annotated[str | None, Header()] = None,
 ) -> str:
     settings = get_settings()
-    if x_helix_provision_key != settings.provision_key.get_secret_value():
+    if x_eshopeo_provision_key != settings.provision_key.get_secret_value():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid provision key")
-    return x_helix_provision_key
+    return x_eshopeo_provision_key
 
 
 @router.get("/stats", response_model=PlatformStats)
@@ -478,7 +478,7 @@ async def admin_stats(
 
 Add after the analytics router block:
 ```python
-from helix.api.routers import admin
+from eshopeo.api.routers import admin
 app.include_router(admin.router)
 ```
 
@@ -499,7 +499,7 @@ Expected: 126 PASS
 - [ ] **Step 8: Commit**
 
 ```
-git add helix/db/crud/admin.py helix/api/routers/admin.py helix/api/app.py \
+git add eshopeo/db/crud/admin.py eshopeo/api/routers/admin.py eshopeo/api/app.py \
         tests/test_admin_stats.py
 git commit -m "feat: admin platform stats endpoint GET /v1/admin/stats"
 ```
@@ -509,14 +509,14 @@ git commit -m "feat: admin platform stats endpoint GET /v1/admin/stats"
 ### Task 3 (P5-3): Pack listing API
 
 **Files:**
-- Create: `services/core/helix/api/routers/packs.py`
-- Modify: `services/core/helix/api/app.py`
+- Create: `services/core/eshopeo/api/routers/packs.py`
+- Modify: `services/core/eshopeo/api/app.py`
 - Test: `services/core/tests/test_packs_endpoint.py`
 
 **Context:**
-- `_registry: dict[str, LoadedPack]` in `helix.packs.registry` — read-only, in-memory
+- `_registry: dict[str, LoadedPack]` in `eshopeo.packs.registry` — read-only, in-memory
 - `LoadedPack` has: `id, version, display_name, profile_schema, product_schema, taxonomy, compatibility_rules (list), prompts (dict), copy (dict[str, dict])`
-- Auth: `get_tenant` dep (X-Helix-Tenant-Key)
+- Auth: `get_tenant` dep (X-eShopeo-Tenant-Key)
 - `copy` keys are locale codes (e.g. `"en"`) — expose only the locale names in the detail response
 - `taxonomy` is a dict — expose its keys as available categories in the detail response
 - `asyncio_mode = "auto"` — no `@pytest.mark.asyncio`
@@ -531,10 +531,10 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import Tenant
-from helix.packs.registry import _registry
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import Tenant
+from eshopeo.packs.registry import _registry
 from tests.conftest import make_test_settings
 
 
@@ -581,7 +581,7 @@ def client(tenant):
 def test_list_packs_returns_loaded_packs(client):
     c, tenant = client
     r = c.get("/v1/packs",
-              headers={"X-Helix-Tenant-Key": str(tenant.public_key)})
+              headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)})
     assert r.status_code == 200
     data = r.json()
     assert isinstance(data, list)
@@ -593,7 +593,7 @@ def test_list_packs_returns_loaded_packs(client):
 def test_get_pack_returns_detail(client):
     c, tenant = client
     r = c.get("/v1/packs/kbeauty",
-              headers={"X-Helix-Tenant-Key": str(tenant.public_key)})
+              headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)})
     assert r.status_code == 200
     data = r.json()
     assert data["id"] == "kbeauty"
@@ -604,7 +604,7 @@ def test_get_pack_returns_detail(client):
 def test_get_pack_404_unknown(client):
     c, tenant = client
     r = c.get("/v1/packs/unknown-pack",
-              headers={"X-Helix-Tenant-Key": str(tenant.public_key)})
+              headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)})
     assert r.status_code == 404
 
 
@@ -621,15 +621,15 @@ cd services/core && python -m pytest tests/test_packs_endpoint.py -v
 ```
 Expected: 4 FAIL (routes don't exist)
 
-- [ ] **Step 3: Create `helix/api/routers/packs.py`**
+- [ ] **Step 3: Create `eshopeo/api/routers/packs.py`**
 
 ```python
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
-from helix.packs.registry import _registry
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
+from eshopeo.packs.registry import _registry
 
 router = APIRouter(prefix="/v1/packs", tags=["packs"])
 
@@ -681,7 +681,7 @@ async def get_pack_detail(
 
 Add after the admin router block:
 ```python
-from helix.api.routers import packs
+from eshopeo.api.routers import packs
 app.include_router(packs.router)
 ```
 
@@ -702,7 +702,7 @@ Expected: 130 PASS
 - [ ] **Step 7: Commit**
 
 ```
-git add helix/api/routers/packs.py helix/api/app.py tests/test_packs_endpoint.py
+git add eshopeo/api/routers/packs.py eshopeo/api/app.py tests/test_packs_endpoint.py
 git commit -m "feat: pack listing API GET /v1/packs and GET /v1/packs/{id}"
 ```
 
@@ -711,8 +711,8 @@ git commit -m "feat: pack listing API GET /v1/packs and GET /v1/packs/{id}"
 ### Task 4 (P5-4): Search category filter
 
 **Files:**
-- Modify: `services/core/helix/db/crud/products.py` — add `category` param to `vector_search_products`
-- Modify: `services/core/helix/api/routers/search.py` — add `category` query param
+- Modify: `services/core/eshopeo/db/crud/products.py` — add `category` param to `vector_search_products`
+- Modify: `services/core/eshopeo/api/routers/search.py` — add `category` query param
 - Test: `services/core/tests/test_search_category.py`
 
 **Context:**
@@ -733,9 +733,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -770,8 +770,8 @@ def client(tenant, product):
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with (
-        patch("helix.api.routers.search.embed_query", AsyncMock(return_value=[0.1] * 1024)),
-        patch("helix.api.routers.search.vector_search_products",
+        patch("eshopeo.api.routers.search.embed_query", AsyncMock(return_value=[0.1] * 1024)),
+        patch("eshopeo.api.routers.search.vector_search_products",
               AsyncMock(return_value=[(product, 0.95)])),
     ):
         yield TestClient(app), tenant, product
@@ -781,7 +781,7 @@ def test_search_with_category_passes_param(client):
     c, tenant, _ = client
     r = c.get(
         "/v1/search/products?q=toner&category=toner",
-        headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+        headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
     )
     assert r.status_code == 200
     data = r.json()
@@ -792,14 +792,14 @@ def test_search_without_category_still_works(client):
     c, tenant, _ = client
     r = c.get(
         "/v1/search/products?q=skincare",
-        headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+        headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
     )
     assert r.status_code == 200
     assert r.json()["total"] == 1
 
 
 def test_vector_search_passes_category_to_filters():
-    from helix.db.crud.products import vector_search_products
+    from eshopeo.db.crud.products import vector_search_products
     import inspect
     sig = inspect.signature(vector_search_products)
     assert "category" in sig.parameters
@@ -814,7 +814,7 @@ Expected: `test_vector_search_passes_category_to_filters` FAIL (param doesn't ex
 
 - [ ] **Step 3: Add `category` param to `vector_search_products`**
 
-In `helix/db/crud/products.py`, update the signature and add filter:
+In `eshopeo/db/crud/products.py`, update the signature and add filter:
 ```python
 async def vector_search_products(
     session: AsyncSession,
@@ -842,7 +842,7 @@ async def vector_search_products(
 
 - [ ] **Step 4: Update search router**
 
-In `helix/api/routers/search.py`, add `category` query param and pass to `vector_search_products`:
+In `eshopeo/api/routers/search.py`, add `category` query param and pass to `vector_search_products`:
 ```python
 @router.get("/products", response_model=SearchResponse)
 async def search_products(
@@ -878,7 +878,7 @@ Expected: 133 PASS
 - [ ] **Step 7: Commit**
 
 ```
-git add helix/db/crud/products.py helix/api/routers/search.py tests/test_search_category.py
+git add eshopeo/db/crud/products.py eshopeo/api/routers/search.py tests/test_search_category.py
 git commit -m "feat: category filter on GET /v1/search/products"
 ```
 

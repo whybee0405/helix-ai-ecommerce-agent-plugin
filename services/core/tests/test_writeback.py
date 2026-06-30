@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from cryptography.fernet import Fernet
 
-from helix.connectors.writeback import write_back_to_platform
+from eshopeo.connectors.writeback import write_back_to_platform
 from tests.conftest import make_test_settings
 
 
@@ -32,7 +32,7 @@ async def test_write_back_woocommerce_success():
     mock_client.__aexit__ = AsyncMock(return_value=False)
     mock_client.put = AsyncMock(return_value=mock_response)
 
-    with patch("helix.connectors.writeback.httpx.AsyncClient", return_value=mock_client):
+    with patch("eshopeo.connectors.writeback.httpx.AsyncClient", return_value=mock_client):
         result = await write_back_to_platform(
             tenant, "123", "description_html", "<p>New</p>", settings
         )
@@ -58,7 +58,7 @@ async def test_write_back_shopify_success():
     mock_client.__aexit__ = AsyncMock(return_value=False)
     mock_client.put = AsyncMock(return_value=mock_response)
 
-    with patch("helix.connectors.writeback.httpx.AsyncClient", return_value=mock_client):
+    with patch("eshopeo.connectors.writeback.httpx.AsyncClient", return_value=mock_client):
         result = await write_back_to_platform(
             tenant, "456", "description_html", "<p>New</p>", settings
         )

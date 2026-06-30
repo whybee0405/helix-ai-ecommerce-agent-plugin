@@ -8,10 +8,10 @@ from uuid import uuid4
 from datetime import datetime, timezone
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.connectors.shopify import verify_shopify_webhook, translate_shopify_order
-from helix.connectors.models import CanonicalOrder
-from helix.db.models import Tenant, Order
+from eshopeo.api.app import create_app
+from eshopeo.connectors.shopify import verify_shopify_webhook, translate_shopify_order
+from eshopeo.connectors.models import CanonicalOrder
+from eshopeo.db.models import Tenant, Order
 from tests.conftest import make_test_settings
 
 
@@ -55,7 +55,7 @@ def test_translate_shopify_order():
 
 @pytest.fixture
 def tenant():
-    from helix.api.auth.crypto import encrypt_credentials
+    from eshopeo.api.auth.crypto import encrypt_credentials
     settings = make_test_settings()
     t = MagicMock(spec=Tenant)
     t.id = uuid4()
@@ -81,12 +81,12 @@ async def client(app):
 async def test_shopify_order_webhook_rejects_bad_signature(client, tenant):
     """Bad HMAC → 401"""
     body = json.dumps(make_shopify_order()).encode()
-    with patch("helix.api.routers.shopify_webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant):
+    with patch("eshopeo.api.routers.shopify_webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant):
         resp = await client.post(
             "/v1/webhooks/shopify/orders",
             content=body,
             headers={
-                "X-Helix-Tenant-Id": str(tenant.id),
+                "X-eShopeo-Tenant-Id": str(tenant.id),
                 "X-Shopify-Hmac-Sha256": "invalidsig==",
                 "Content-Type": "application/json",
             },
@@ -99,12 +99,12 @@ async def test_shopify_order_webhook_rejects_unknown_tenant(client):
     payload = make_shopify_order()
     body = json.dumps(payload).encode()
 
-    with patch("helix.api.routers.shopify_webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=None):
+    with patch("eshopeo.api.routers.shopify_webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=None):
         resp = await client.post(
             "/v1/webhooks/shopify/orders",
             content=body,
             headers={
-                "X-Helix-Tenant-Id": str(uuid4()),
+                "X-eShopeo-Tenant-Id": str(uuid4()),
                 "X-Shopify-Hmac-Sha256": "somesig==",
                 "Content-Type": "application/json",
             },
@@ -128,16 +128,16 @@ async def test_shopify_order_webhook_accepts_valid_payload(client, tenant):
     mock_order.status = "paid"
     mock_order.line_items = payload["line_items"]
 
-    with patch("helix.api.routers.shopify_webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.shopify_webhooks.upsert_order", new_callable=AsyncMock, return_value=mock_order) as mock_upsert, \
-         patch("helix.api.routers.shopify_webhooks.get_customer_id_by_platform_id", new_callable=AsyncMock, return_value=None), \
-         patch("helix.api.routers.shopify_webhooks.get_db"):
+    with patch("eshopeo.api.routers.shopify_webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.shopify_webhooks.upsert_order", new_callable=AsyncMock, return_value=mock_order) as mock_upsert, \
+         patch("eshopeo.api.routers.shopify_webhooks.get_customer_id_by_platform_id", new_callable=AsyncMock, return_value=None), \
+         patch("eshopeo.api.routers.shopify_webhooks.get_db"):
 
         resp = await client.post(
             "/v1/webhooks/shopify/orders",
             content=body,
             headers={
-                "X-Helix-Tenant-Id": str(tenant.id),
+                "X-eShopeo-Tenant-Id": str(tenant.id),
                 "X-Shopify-Hmac-Sha256": sig,
                 "Content-Type": "application/json",
             },

@@ -2,8 +2,8 @@ import pytest
 from cryptography.fernet import Fernet
 from uuid import uuid4
 
-from helix.api.auth.crypto import decrypt_credentials, encrypt_credentials
-from helix.api.auth.tokens import InvalidTokenError, issue_widget_token, validate_widget_token
+from eshopeo.api.auth.crypto import decrypt_credentials, encrypt_credentials
+from eshopeo.api.auth.tokens import InvalidTokenError, issue_widget_token, validate_widget_token
 
 
 def test_encrypt_decrypt_roundtrip():

@@ -1,6 +1,6 @@
 import pytest
 from cryptography.fernet import Fernet
-from helix.config import Settings
+from eshopeo.config import Settings
 
 
 def make_settings(**overrides) -> Settings:

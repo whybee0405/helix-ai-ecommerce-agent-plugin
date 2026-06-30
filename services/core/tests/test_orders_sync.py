@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -50,14 +50,14 @@ async def test_sync_orders_returns_synced_count(client, tenant):
     orders = [make_canonical_order(str(tenant.id))]
 
     with patch(
-        "helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant
-    ), patch("helix.api.routers.sync.upsert_order", new_callable=AsyncMock) as mock_upsert:
+        "eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant
+    ), patch("eshopeo.api.routers.sync.upsert_order", new_callable=AsyncMock) as mock_upsert:
         mock_upsert.return_value = MagicMock(id=uuid4())
 
         resp = await client.post(
             "/v1/sync/orders",
             json={"orders": orders},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -67,11 +67,11 @@ async def test_sync_orders_returns_synced_count(client, tenant):
 
 
 async def test_sync_orders_empty_list(client, tenant):
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant):
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant):
         resp = await client.post(
             "/v1/sync/orders",
             json={"orders": []},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -82,16 +82,16 @@ async def test_sync_orders_handles_upsert_error(client, tenant):
     orders = [make_canonical_order(str(tenant.id))]
 
     with patch(
-        "helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant
+        "eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant
     ), patch(
-        "helix.api.routers.sync.upsert_order",
+        "eshopeo.api.routers.sync.upsert_order",
         new_callable=AsyncMock,
         side_effect=Exception("DB error"),
     ):
         resp = await client.post(
             "/v1/sync/orders",
             json={"orders": orders},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200

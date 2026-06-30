@@ -23,8 +23,8 @@
 ## Task P10-1: Product similarity search
 
 **Files:**
-- Modify: `services/core/helix/db/crud/products.py`
-- Modify: `services/core/helix/api/routers/search.py`
+- Modify: `services/core/eshopeo/db/crud/products.py`
+- Modify: `services/core/eshopeo/api/routers/search.py`
 - Create: `services/core/tests/test_similar_products.py`
 
 ### Step 1: Add `get_similar_products` to `products.py`
@@ -61,7 +61,7 @@ async def get_similar_products(
 
 ### Step 2: Add endpoint to `search.py`
 
-Add `get_similar_products` to the import from `helix.db.crud.products`.
+Add `get_similar_products` to the import from `eshopeo.db.crud.products`.
 
 Add endpoint at the end of `search.py`:
 
@@ -105,9 +105,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -140,7 +140,7 @@ def test_similar_products_returns_200():
     ]
 
     with patch(
-        "helix.api.routers.search.get_similar_products",
+        "eshopeo.api.routers.search.get_similar_products",
         new_callable=AsyncMock,
         return_value=mock_rows,
     ):
@@ -164,7 +164,7 @@ def test_similar_products_404_when_no_embedding():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
-        "helix.api.routers.search.get_similar_products",
+        "eshopeo.api.routers.search.get_similar_products",
         new_callable=AsyncMock,
         return_value=[],
     ):
@@ -188,13 +188,13 @@ def test_similar_products_requires_auth():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile helix/db/crud/products.py helix/api/routers/search.py tests/test_similar_products.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile eshopeo/db/crud/products.py eshopeo/api/routers/search.py tests/test_similar_products.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/products.py services/core/helix/api/routers/search.py services/core/tests/test_similar_products.py
+git add services/core/eshopeo/db/crud/products.py services/core/eshopeo/api/routers/search.py services/core/tests/test_similar_products.py
 git commit -m "feat: similar products search GET /v1/search/similar/{product_id}"
 ```
 
@@ -203,8 +203,8 @@ git commit -m "feat: similar products search GET /v1/search/similar/{product_id}
 ## Task P10-2: Top referenced products analytics
 
 **Files:**
-- Modify: `services/core/helix/db/crud/conversations.py`
-- Modify: `services/core/helix/api/routers/analytics.py`
+- Modify: `services/core/eshopeo/db/crud/conversations.py`
+- Modify: `services/core/eshopeo/api/routers/analytics.py`
 - Create: `services/core/tests/test_top_referenced_products.py`
 
 ### Step 1: Add `get_top_referenced_products` to `conversations.py`
@@ -252,7 +252,7 @@ Note: `func` may already be imported from an earlier function — check before a
 
 Update the conversations import line to include `get_top_referenced_products`:
 ```python
-from helix.db.crud.conversations import get_conversation_analytics, get_top_queries, get_top_referenced_products
+from eshopeo.db.crud.conversations import get_conversation_analytics, get_top_queries, get_top_referenced_products
 ```
 
 Add models and endpoint at the end of `analytics.py`:
@@ -291,9 +291,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -312,7 +312,7 @@ def test_top_referenced_products_returns_200():
     ]
 
     with patch(
-        "helix.api.routers.analytics.get_top_referenced_products",
+        "eshopeo.api.routers.analytics.get_top_referenced_products",
         new_callable=AsyncMock,
         return_value=mock_products,
     ):
@@ -346,7 +346,7 @@ def test_top_referenced_products_empty_list():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
-        "helix.api.routers.analytics.get_top_referenced_products",
+        "eshopeo.api.routers.analytics.get_top_referenced_products",
         new_callable=AsyncMock,
         return_value=[],
     ):
@@ -361,13 +361,13 @@ def test_top_referenced_products_empty_list():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile helix/db/crud/conversations.py helix/api/routers/analytics.py tests/test_top_referenced_products.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile eshopeo/db/crud/conversations.py eshopeo/api/routers/analytics.py tests/test_top_referenced_products.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/conversations.py services/core/helix/api/routers/analytics.py services/core/tests/test_top_referenced_products.py
+git add services/core/eshopeo/db/crud/conversations.py services/core/eshopeo/api/routers/analytics.py services/core/tests/test_top_referenced_products.py
 git commit -m "feat: top referenced products analytics GET /v1/analytics/products/top"
 ```
 
@@ -376,8 +376,8 @@ git commit -m "feat: top referenced products analytics GET /v1/analytics/product
 ## Task P10-3: Embedding coverage health check
 
 **Files:**
-- Modify: `services/core/helix/db/crud/products.py`
-- Modify: `services/core/helix/api/routers/analytics.py`
+- Modify: `services/core/eshopeo/db/crud/products.py`
+- Modify: `services/core/eshopeo/api/routers/analytics.py`
 - Create: `services/core/tests/test_embedding_coverage.py`
 
 ### Step 1: Add `get_embedding_coverage` to `products.py`
@@ -414,7 +414,7 @@ Note: `func` and `select` may already be imported — check before adding.
 
 Add import from products CRUD:
 ```python
-from helix.db.crud.products import get_embedding_coverage
+from eshopeo.db.crud.products import get_embedding_coverage
 ```
 
 Add model and endpoint at the end of `analytics.py`:
@@ -444,9 +444,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -467,7 +467,7 @@ def test_embedding_coverage_returns_200():
     }
 
     with patch(
-        "helix.api.routers.analytics.get_embedding_coverage",
+        "eshopeo.api.routers.analytics.get_embedding_coverage",
         new_callable=AsyncMock,
         return_value=mock_coverage,
     ):
@@ -509,7 +509,7 @@ def test_embedding_coverage_zero_products():
     }
 
     with patch(
-        "helix.api.routers.analytics.get_embedding_coverage",
+        "eshopeo.api.routers.analytics.get_embedding_coverage",
         new_callable=AsyncMock,
         return_value=mock_coverage,
     ):
@@ -526,13 +526,13 @@ def test_embedding_coverage_zero_products():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile helix/db/crud/products.py helix/api/routers/analytics.py tests/test_embedding_coverage.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile eshopeo/db/crud/products.py eshopeo/api/routers/analytics.py tests/test_embedding_coverage.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/products.py services/core/helix/api/routers/analytics.py services/core/tests/test_embedding_coverage.py
+git add services/core/eshopeo/db/crud/products.py services/core/eshopeo/api/routers/analytics.py services/core/tests/test_embedding_coverage.py
 git commit -m "feat: embedding coverage health check GET /v1/analytics/products/embedding-coverage"
 ```
 

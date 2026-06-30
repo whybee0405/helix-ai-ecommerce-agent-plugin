@@ -5,10 +5,10 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_widget_tenant
-from helix.db.models import Tenant
-from helix.llm.gateway import RouteResult
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_widget_tenant
+from eshopeo.db.models import Tenant
+from eshopeo.llm.gateway import RouteResult
 from tests.conftest import make_test_settings
 
 
@@ -30,11 +30,11 @@ def test_chat_stream_returns_event_stream_content_type():
     # Override the dependency
     app.dependency_overrides[get_widget_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack, \
-         patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock):
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack, \
+         patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock):
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(
             response="We ship worldwide",
@@ -63,11 +63,11 @@ def test_chat_stream_contains_token_and_done_events():
 
     app.dependency_overrides[get_widget_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack, \
-         patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock):
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack, \
+         patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock):
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(
             response="We ship worldwide",
@@ -106,11 +106,11 @@ def test_chat_stream_passes_source_in_done_event():
 
     app.dependency_overrides[get_widget_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack, \
-         patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock) as mock_usage:
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack, \
+         patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock) as mock_usage:
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(
             response="Use retinol",

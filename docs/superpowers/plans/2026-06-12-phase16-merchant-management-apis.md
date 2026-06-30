@@ -14,7 +14,7 @@
 
 - **`asyncio_mode = "auto"`** — NEVER add `@pytest.mark.asyncio` to any test.
 - **Test pattern**: `app.dependency_overrides[dep] = lambda: mock` + `.clear()` after each test.
-- **Mock namespace**: patch at where the name is USED (`helix.api.routers.content.list_content_drafts`, not `helix.db.crud.content.list_content_drafts`).
+- **Mock namespace**: patch at where the name is USED (`eshopeo.api.routers.content.list_content_drafts`, not `eshopeo.db.crud.content.list_content_drafts`).
 - **CRUD pattern**: `list(result.scalars().all())` for list queries.
 - **Auth**: `get_tenant` for all merchant endpoints. No admin endpoints in this phase.
 - **Route ordering**: more specific literal routes before path-param catch-alls.
@@ -28,11 +28,11 @@
 ## Task P16-1: Content draft list endpoint
 
 **Files:**
-- Modify: `helix/db/crud/content.py`
-- Modify: `helix/api/routers/content.py`
+- Modify: `eshopeo/db/crud/content.py`
+- Modify: `eshopeo/api/routers/content.py`
 - Create: `tests/test_content_draft_list.py`
 
-### Step 1: Add CRUD to `helix/db/crud/content.py`
+### Step 1: Add CRUD to `eshopeo/db/crud/content.py`
 
 Append after `list_products_without_draft`:
 
@@ -73,12 +73,12 @@ async def count_content_drafts(
 
 Add `func` to the existing `from sqlalchemy import delete, select` import: `from sqlalchemy import delete, func, select`.
 
-### Step 2: Add endpoint to `helix/api/routers/content.py`
+### Step 2: Add endpoint to `eshopeo/api/routers/content.py`
 
 Add import at top:
 ```python
 from typing import Annotated
-from helix.db.crud.content import (
+from eshopeo.db.crud.content import (
     approve_content_draft,
     count_content_drafts,
     get_content_draft,
@@ -125,9 +125,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import ContentDraft, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import ContentDraft, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -159,8 +159,8 @@ def test_list_drafts_returns_200():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with (
-        patch("helix.api.routers.content.list_content_drafts", new_callable=AsyncMock, return_value=drafts),
-        patch("helix.api.routers.content.count_content_drafts", new_callable=AsyncMock, return_value=2),
+        patch("eshopeo.api.routers.content.list_content_drafts", new_callable=AsyncMock, return_value=drafts),
+        patch("eshopeo.api.routers.content.count_content_drafts", new_callable=AsyncMock, return_value=2),
     ):
         r = client.get("/v1/content/drafts")
 
@@ -182,8 +182,8 @@ def test_list_drafts_passes_status_filter():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with (
-        patch("helix.api.routers.content.list_content_drafts", mock_list),
-        patch("helix.api.routers.content.count_content_drafts", mock_count),
+        patch("eshopeo.api.routers.content.list_content_drafts", mock_list),
+        patch("eshopeo.api.routers.content.count_content_drafts", mock_count),
     ):
         r = client.get("/v1/content/drafts?status=pending")
 
@@ -205,7 +205,7 @@ def test_list_drafts_requires_auth():
 ### Step 4: Syntax check and run tests
 
 ```powershell
-python -m py_compile helix/db/crud/content.py helix/api/routers/content.py tests/test_content_draft_list.py
+python -m py_compile eshopeo/db/crud/content.py eshopeo/api/routers/content.py tests/test_content_draft_list.py
 python -m pytest tests/test_content_draft_list.py -v
 ```
 
@@ -214,7 +214,7 @@ All 3 must pass.
 ### Step 5: Commit
 
 ```powershell
-git add helix/db/crud/content.py helix/api/routers/content.py tests/test_content_draft_list.py
+git add eshopeo/db/crud/content.py eshopeo/api/routers/content.py tests/test_content_draft_list.py
 git commit -m "feat: content draft list endpoint — GET /v1/content/drafts with status filter"
 ```
 
@@ -223,12 +223,12 @@ git commit -m "feat: content draft list endpoint — GET /v1/content/drafts with
 ## Task P16-2: Product management router
 
 **Files:**
-- Modify: `helix/db/crud/products.py`
-- Create: `helix/api/routers/products.py`
-- Modify: `helix/api/app.py`
+- Modify: `eshopeo/db/crud/products.py`
+- Create: `eshopeo/api/routers/products.py`
+- Modify: `eshopeo/api/app.py`
 - Create: `tests/test_product_management.py`
 
-### Step 1: Add `update_product` to `helix/db/crud/products.py`
+### Step 1: Add `update_product` to `eshopeo/db/crud/products.py`
 
 Append after `get_product_by_id`:
 
@@ -250,7 +250,7 @@ async def update_product(
     return product
 ```
 
-### Step 2: Create `helix/api/routers/products.py`
+### Step 2: Create `eshopeo/api/routers/products.py`
 
 ```python
 from uuid import UUID
@@ -259,9 +259,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
-from helix.db.crud.products import get_product_by_id, update_product
-from helix.db.models import Tenant
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.crud.products import get_product_by_id, update_product
+from eshopeo.db.models import Tenant
 
 router = APIRouter(prefix="/v1/products", tags=["products"])
 
@@ -332,12 +332,12 @@ async def patch_product(
     return _product_detail_out(product)
 ```
 
-### Step 3: Register in `helix/api/app.py`
+### Step 3: Register in `eshopeo/api/app.py`
 
 Read the file and add after the content router include:
 
 ```python
-    from helix.api.routers import products
+    from eshopeo.api.routers import products
     app.include_router(products.router)
 ```
 
@@ -349,9 +349,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -385,7 +385,7 @@ def test_get_product_returns_200():
     product = _make_product(tenant.id)
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.products.get_product_by_id", new_callable=AsyncMock, return_value=product):
+    with patch("eshopeo.api.routers.products.get_product_by_id", new_callable=AsyncMock, return_value=product):
         r = client.get(f"/v1/products/{product.id}")
 
     app.dependency_overrides.clear()
@@ -402,7 +402,7 @@ def test_get_product_404_when_not_found():
     tenant = _make_tenant()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.products.get_product_by_id", new_callable=AsyncMock, return_value=None):
+    with patch("eshopeo.api.routers.products.get_product_by_id", new_callable=AsyncMock, return_value=None):
         r = client.get(f"/v1/products/{uuid4()}")
 
     app.dependency_overrides.clear()
@@ -422,7 +422,7 @@ def test_patch_product_returns_updated_product():
     mock_db = AsyncMock()
     mock_db.commit = AsyncMock()
 
-    with patch("helix.api.routers.products.update_product", new_callable=AsyncMock, return_value=product):
+    with patch("eshopeo.api.routers.products.update_product", new_callable=AsyncMock, return_value=product):
         r = client.patch(f"/v1/products/{product.id}", json={"title": "Updated Title"})
 
     app.dependency_overrides.clear()
@@ -433,7 +433,7 @@ def test_patch_product_returns_updated_product():
 ### Step 5: Syntax check and run tests
 
 ```powershell
-python -m py_compile helix/db/crud/products.py helix/api/routers/products.py helix/api/app.py tests/test_product_management.py
+python -m py_compile eshopeo/db/crud/products.py eshopeo/api/routers/products.py eshopeo/api/app.py tests/test_product_management.py
 python -m pytest tests/test_product_management.py -v
 ```
 
@@ -442,7 +442,7 @@ All 3 must pass.
 ### Step 6: Commit
 
 ```powershell
-git add helix/db/crud/products.py helix/api/routers/products.py helix/api/app.py tests/test_product_management.py
+git add eshopeo/db/crud/products.py eshopeo/api/routers/products.py eshopeo/api/app.py tests/test_product_management.py
 git commit -m "feat: product management router — GET /v1/products/{id} and PATCH /v1/products/{id}"
 ```
 
@@ -451,12 +451,12 @@ git commit -m "feat: product management router — GET /v1/products/{id} and PAT
 ## Task P16-3: Merchant dashboard
 
 **Files:**
-- Create: `helix/db/crud/dashboard.py`
-- Create: `helix/api/routers/dashboard.py`
-- Modify: `helix/api/app.py`
+- Create: `eshopeo/db/crud/dashboard.py`
+- Create: `eshopeo/api/routers/dashboard.py`
+- Modify: `eshopeo/api/app.py`
 - Create: `tests/test_dashboard.py`
 
-### Step 1: Create `helix/db/crud/dashboard.py`
+### Step 1: Create `eshopeo/db/crud/dashboard.py`
 
 ```python
 from datetime import datetime
@@ -465,8 +465,8 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.db.crud.admin import get_tenant_usage_summary
-from helix.db.models import ContentDraft, Conversation, Customer, Product
+from eshopeo.db.crud.admin import get_tenant_usage_summary
+from eshopeo.db.models import ContentDraft, Conversation, Customer, Product
 
 
 async def get_dashboard_summary(
@@ -518,7 +518,7 @@ async def get_dashboard_summary(
     }
 ```
 
-### Step 2: Create `helix/api/routers/dashboard.py`
+### Step 2: Create `eshopeo/api/routers/dashboard.py`
 
 ```python
 from datetime import datetime, timezone
@@ -527,10 +527,10 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
-from helix.config import get_settings
-from helix.db.crud.dashboard import get_dashboard_summary
-from helix.db.models import Tenant
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.config import get_settings
+from eshopeo.db.crud.dashboard import get_dashboard_summary
+from eshopeo.db.models import Tenant
 
 router = APIRouter(prefix="/v1/dashboard", tags=["dashboard"])
 
@@ -566,12 +566,12 @@ async def get_dashboard(
     )
 ```
 
-### Step 3: Register in `helix/api/app.py`
+### Step 3: Register in `eshopeo/api/app.py`
 
 Add after the products router include:
 
 ```python
-    from helix.api.routers import dashboard
+    from eshopeo.api.routers import dashboard
     app.include_router(dashboard.router)
 ```
 
@@ -583,9 +583,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 _SUMMARY = {
@@ -612,7 +612,7 @@ def test_dashboard_returns_200():
     tenant = _make_tenant()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.dashboard.get_dashboard_summary", new_callable=AsyncMock, return_value=_SUMMARY):
+    with patch("eshopeo.api.routers.dashboard.get_dashboard_summary", new_callable=AsyncMock, return_value=_SUMMARY):
         r = client.get("/v1/dashboard")
 
     app.dependency_overrides.clear()
@@ -627,7 +627,7 @@ def test_dashboard_contains_expected_fields():
     tenant = _make_tenant()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.dashboard.get_dashboard_summary", new_callable=AsyncMock, return_value=_SUMMARY):
+    with patch("eshopeo.api.routers.dashboard.get_dashboard_summary", new_callable=AsyncMock, return_value=_SUMMARY):
         r = client.get("/v1/dashboard")
 
     app.dependency_overrides.clear()
@@ -650,7 +650,7 @@ def test_dashboard_requires_auth():
 ### Step 5: Syntax check and run tests
 
 ```powershell
-python -m py_compile helix/db/crud/dashboard.py helix/api/routers/dashboard.py helix/api/app.py tests/test_dashboard.py
+python -m py_compile eshopeo/db/crud/dashboard.py eshopeo/api/routers/dashboard.py eshopeo/api/app.py tests/test_dashboard.py
 python -m pytest tests/test_dashboard.py -v
 ```
 
@@ -659,7 +659,7 @@ All 3 must pass.
 ### Step 6: Commit
 
 ```powershell
-git add helix/db/crud/dashboard.py helix/api/routers/dashboard.py helix/api/app.py tests/test_dashboard.py
+git add eshopeo/db/crud/dashboard.py eshopeo/api/routers/dashboard.py eshopeo/api/app.py tests/test_dashboard.py
 git commit -m "feat: merchant dashboard — GET /v1/dashboard aggregates product/customer/usage metrics"
 ```
 

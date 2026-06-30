@@ -2,11 +2,11 @@ services:
   db:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_USER: helix
-      POSTGRES_PASSWORD: helix
-      POSTGRES_DB: helix
+      POSTGRES_USER: eshopeo
+      POSTGRES_PASSWORD: eshopeo
+      POSTGRES_DB: eshopeo
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U helix"]
+      test: ["CMD-SHELL", "pg_isready -U eshopeo"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -25,7 +25,7 @@ services:
     build:
       context: ../services/core
       dockerfile: Dockerfile
-    command: uvicorn helix.api.app:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn eshopeo.api.app:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     env_file: ../.env
@@ -43,7 +43,7 @@ services:
     build:
       context: ../services/core
       dockerfile: Dockerfile
-    command: celery -A helix.workers.celery_app worker --loglevel=info -Q default,embedding
+    command: celery -A eshopeo.workers.celery_app worker --loglevel=info -Q default,embedding
     env_file: ../.env
     depends_on:
       db:
@@ -57,10 +57,10 @@ services:
 
   web:
     build:
-      context: /var/www/helix-saas-web
+      context: /var/www/eshopeo-saas-web
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: https://api.helix.cloudia.co.za
+        NEXT_PUBLIC_API_URL: https://api.eshopeo.cloudia.co.za
     restart: unless-stopped
     ports:
       - "3000:3000"

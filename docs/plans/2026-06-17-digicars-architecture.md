@@ -1,13 +1,13 @@
 # Digicars — Architecture & Implementation Plan
 
 **Date:** 2026-06-17  
-**Concept:** A car dealership WooCommerce site powered by Helix AI, running on the same VPS and backend infrastructure as the existing K-Beauty tenant. Completely isolated data; shared infrastructure.
+**Concept:** A car dealership WooCommerce site powered by eShopeo, running on the same VPS and backend infrastructure as the existing K-Beauty tenant. Completely isolated data; shared infrastructure.
 
 ---
 
 ## 1. Multi-Tenant Isolation
 
-Helix's data model is already multi-tenant — every DB table has `tenant_id`. Digicars is simply **Tenant B**.
+eShopeo's data model is already multi-tenant — every DB table has `tenant_id`. Digicars is simply **Tenant B**.
 
 | Concern | K-Beauty (Tenant A) | Digicars (Tenant B) |
 |---------|--------------------|--------------------|
@@ -167,7 +167,7 @@ Cars are not added to a cart — customers enquire. The CTA system must be confi
   created_at
   ```
 - `POST /v1/widget/capture-lead` extended to accept `product_platform_id` and `preferred_contact_time`
-- Tenant webhook: POST to `helix_lead_webhook_url` (WP option) — compatible with Zapier, Make.com, CRM webhooks
+- Tenant webhook: POST to `eshopeo_lead_webhook_url` (WP option) — compatible with Zapier, Make.com, CRM webhooks
 
 ### Widget JS — pack-aware CTA
 
@@ -200,7 +200,7 @@ WooCommerce is used as the product/inventory CMS only — the cart/checkout flow
 - **Price field:** Set to vehicle price in ZAR — syncs as `price_minor` (cents)
 - **SKU field:** Use stock number (e.g. `DC-2024-VW-001`) — syncs as `platform_id`
 
-### Helix plugin settings for digicars site
+### eShopeo plugin settings for digicars site
 
 ```
 API URL:           https://api.yourdomain.com (same backend)
@@ -243,7 +243,7 @@ SHARED (one instance, serves all tenants):
 
 TENANT-SPECIFIC (per WordPress install):
   ├── digicars.yourdomain.com — separate WP + WooCommerce install
-  ├── helix-connector plugin — same plugin version, own API key
+  ├── eshopeo-connector plugin — same plugin version, own API key
   └── Theme + branding — completely independent
 ```
 
@@ -276,7 +276,7 @@ Cost implication: Digicars runs on the same VPS at zero additional infra cost. T
 
 - `condition` field in `product_schema.json` distinguishes `new`, `used`, `demo`
 - System prompt instructs AI to mention condition and mileage prominently for used vehicles
-- Used vehicles: mention `certified_used` if true ("This is a Helix Certified Pre-Owned vehicle")
+- Used vehicles: mention `certified_used` if true ("This is a eShopeo Certified Pre-Owned vehicle")
 - AI never recommends a used vehicle as "new" — the schema enforces this at retrieval time
 
 ---
@@ -288,19 +288,19 @@ Cost implication: Digicars runs on the same VPS at zero additional infra cost. T
 1. Create `packs/automotive/` with all YAML/JSON files above
 2. Provision digicars tenant via admin API: `POST /v1/admin/tenants` with `pack_id: "automotive"`
 3. Install WooCommerce on digicars site, configure product attributes
-4. Install Helix Connector, enter digicars API key
+4. Install eShopeo Connector, enter digicars API key
 
 ### Phase 2 — Enquire CTA (1 day)
 
 1. Create `Lead` DB model + Alembic migration
 2. Extend `POST /v1/widget/capture-lead` to accept `product_platform_id`, `preferred_contact_time`
 3. Widget JS: read `pack.cta_type` from handshake response; branch to enquiry form vs cart
-4. PHP: add `helix_lead_webhook_url` WP option + admin UI field
+4. PHP: add `eshopeo_lead_webhook_url` WP option + admin UI field
 
 ### Phase 3 — Product Sync & Search (0.5 days)
 
 1. Load car listings into WooCommerce (can be manual or CSV import)
-2. Trigger full product sync from Helix admin panel
+2. Trigger full product sync from eShopeo admin panel
 3. Verify embeddings generated, test semantic search queries
 4. Tune `prompts/system.md` for automotive tone
 
@@ -311,8 +311,8 @@ Cost implication: Digicars runs on the same VPS at zero additional infra cost. T
 
 ### Phase 5 — Frontend Polish (1 day)
 
-1. Configure digicars branding (colours, logo, widget position) via Helix admin
-2. Add `[helix_search]` shortcode to digicars homepage hero section
+1. Configure digicars branding (colours, logo, widget position) via eShopeo admin
+2. Add `[eshopeo_search]` shortcode to digicars homepage hero section
 3. Test full user journey: search → recommendation → enquire → confirmation
 4. Mobile responsiveness check (same widget, already responsive)
 

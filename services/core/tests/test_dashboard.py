@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 _SUMMARY = {
@@ -32,7 +32,7 @@ def test_dashboard_returns_200():
     tenant = _make_tenant()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.dashboard.get_dashboard_summary", new_callable=AsyncMock, return_value=_SUMMARY):
+    with patch("eshopeo.api.routers.dashboard.get_dashboard_summary", new_callable=AsyncMock, return_value=_SUMMARY):
         r = client.get("/v1/dashboard")
 
     app.dependency_overrides.clear()
@@ -47,7 +47,7 @@ def test_dashboard_contains_expected_fields():
     tenant = _make_tenant()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.dashboard.get_dashboard_summary", new_callable=AsyncMock, return_value=_SUMMARY):
+    with patch("eshopeo.api.routers.dashboard.get_dashboard_summary", new_callable=AsyncMock, return_value=_SUMMARY):
         r = client.get("/v1/dashboard")
 
     app.dependency_overrides.clear()

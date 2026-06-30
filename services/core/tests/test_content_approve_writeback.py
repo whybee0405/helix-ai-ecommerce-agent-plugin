@@ -4,9 +4,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import ContentDraft, Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import ContentDraft, Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -56,11 +56,11 @@ def test_approve_description_draft_triggers_writeback():
     app.dependency_overrides[get_db] = lambda: override_db
 
     with (
-        patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
-        patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
-        patch("helix.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
-        patch("helix.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=True) as mock_wb,
-        patch("helix.api.routers.content.get_settings", return_value=MagicMock()),
+        patch("eshopeo.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
+        patch("eshopeo.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
+        patch("eshopeo.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
+        patch("eshopeo.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=True) as mock_wb,
+        patch("eshopeo.api.routers.content.get_settings", return_value=MagicMock()),
     ):
         r = client.post(f"/v1/content/products/{product_id}/draft/approve")
 
@@ -95,11 +95,11 @@ def test_approve_writeback_failure_still_returns_200():
     app.dependency_overrides[get_db] = lambda: override_db
 
     with (
-        patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
-        patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
-        patch("helix.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
-        patch("helix.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=False),
-        patch("helix.api.routers.content.get_settings", return_value=MagicMock()),
+        patch("eshopeo.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
+        patch("eshopeo.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
+        patch("eshopeo.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
+        patch("eshopeo.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=False),
+        patch("eshopeo.api.routers.content.get_settings", return_value=MagicMock()),
     ):
         r = client.post(f"/v1/content/products/{product_id}/draft/approve")
 
@@ -127,9 +127,9 @@ def test_approve_seo_field_skips_writeback():
     app.dependency_overrides[get_db] = lambda: override_db
 
     with (
-        patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
-        patch("helix.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
-        patch("helix.api.routers.content.write_back_to_platform", new_callable=AsyncMock) as mock_wb,
+        patch("eshopeo.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
+        patch("eshopeo.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
+        patch("eshopeo.api.routers.content.write_back_to_platform", new_callable=AsyncMock) as mock_wb,
     ):
         r = client.post(f"/v1/content/products/{product_id}/draft/approve?field=meta_title")
 

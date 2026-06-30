@@ -4,7 +4,7 @@
 
 **Goal:** Build the complete Phase 0 foundation so a real WooCommerce store's catalog syncs into PostgreSQL with embeddings generated, via the connector contract, with tenancy and the LLM gateway in place.
 
-**Architecture:** Strict dependency order — scaffold → infra → DB → auth → gateway → packs → connector contract → WooCommerce plugin → embeddings. All business logic in `domain/` or `connectors/`; all Claude calls through `helix.llm`; every query scoped by `tenant_id`.
+**Architecture:** Strict dependency order — scaffold → infra → DB → auth → gateway → packs → connector contract → WooCommerce plugin → embeddings. All business logic in `domain/` or `connectors/`; all Claude calls through `eshopeo.llm`; every query scoped by `tenant_id`.
 
 **Tech Stack:** Python 3.12 · FastAPI · Pydantic v2 · SQLAlchemy 2.0 + asyncpg · Alembic · pgvector · Redis · Celery · Anthropic SDK · Voyage AI REST · structlog · cryptography · python-jose · jsonschema · PyYAML · PHP 8.0+ · Docker Compose
 
@@ -16,25 +16,25 @@
 
 **`services/core/`:** `pyproject.toml`, `Dockerfile`
 
-**`services/core/helix/`:** `__init__.py`, `config.py`
+**`services/core/eshopeo/`:** `__init__.py`, `config.py`
 
-**`services/core/helix/db/`:** `__init__.py`, `engine.py`, `models.py`, `tenant_scope.py`, `crud/__init__.py`, `crud/tenants.py`, `crud/products.py`, `migrations/env.py`, `migrations/script.py.mako`, `migrations/versions/0001_initial.py`
+**`services/core/eshopeo/db/`:** `__init__.py`, `engine.py`, `models.py`, `tenant_scope.py`, `crud/__init__.py`, `crud/tenants.py`, `crud/products.py`, `migrations/env.py`, `migrations/script.py.mako`, `migrations/versions/0001_initial.py`
 
-**`services/core/helix/api/`:** `__init__.py`, `app.py`, `deps.py`, `routers/__init__.py`, `routers/health.py`, `routers/tenants.py`, `routers/sync.py`, `routers/webhooks.py`, `routers/widget.py`
+**`services/core/eshopeo/api/`:** `__init__.py`, `app.py`, `deps.py`, `routers/__init__.py`, `routers/health.py`, `routers/tenants.py`, `routers/sync.py`, `routers/webhooks.py`, `routers/widget.py`
 
-**`services/core/helix/connectors/`:** `__init__.py`, `models.py`
+**`services/core/eshopeo/connectors/`:** `__init__.py`, `models.py`
 
-**`services/core/helix/llm/`:** `__init__.py`, `gateway.py`, `layers.py`
+**`services/core/eshopeo/llm/`:** `__init__.py`, `gateway.py`, `layers.py`
 
-**`services/core/helix/packs/`:** `__init__.py`, `loader.py`, `registry.py`
+**`services/core/eshopeo/packs/`:** `__init__.py`, `loader.py`, `registry.py`
 
-**`services/core/helix/workers/`:** `__init__.py`, `celery_app.py`, `tasks/__init__.py`, `tasks/embedding.py`
+**`services/core/eshopeo/workers/`:** `__init__.py`, `celery_app.py`, `tasks/__init__.py`, `tasks/embedding.py`
 
 **`services/core/tests/`:** `conftest.py`, `test_config.py`, `test_db_models.py`, `test_tenant_scope.py`, `test_auth.py`, `test_health.py`, `test_tenants_endpoint.py`, `test_connector_models.py`, `test_pack_loader.py`, `test_llm_gateway.py`, `test_sync_endpoint.py`, `test_webhooks_endpoint.py`, `test_embedding_tasks.py`
 
 **`infra/`:** `compose.yaml`
 
-**`connectors/woocommerce/`:** `helix-connector.php`, `includes/class-helix-admin.php`, `includes/class-helix-api-client.php`, `includes/class-helix-sync.php`, `includes/class-helix-webhooks.php`
+**`connectors/woocommerce/`:** `eshopeo-connector.php`, `includes/class-eshopeo-admin.php`, `includes/class-eshopeo-api-client.php`, `includes/class-eshopeo-sync.php`, `includes/class-eshopeo-webhooks.php`
 
 **`packs/kbeauty/`:** `pack.yaml`, `profile_schema.json`, `product_schema.json`, `taxonomy.yaml`, `compatibility_rules.yaml`, `prompts/system.md`, `prompts/consultant.md`, `copy/en.json`
 
@@ -47,16 +47,16 @@
 **Files:**
 - Create: `services/core/pyproject.toml`
 - Create: `.gitignore`
-- Create: `services/core/helix/__init__.py`
+- Create: `services/core/eshopeo/__init__.py`
 - Create: `services/core/tests/__init__.py`
 
 - [ ] **Step 1: Create directory structure**
 
 ```bash
-mkdir -p services/core/helix/{api/routers,db/{crud,migrations/versions},connectors,llm,packs,workers/tasks,domain}
+mkdir -p services/core/eshopeo/{api/routers,db/{crud,migrations/versions},connectors,llm,packs,workers/tasks,domain}
 mkdir -p services/core/tests
 mkdir -p infra connectors/woocommerce/includes packs/kbeauty/{prompts,copy} docs/adr
-touch services/core/helix/__init__.py services/core/tests/__init__.py
+touch services/core/eshopeo/__init__.py services/core/tests/__init__.py
 ```
 
 - [ ] **Step 2: Create `services/core/pyproject.toml`**
@@ -67,7 +67,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "helix"
+name = "eshopeo"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
@@ -104,7 +104,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["helix"]
+packages = ["eshopeo"]
 
 [tool.ruff]
 target-version = "py312"
@@ -155,7 +155,7 @@ Expected: `ok`
 - [ ] **Step 5: Commit**
 
 ```bash
-git add services/core/pyproject.toml .gitignore services/core/helix/__init__.py
+git add services/core/pyproject.toml .gitignore services/core/eshopeo/__init__.py
 git commit -m "chore: scaffold monorepo structure and pyproject.toml"
 ```
 
@@ -194,13 +194,13 @@ services:
   db:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_USER: helix
-      POSTGRES_PASSWORD: helix
-      POSTGRES_DB: helix
+      POSTGRES_USER: eshopeo
+      POSTGRES_PASSWORD: eshopeo
+      POSTGRES_DB: eshopeo
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U helix"]
+      test: ["CMD-SHELL", "pg_isready -U eshopeo"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -221,7 +221,7 @@ services:
     build:
       context: ../services/core
       dockerfile: Dockerfile
-    command: uvicorn helix.api.app:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn eshopeo.api.app:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     env_file: ../.env
@@ -238,7 +238,7 @@ services:
     build:
       context: ../services/core
       dockerfile: Dockerfile
-    command: celery -A helix.workers.celery_app worker --loglevel=info -Q default,embedding
+    command: celery -A eshopeo.workers.celery_app worker --loglevel=info -Q default,embedding
     env_file: ../.env
     depends_on:
       db:
@@ -257,7 +257,7 @@ volumes:
 
 ```bash
 # Database — use postgresql:// (driver prefix added at runtime)
-DATABASE_URL=postgresql://helix:helix@localhost:5432/helix
+DATABASE_URL=postgresql://eshopeo:eshopeo@localhost:5432/eshopeo
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
@@ -277,8 +277,8 @@ SESSION_SECRET=
 # Shared secret for POST /v1/tenants — set to a strong random string
 PROVISION_KEY=
 
-# Public brand name shown in responses (codename: helix)
-BRAND_NAME=helix
+# Public brand name shown in responses (codename: eshopeo)
+BRAND_NAME=eshopeo
 
 # development | production
 ENVIRONMENT=development
@@ -307,7 +307,7 @@ git commit -m "chore: add Docker Compose infrastructure and Dockerfile"
 ## Task 3: Application config
 
 **Files:**
-- Create: `services/core/helix/config.py`
+- Create: `services/core/eshopeo/config.py`
 - Test: `services/core/tests/test_config.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -316,7 +316,7 @@ git commit -m "chore: add Docker Compose infrastructure and Dockerfile"
 # services/core/tests/test_config.py
 import pytest
 from cryptography.fernet import Fernet
-from helix.config import Settings, get_settings
+from eshopeo.config import Settings, get_settings
 
 
 def make_settings(**overrides) -> Settings:
@@ -361,9 +361,9 @@ def test_missing_required_field_raises():
 ```bash
 cd services/core && pytest tests/test_config.py -v
 ```
-Expected: `ImportError` — `helix.config` does not exist yet.
+Expected: `ImportError` — `eshopeo.config` does not exist yet.
 
-- [ ] **Step 3: Create `services/core/helix/config.py`**
+- [ ] **Step 3: Create `services/core/eshopeo/config.py`**
 
 ```python
 from functools import lru_cache
@@ -390,7 +390,7 @@ class Settings(BaseSettings):
     llm_model_generate: str = "claude-sonnet-4-6"
     llm_model_reason: str = "claude-opus-4-8"
 
-    brand_name: str = "helix"
+    brand_name: str = "eshopeo"
     environment: Literal["development", "production"] = "development"
     log_level: str = "INFO"
     packs_dir: str = "/packs"
@@ -423,7 +423,7 @@ Expected: `4 passed`
 - [ ] **Step 5: Commit**
 
 ```bash
-git add services/core/helix/config.py services/core/tests/test_config.py
+git add services/core/eshopeo/config.py services/core/tests/test_config.py
 git commit -m "feat: add pydantic-settings config with tiered model IDs"
 ```
 
@@ -432,15 +432,15 @@ git commit -m "feat: add pydantic-settings config with tiered model IDs"
 ## Task 4: Database models
 
 **Files:**
-- Create: `services/core/helix/db/__init__.py`
-- Create: `services/core/helix/db/models.py`
+- Create: `services/core/eshopeo/db/__init__.py`
+- Create: `services/core/eshopeo/db/models.py`
 - Test: `services/core/tests/test_db_models.py`
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
 # services/core/tests/test_db_models.py
-from helix.db.models import Tenant, Product, Customer, Order, Job, UsageEvent, Base
+from eshopeo.db.models import Tenant, Product, Customer, Order, Job, UsageEvent, Base
 from sqlalchemy import inspect
 
 
@@ -474,14 +474,14 @@ def test_usage_event_has_cost():
 ```bash
 cd services/core && pytest tests/test_db_models.py -v
 ```
-Expected: `ImportError` — `helix.db.models` does not exist yet.
+Expected: `ImportError` — `eshopeo.db.models` does not exist yet.
 
-- [ ] **Step 3: Create `services/core/helix/db/__init__.py`** (empty)
+- [ ] **Step 3: Create `services/core/eshopeo/db/__init__.py`** (empty)
 
 ```python
 ```
 
-- [ ] **Step 4: Create `services/core/helix/db/models.py`**
+- [ ] **Step 4: Create `services/core/eshopeo/db/models.py`**
 
 ```python
 from datetime import datetime, timezone
@@ -640,7 +640,7 @@ Expected: `4 passed`
 - [ ] **Step 6: Commit**
 
 ```bash
-git add services/core/helix/db/ services/core/tests/test_db_models.py
+git add services/core/eshopeo/db/ services/core/tests/test_db_models.py
 git commit -m "feat: add SQLAlchemy 2.0 models for all six Phase 0 tables"
 ```
 
@@ -649,12 +649,12 @@ git commit -m "feat: add SQLAlchemy 2.0 models for all six Phase 0 tables"
 ## Task 5: Database engine + Alembic setup
 
 **Files:**
-- Create: `services/core/helix/db/engine.py`
-- Create: `services/core/helix/db/migrations/env.py`
-- Create: `services/core/helix/db/migrations/script.py.mako`
+- Create: `services/core/eshopeo/db/engine.py`
+- Create: `services/core/eshopeo/db/migrations/env.py`
+- Create: `services/core/eshopeo/db/migrations/script.py.mako`
 - Create: `services/core/alembic.ini`
 
-- [ ] **Step 1: Create `services/core/helix/db/engine.py`**
+- [ ] **Step 1: Create `services/core/eshopeo/db/engine.py`**
 
 ```python
 from collections.abc import AsyncGenerator
@@ -667,7 +667,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from helix.config import get_settings
+from eshopeo.config import get_settings
 
 _settings = get_settings()
 
@@ -701,7 +701,7 @@ def get_sync_session() -> Session:
 
 ```ini
 [alembic]
-script_location = helix/db/migrations
+script_location = eshopeo/db/migrations
 prepend_sys_path = .
 version_path_separator = os
 
@@ -740,7 +740,7 @@ format = %(levelname)-5.5s [%(name)s] %(message)s
 datefmt = %H:%M:%S
 ```
 
-- [ ] **Step 3: Create `services/core/helix/db/migrations/env.py`**
+- [ ] **Step 3: Create `services/core/eshopeo/db/migrations/env.py`**
 
 ```python
 from logging.config import fileConfig
@@ -748,8 +748,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from helix.config import get_settings
-from helix.db.models import Base
+from eshopeo.config import get_settings
+from eshopeo.db.models import Base
 
 config = context.config
 if config.config_file_name is not None:
@@ -791,7 +791,7 @@ else:
     run_migrations_online()
 ```
 
-- [ ] **Step 4: Create `services/core/helix/db/migrations/script.py.mako`**
+- [ ] **Step 4: Create `services/core/eshopeo/db/migrations/script.py.mako`**
 
 ```mako
 """${message}
@@ -824,7 +824,7 @@ def downgrade() -> None:
 - [ ] **Step 5: Commit**
 
 ```bash
-git add services/core/helix/db/engine.py services/core/helix/db/migrations/ services/core/alembic.ini
+git add services/core/eshopeo/db/engine.py services/core/eshopeo/db/migrations/ services/core/alembic.ini
 git commit -m "feat: add SQLAlchemy async engine and Alembic migration scaffold"
 ```
 
@@ -833,7 +833,7 @@ git commit -m "feat: add SQLAlchemy async engine and Alembic migration scaffold"
 ## Task 6: Initial database migration
 
 **Files:**
-- Create: `services/core/helix/db/migrations/versions/0001_initial.py`
+- Create: `services/core/eshopeo/db/migrations/versions/0001_initial.py`
 
 - [ ] **Step 1: Start the database container**
 
@@ -844,7 +844,7 @@ docker compose -f infra/compose.yaml ps db
 ```
 Expected: `db` shows `healthy`.
 
-- [ ] **Step 2: Create `services/core/helix/db/migrations/versions/0001_initial.py`**
+- [ ] **Step 2: Create `services/core/eshopeo/db/migrations/versions/0001_initial.py`**
 
 ```python
 """Initial schema with pgvector
@@ -1030,7 +1030,7 @@ def downgrade() -> None:
 - [ ] **Step 3: Run the migration**
 
 ```bash
-cd services/core && DATABASE_URL=postgresql://helix:helix@localhost:5432/helix alembic upgrade head
+cd services/core && DATABASE_URL=postgresql://eshopeo:eshopeo@localhost:5432/eshopeo alembic upgrade head
 ```
 Expected:
 ```
@@ -1040,14 +1040,14 @@ INFO  [alembic.runtime.migration] Running upgrade  -> 0001, Initial schema with 
 - [ ] **Step 4: Verify tables exist**
 
 ```bash
-docker compose -f infra/compose.yaml exec db psql -U helix -c "\dt"
+docker compose -f infra/compose.yaml exec db psql -U eshopeo -c "\dt"
 ```
 Expected: 6 tables listed: `customer`, `job`, `order`, `product`, `tenant`, `usage_event`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add services/core/helix/db/migrations/versions/0001_initial.py
+git add services/core/eshopeo/db/migrations/versions/0001_initial.py
 git commit -m "feat: add initial Alembic migration with pgvector and all Phase 0 tables"
 ```
 
@@ -1056,10 +1056,10 @@ git commit -m "feat: add initial Alembic migration with pgvector and all Phase 0
 ## Task 7: Tenant scope + CRUD layer
 
 **Files:**
-- Create: `services/core/helix/db/tenant_scope.py`
-- Create: `services/core/helix/db/crud/__init__.py`
-- Create: `services/core/helix/db/crud/tenants.py`
-- Create: `services/core/helix/db/crud/products.py`
+- Create: `services/core/eshopeo/db/tenant_scope.py`
+- Create: `services/core/eshopeo/db/crud/__init__.py`
+- Create: `services/core/eshopeo/db/crud/tenants.py`
+- Create: `services/core/eshopeo/db/crud/products.py`
 - Test: `services/core/tests/test_tenant_scope.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -1070,7 +1070,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from helix.db.tenant_scope import TenantScope
+from eshopeo.db.tenant_scope import TenantScope
 
 
 @pytest.fixture
@@ -1106,9 +1106,9 @@ async def test_get_products_scopes_by_tenant(mock_session):
 ```bash
 cd services/core && pytest tests/test_tenant_scope.py -v
 ```
-Expected: `ImportError` — `helix.db.tenant_scope` does not exist.
+Expected: `ImportError` — `eshopeo.db.tenant_scope` does not exist.
 
-- [ ] **Step 3: Create `services/core/helix/db/tenant_scope.py`**
+- [ ] **Step 3: Create `services/core/eshopeo/db/tenant_scope.py`**
 
 ```python
 from uuid import UUID
@@ -1116,7 +1116,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.db.models import Product
+from eshopeo.db.models import Product
 
 
 class TenantScope:
@@ -1142,9 +1142,9 @@ class TenantScope:
         return result.scalar_one_or_none()
 ```
 
-- [ ] **Step 4: Create `services/core/helix/db/crud/__init__.py`** (empty)
+- [ ] **Step 4: Create `services/core/eshopeo/db/crud/__init__.py`** (empty)
 
-- [ ] **Step 5: Create `services/core/helix/db/crud/tenants.py`**
+- [ ] **Step 5: Create `services/core/eshopeo/db/crud/tenants.py`**
 
 ```python
 from uuid import UUID
@@ -1152,7 +1152,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.db.models import Tenant
+from eshopeo.db.models import Tenant
 
 
 async def get_tenant_by_public_key(
@@ -1171,7 +1171,7 @@ async def create_tenant(session: AsyncSession, tenant: Tenant) -> Tenant:
     return tenant
 ```
 
-- [ ] **Step 6: Create `services/core/helix/db/crud/products.py`**
+- [ ] **Step 6: Create `services/core/eshopeo/db/crud/products.py`**
 
 ```python
 from uuid import UUID
@@ -1180,7 +1180,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.db.models import Product
+from eshopeo.db.models import Product
 
 
 async def upsert_product(session: AsyncSession, product: Product) -> Product:
@@ -1247,7 +1247,7 @@ Expected: `2 passed`
 - [ ] **Step 8: Commit**
 
 ```bash
-git add services/core/helix/db/tenant_scope.py services/core/helix/db/crud/ services/core/tests/test_tenant_scope.py
+git add services/core/eshopeo/db/tenant_scope.py services/core/eshopeo/db/crud/ services/core/tests/test_tenant_scope.py
 git commit -m "feat: add TenantScope enforcement and CRUD layer for tenants and products"
 ```
 
@@ -1256,11 +1256,11 @@ git commit -m "feat: add TenantScope enforcement and CRUD layer for tenants and 
 ## Task 8: FastAPI app skeleton + health endpoint
 
 **Files:**
-- Create: `services/core/helix/api/__init__.py`
-- Create: `services/core/helix/api/app.py`
-- Create: `services/core/helix/api/deps.py`
-- Create: `services/core/helix/api/routers/__init__.py`
-- Create: `services/core/helix/api/routers/health.py`
+- Create: `services/core/eshopeo/api/__init__.py`
+- Create: `services/core/eshopeo/api/app.py`
+- Create: `services/core/eshopeo/api/deps.py`
+- Create: `services/core/eshopeo/api/routers/__init__.py`
+- Create: `services/core/eshopeo/api/routers/health.py`
 - Test: `services/core/tests/test_health.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -1271,7 +1271,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
+from eshopeo.api.app import create_app
 from tests.conftest import make_test_settings
 
 
@@ -1288,16 +1288,16 @@ async def client(app):
 
 @pytest.mark.asyncio
 async def test_health_returns_200(client):
-    with patch("helix.api.routers.health.get_async_session"), \
-         patch("helix.api.routers.health.get_redis_client"):
+    with patch("eshopeo.api.routers.health.get_async_session"), \
+         patch("eshopeo.api.routers.health.get_redis_client"):
         resp = await client.get("/health")
     assert resp.status_code == 200
 
 
 @pytest.mark.asyncio
 async def test_health_response_shape(client):
-    with patch("helix.api.routers.health.get_async_session"), \
-         patch("helix.api.routers.health.get_redis_client"):
+    with patch("eshopeo.api.routers.health.get_async_session"), \
+         patch("eshopeo.api.routers.health.get_redis_client"):
         resp = await client.get("/health")
     data = resp.json()
     assert "status" in data
@@ -1309,12 +1309,12 @@ async def test_health_response_shape(client):
 
 ```python
 from cryptography.fernet import Fernet
-from helix.config import Settings
+from eshopeo.config import Settings
 
 
 def make_test_settings(**overrides) -> Settings:
     base = dict(
-        database_url="postgresql://helix:helix@localhost:5432/helix_test",
+        database_url="postgresql://eshopeo:eshopeo@localhost:5432/eshopeo_test",
         redis_url="redis://localhost:6379/1",
         anthropic_api_key="sk-ant-test",
         voyage_api_key="pa-test",
@@ -1332,13 +1332,13 @@ def make_test_settings(**overrides) -> Settings:
 ```bash
 cd services/core && pytest tests/test_health.py -v
 ```
-Expected: `ImportError` — `helix.api.app` does not exist.
+Expected: `ImportError` — `eshopeo.api.app` does not exist.
 
-- [ ] **Step 4: Create `services/core/helix/api/__init__.py`** (empty)
+- [ ] **Step 4: Create `services/core/eshopeo/api/__init__.py`** (empty)
 
-- [ ] **Step 5: Create `services/core/helix/api/routers/__init__.py`** (empty)
+- [ ] **Step 5: Create `services/core/eshopeo/api/routers/__init__.py`** (empty)
 
-- [ ] **Step 6: Create `services/core/helix/api/routers/health.py`**
+- [ ] **Step 6: Create `services/core/eshopeo/api/routers/health.py`**
 
 ```python
 from fastapi import APIRouter
@@ -1363,14 +1363,14 @@ async def health() -> dict:
     db_ok = False
     redis_ok = False
     try:
-        from helix.db.engine import async_session_factory
+        from eshopeo.db.engine import async_session_factory
         async with async_session_factory() as session:
             await session.execute(text("SELECT 1"))
         db_ok = True
     except Exception:
         pass
     try:
-        from helix.config import get_settings
+        from eshopeo.config import get_settings
         settings = get_settings()
         r = aioredis.from_url(str(settings.redis_url))
         await r.ping()
@@ -1385,7 +1385,7 @@ async def health() -> dict:
     }
 ```
 
-- [ ] **Step 7: Create `services/core/helix/api/deps.py`**
+- [ ] **Step 7: Create `services/core/eshopeo/api/deps.py`**
 
 ```python
 from collections.abc import AsyncGenerator
@@ -1395,10 +1395,10 @@ from uuid import UUID
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.config import Settings, get_settings
-from helix.db.crud.tenants import get_tenant_by_public_key
-from helix.db.engine import async_session_factory
-from helix.db.models import Tenant
+from eshopeo.config import Settings, get_settings
+from eshopeo.db.crud.tenants import get_tenant_by_public_key
+from eshopeo.db.engine import async_session_factory
+from eshopeo.db.models import Tenant
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -1407,13 +1407,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def get_tenant(
-    x_helix_tenant_key: Annotated[str | None, Header()] = None,
+    x_eshopeo_tenant_key: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
 ) -> Tenant:
-    if x_helix_tenant_key is None:
+    if x_eshopeo_tenant_key is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing tenant key")
     try:
-        key_uuid = UUID(x_helix_tenant_key)
+        key_uuid = UUID(x_eshopeo_tenant_key)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid tenant key")
     tenant = await get_tenant_by_public_key(db, key_uuid)
@@ -1422,7 +1422,7 @@ async def get_tenant(
     return tenant
 ```
 
-- [ ] **Step 8: Create `services/core/helix/api/app.py`**
+- [ ] **Step 8: Create `services/core/eshopeo/api/app.py`**
 
 ```python
 import structlog
@@ -1430,8 +1430,8 @@ import logging
 
 from fastapi import FastAPI
 
-from helix.api.routers import health
-from helix.config import Settings
+from eshopeo.api.routers import health
+from eshopeo.config import Settings
 
 
 def configure_logging(log_level: str) -> None:
@@ -1450,7 +1450,7 @@ def configure_logging(log_level: str) -> None:
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
-    from helix.config import get_settings
+    from eshopeo.config import get_settings
     s = settings or get_settings()
     configure_logging(s.log_level)
 
@@ -1472,7 +1472,7 @@ Expected: `2 passed`
 - [ ] **Step 10: Commit**
 
 ```bash
-git add services/core/helix/api/ services/core/tests/test_health.py services/core/tests/conftest.py
+git add services/core/eshopeo/api/ services/core/tests/test_health.py services/core/tests/conftest.py
 git commit -m "feat: add FastAPI app factory, health endpoint, and DB/auth dependencies"
 ```
 
@@ -1481,9 +1481,9 @@ git commit -m "feat: add FastAPI app factory, health endpoint, and DB/auth depen
 ## Task 9: Credential encryption + tenant auth
 
 **Files:**
-- Create: `services/core/helix/api/auth/__init__.py`
-- Create: `services/core/helix/api/auth/crypto.py`
-- Create: `services/core/helix/api/auth/tokens.py`
+- Create: `services/core/eshopeo/api/auth/__init__.py`
+- Create: `services/core/eshopeo/api/auth/crypto.py`
+- Create: `services/core/eshopeo/api/auth/tokens.py`
 - Test: `services/core/tests/test_auth.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -1494,8 +1494,8 @@ import pytest
 from cryptography.fernet import Fernet
 from uuid import uuid4
 
-from helix.api.auth.crypto import encrypt_credentials, decrypt_credentials
-from helix.api.auth.tokens import issue_widget_token, validate_widget_token, InvalidTokenError
+from eshopeo.api.auth.crypto import encrypt_credentials, decrypt_credentials
+from eshopeo.api.auth.tokens import issue_widget_token, validate_widget_token, InvalidTokenError
 
 
 def test_encrypt_decrypt_roundtrip():
@@ -1548,9 +1548,9 @@ cd services/core && pytest tests/test_auth.py -v
 ```
 Expected: `ImportError`
 
-- [ ] **Step 3: Create `services/core/helix/api/auth/__init__.py`** (empty)
+- [ ] **Step 3: Create `services/core/eshopeo/api/auth/__init__.py`** (empty)
 
-- [ ] **Step 4: Create `services/core/helix/api/auth/crypto.py`**
+- [ ] **Step 4: Create `services/core/eshopeo/api/auth/crypto.py`**
 
 ```python
 import json
@@ -1567,7 +1567,7 @@ def decrypt_credentials(enc: bytes, key: str) -> dict:
     return json.loads(raw.decode())
 ```
 
-- [ ] **Step 5: Create `services/core/helix/api/auth/tokens.py`**
+- [ ] **Step 5: Create `services/core/eshopeo/api/auth/tokens.py`**
 
 ```python
 from datetime import datetime, timedelta, timezone
@@ -1603,7 +1603,7 @@ Expected: `5 passed`
 - [ ] **Step 7: Commit**
 
 ```bash
-git add services/core/helix/api/auth/ services/core/tests/test_auth.py
+git add services/core/eshopeo/api/auth/ services/core/tests/test_auth.py
 git commit -m "feat: add Fernet credential encryption and JWT widget session tokens"
 ```
 
@@ -1612,8 +1612,8 @@ git commit -m "feat: add Fernet credential encryption and JWT widget session tok
 ## Task 10: Canonical connector models
 
 **Files:**
-- Create: `services/core/helix/connectors/__init__.py`
-- Create: `services/core/helix/connectors/models.py`
+- Create: `services/core/eshopeo/connectors/__init__.py`
+- Create: `services/core/eshopeo/connectors/models.py`
 - Test: `services/core/tests/test_connector_models.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -1622,7 +1622,7 @@ git commit -m "feat: add Fernet credential encryption and JWT widget session tok
 # services/core/tests/test_connector_models.py
 import pytest
 from uuid import uuid4
-from helix.connectors.models import CanonicalProduct, CanonicalCustomer, CanonicalOrder
+from eshopeo.connectors.models import CanonicalProduct, CanonicalCustomer, CanonicalOrder
 from datetime import datetime, timezone
 
 
@@ -1674,9 +1674,9 @@ cd services/core && pytest tests/test_connector_models.py -v
 ```
 Expected: `ImportError`
 
-- [ ] **Step 3: Create `services/core/helix/connectors/__init__.py`** (empty)
+- [ ] **Step 3: Create `services/core/eshopeo/connectors/__init__.py`** (empty)
 
-- [ ] **Step 4: Create `services/core/helix/connectors/models.py`**
+- [ ] **Step 4: Create `services/core/eshopeo/connectors/models.py`**
 
 ```python
 from datetime import datetime
@@ -1731,7 +1731,7 @@ Expected: `4 passed`
 - [ ] **Step 6: Commit**
 
 ```bash
-git add services/core/helix/connectors/ services/core/tests/test_connector_models.py
+git add services/core/eshopeo/connectors/ services/core/tests/test_connector_models.py
 git commit -m "feat: add canonical connector models (CanonicalProduct/Customer/Order)"
 ```
 
@@ -1740,9 +1740,9 @@ git commit -m "feat: add canonical connector models (CanonicalProduct/Customer/O
 ## Task 11: Domain-pack loader + kbeauty seed
 
 **Files:**
-- Create: `services/core/helix/packs/__init__.py`
-- Create: `services/core/helix/packs/loader.py`
-- Create: `services/core/helix/packs/registry.py`
+- Create: `services/core/eshopeo/packs/__init__.py`
+- Create: `services/core/eshopeo/packs/loader.py`
+- Create: `services/core/eshopeo/packs/registry.py`
 - Create: `packs/kbeauty/pack.yaml` (+ all kbeauty files)
 - Test: `services/core/tests/test_pack_loader.py`
 
@@ -1752,7 +1752,7 @@ git commit -m "feat: add canonical connector models (CanonicalProduct/Customer/O
 # services/core/tests/test_pack_loader.py
 import pytest
 from pathlib import Path
-from helix.packs.loader import PackLoader, PackValidationError
+from eshopeo.packs.loader import PackLoader, PackValidationError
 
 KBEAUTY_PATH = Path(__file__).parent.parent.parent.parent.parent / "packs" / "kbeauty"
 
@@ -1804,9 +1804,9 @@ cd services/core && pytest tests/test_pack_loader.py -v
 ```
 Expected: `ImportError`
 
-- [ ] **Step 3: Create `services/core/helix/packs/__init__.py`** (empty)
+- [ ] **Step 3: Create `services/core/eshopeo/packs/__init__.py`** (empty)
 
-- [ ] **Step 4: Create `services/core/helix/packs/loader.py`**
+- [ ] **Step 4: Create `services/core/eshopeo/packs/loader.py`**
 
 ```python
 from dataclasses import dataclass, field
@@ -1877,12 +1877,12 @@ class PackLoader:
         )
 ```
 
-- [ ] **Step 5: Create `services/core/helix/packs/registry.py`**
+- [ ] **Step 5: Create `services/core/eshopeo/packs/registry.py`**
 
 ```python
 from pathlib import Path
 
-from helix.packs.loader import LoadedPack, PackLoader
+from eshopeo.packs.loader import LoadedPack, PackLoader
 
 _registry: dict[str, LoadedPack] = {}
 
@@ -2069,7 +2069,7 @@ Expected: `6 passed`
 - [ ] **Step 8: Commit**
 
 ```bash
-git add services/core/helix/packs/ packs/kbeauty/ services/core/tests/test_pack_loader.py
+git add services/core/eshopeo/packs/ packs/kbeauty/ services/core/tests/test_pack_loader.py
 git commit -m "feat: add domain-pack loader and seed kbeauty pack with schemas, rules, prompts"
 ```
 
@@ -2080,9 +2080,9 @@ git commit -m "feat: add domain-pack loader and seed kbeauty pack with schemas, 
 ## Task 12: LLM gateway
 
 **Files:**
-- Create: `services/core/helix/llm/__init__.py`
-- Create: `services/core/helix/llm/gateway.py`
-- Create: `services/core/helix/llm/layers.py`
+- Create: `services/core/eshopeo/llm/__init__.py`
+- Create: `services/core/eshopeo/llm/gateway.py`
+- Create: `services/core/eshopeo/llm/layers.py`
 - Test: `services/core/tests/test_llm_gateway.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -2094,7 +2094,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from pydantic import BaseModel
 
-from helix.llm.gateway import LLMGateway, ModelTier, LLMParseError
+from eshopeo.llm.gateway import LLMGateway, ModelTier, LLMParseError
 from tests.conftest import make_test_settings
 
 
@@ -2115,7 +2115,7 @@ async def test_gateway_returns_parsed_model(gateway):
     mock_message.content = [MagicMock(text='{"category": "serum", "confidence": 0.95}')]
     mock_message.usage = MagicMock(input_tokens=100, output_tokens=50)
 
-    with patch("helix.llm.gateway.anthropic.AsyncAnthropic") as mock_cls:
+    with patch("eshopeo.llm.gateway.anthropic.AsyncAnthropic") as mock_cls:
         mock_client = AsyncMock()
         mock_cls.return_value = mock_client
         mock_client.messages.create = AsyncMock(return_value=mock_message)
@@ -2141,7 +2141,7 @@ async def test_gateway_retries_on_parse_failure(gateway):
     mock_repair.content = [MagicMock(text='{"category": "toner", "confidence": 0.8}')]
     mock_repair.usage = MagicMock(input_tokens=80, output_tokens=20)
 
-    with patch("helix.llm.gateway.anthropic.AsyncAnthropic") as mock_cls:
+    with patch("eshopeo.llm.gateway.anthropic.AsyncAnthropic") as mock_cls:
         mock_client = AsyncMock()
         mock_cls.return_value = mock_client
         mock_client.messages.create = AsyncMock(side_effect=[mock_first, mock_repair])
@@ -2163,7 +2163,7 @@ async def test_gateway_raises_after_two_failures(gateway):
     mock_bad.content = [MagicMock(text="still not json")]
     mock_bad.usage = MagicMock(input_tokens=50, output_tokens=10)
 
-    with patch("helix.llm.gateway.anthropic.AsyncAnthropic") as mock_cls:
+    with patch("eshopeo.llm.gateway.anthropic.AsyncAnthropic") as mock_cls:
         mock_client = AsyncMock()
         mock_cls.return_value = mock_client
         mock_client.messages.create = AsyncMock(return_value=mock_bad)
@@ -2184,9 +2184,9 @@ cd services/core && pytest tests/test_llm_gateway.py -v
 ```
 Expected: `ImportError`
 
-- [ ] **Step 3: Create `services/core/helix/llm/__init__.py`** (empty)
+- [ ] **Step 3: Create `services/core/eshopeo/llm/__init__.py`** (empty)
 
-- [ ] **Step 4: Create `services/core/helix/llm/gateway.py`**
+- [ ] **Step 4: Create `services/core/eshopeo/llm/gateway.py`**
 
 ```python
 import json
@@ -2199,7 +2199,7 @@ import anthropic
 import structlog
 from pydantic import BaseModel, ValidationError
 
-from helix.config import Settings
+from eshopeo.config import Settings
 
 logger = structlog.get_logger(__name__)
 
@@ -2312,7 +2312,7 @@ class LLMGateway:
         )
 ```
 
-- [ ] **Step 5: Create `services/core/helix/llm/layers.py`**
+- [ ] **Step 5: Create `services/core/eshopeo/llm/layers.py`**
 
 ```python
 """
@@ -2366,7 +2366,7 @@ Expected: `3 passed`
 - [ ] **Step 7: Commit**
 
 ```bash
-git add services/core/helix/llm/ services/core/tests/test_llm_gateway.py
+git add services/core/eshopeo/llm/ services/core/tests/test_llm_gateway.py
 git commit -m "feat: add LLM gateway with tiered model selection, structured output, and repair retry"
 ```
 
@@ -2375,8 +2375,8 @@ git commit -m "feat: add LLM gateway with tiered model selection, structured out
 ## Task 13: Provisioning endpoint (POST /v1/tenants)
 
 **Files:**
-- Create: `services/core/helix/api/routers/tenants.py`
-- Modify: `services/core/helix/api/app.py`
+- Create: `services/core/eshopeo/api/routers/tenants.py`
+- Modify: `services/core/eshopeo/api/app.py`
 - Test: `services/core/tests/test_tenants_endpoint.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -2388,7 +2388,7 @@ from unittest.mock import AsyncMock, patch
 from httpx import AsyncClient, ASGITransport
 from cryptography.fernet import Fernet
 
-from helix.api.app import create_app
+from eshopeo.api.app import create_app
 from tests.conftest import make_test_settings
 
 
@@ -2427,16 +2427,16 @@ async def test_provision_with_wrong_key_returns_401(client, settings):
     resp = await client.post(
         "/v1/tenants",
         json=VALID_BODY,
-        headers={"X-Helix-Provision-Key": "wrong-key"},
+        headers={"X-eShopeo-Provision-Key": "wrong-key"},
     )
     assert resp.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_provision_creates_tenant(client, settings):
-    with patch("helix.api.routers.tenants.create_tenant", new_callable=AsyncMock) as mock_create, \
-         patch("helix.api.routers.tenants.get_db"):
-        from helix.db.models import Tenant
+    with patch("eshopeo.api.routers.tenants.create_tenant", new_callable=AsyncMock) as mock_create, \
+         patch("eshopeo.api.routers.tenants.get_db"):
+        from eshopeo.db.models import Tenant
         from uuid import uuid4
         fake_tenant = Tenant(
             id=uuid4(),
@@ -2451,7 +2451,7 @@ async def test_provision_creates_tenant(client, settings):
         resp = await client.post(
             "/v1/tenants",
             json=VALID_BODY,
-            headers={"X-Helix-Provision-Key": settings.provision_key.get_secret_value()},
+            headers={"X-eShopeo-Provision-Key": settings.provision_key.get_secret_value()},
         )
 
     assert resp.status_code == 201
@@ -2467,7 +2467,7 @@ cd services/core && pytest tests/test_tenants_endpoint.py -v
 ```
 Expected: router not registered, `404` or `ImportError`.
 
-- [ ] **Step 3: Create `services/core/helix/api/routers/tenants.py`**
+- [ ] **Step 3: Create `services/core/eshopeo/api/routers/tenants.py`**
 
 ```python
 from typing import Annotated, Any
@@ -2477,11 +2477,11 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.auth.crypto import encrypt_credentials
-from helix.api.deps import get_db
-from helix.config import get_settings
-from helix.db.crud.tenants import create_tenant
-from helix.db.models import Tenant
+from eshopeo.api.auth.crypto import encrypt_credentials
+from eshopeo.api.deps import get_db
+from eshopeo.config import get_settings
+from eshopeo.db.crud.tenants import create_tenant
+from eshopeo.db.models import Tenant
 
 router = APIRouter(prefix="/v1/tenants", tags=["tenants"])
 
@@ -2501,11 +2501,11 @@ class ProvisionResponse(BaseModel):
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=ProvisionResponse)
 async def provision_tenant(
     body: ProvisionRequest,
-    x_helix_provision_key: Annotated[str | None, Header()] = None,
+    x_eshopeo_provision_key: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
 ) -> ProvisionResponse:
     settings = get_settings()
-    if x_helix_provision_key != settings.provision_key.get_secret_value():
+    if x_eshopeo_provision_key != settings.provision_key.get_secret_value():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid provision key")
 
     enc = encrypt_credentials(body.credentials, settings.credential_encryption_key.get_secret_value())
@@ -2524,19 +2524,19 @@ async def provision_tenant(
     )
 ```
 
-- [ ] **Step 4: Register router in `services/core/helix/api/app.py`**
+- [ ] **Step 4: Register router in `services/core/eshopeo/api/app.py`**
 
 ```python
 # Replace the existing create_app function body:
 def create_app(settings: Settings | None = None) -> FastAPI:
-    from helix.config import get_settings
+    from eshopeo.config import get_settings
     s = settings or get_settings()
     configure_logging(s.log_level)
 
     app = FastAPI(title=s.brand_name, version="0.1.0", docs_url="/docs")
     app.include_router(health.router)
 
-    from helix.api.routers import tenants
+    from eshopeo.api.routers import tenants
     app.include_router(tenants.router)
 
     return app
@@ -2552,7 +2552,7 @@ Expected: `3 passed`
 - [ ] **Step 6: Commit**
 
 ```bash
-git add services/core/helix/api/routers/tenants.py services/core/helix/api/app.py services/core/tests/test_tenants_endpoint.py
+git add services/core/eshopeo/api/routers/tenants.py services/core/eshopeo/api/app.py services/core/tests/test_tenants_endpoint.py
 git commit -m "feat: add tenant provisioning endpoint POST /v1/tenants"
 ```
 
@@ -2561,7 +2561,7 @@ git commit -m "feat: add tenant provisioning endpoint POST /v1/tenants"
 ## Task 14: Sync endpoint (POST /v1/sync/products)
 
 **Files:**
-- Create: `services/core/helix/api/routers/sync.py`
+- Create: `services/core/eshopeo/api/routers/sync.py`
 - Test: `services/core/tests/test_sync_endpoint.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -2573,8 +2573,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -2624,17 +2624,17 @@ async def test_sync_without_tenant_key_returns_401(client, tenant):
 async def test_sync_valid_products_returns_summary(client, tenant):
     products = [make_canonical_product(str(tenant.id))]
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.sync.upsert_product", new_callable=AsyncMock) as mock_upsert, \
-         patch("helix.api.routers.sync.embed_product") as mock_task, \
-         patch("helix.api.routers.sync.default_pack") as mock_pack:
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.sync.upsert_product", new_callable=AsyncMock) as mock_upsert, \
+         patch("eshopeo.api.routers.sync.embed_product") as mock_task, \
+         patch("eshopeo.api.routers.sync.default_pack") as mock_pack:
         mock_pack.return_value = MagicMock(product_schema={"type": "object", "properties": {}, "required": []})
         mock_upsert.return_value = MagicMock(id=uuid4())
 
         resp = await client.post(
             "/v1/sync/products",
             json={"products": products},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -2647,15 +2647,15 @@ async def test_sync_valid_products_returns_summary(client, tenant):
 async def test_sync_delete_flag_removes_product(client, tenant):
     products = [make_canonical_product(str(tenant.id)) | {"deleted": True}]
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.sync.delete_product", new_callable=AsyncMock, return_value=True) as mock_del, \
-         patch("helix.api.routers.sync.default_pack") as mock_pack:
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.sync.delete_product", new_callable=AsyncMock, return_value=True) as mock_del, \
+         patch("eshopeo.api.routers.sync.default_pack") as mock_pack:
         mock_pack.return_value = MagicMock(product_schema={"type": "object", "properties": {}, "required": []})
 
         resp = await client.post(
             "/v1/sync/products",
             json={"products": products},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -2669,7 +2669,7 @@ cd services/core && pytest tests/test_sync_endpoint.py -v
 ```
 Expected: `404` or `ImportError`
 
-- [ ] **Step 3: Create `services/core/helix/api/routers/sync.py`**
+- [ ] **Step 3: Create `services/core/eshopeo/api/routers/sync.py`**
 
 ```python
 from uuid import uuid4
@@ -2680,12 +2680,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
-from helix.connectors.models import CanonicalProduct
-from helix.db.crud.products import delete_product, upsert_product
-from helix.db.models import Product, Tenant
-from helix.packs.registry import default_pack
-from helix.workers.tasks.embedding import embed_product
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.connectors.models import CanonicalProduct
+from eshopeo.db.crud.products import delete_product, upsert_product
+from eshopeo.db.models import Product, Tenant
+from eshopeo.packs.registry import default_pack
+from eshopeo.workers.tasks.embedding import embed_product
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/v1/sync", tags=["sync"])
@@ -2756,7 +2756,7 @@ async def sync_products(
 
 Add to `create_app`:
 ```python
-    from helix.api.routers import sync
+    from eshopeo.api.routers import sync
     app.include_router(sync.router)
 ```
 
@@ -2770,7 +2770,7 @@ Expected: `3 passed`
 - [ ] **Step 6: Commit**
 
 ```bash
-git add services/core/helix/api/routers/sync.py services/core/helix/api/app.py services/core/tests/test_sync_endpoint.py
+git add services/core/eshopeo/api/routers/sync.py services/core/eshopeo/api/app.py services/core/tests/test_sync_endpoint.py
 git commit -m "feat: add product sync endpoint POST /v1/sync/products with pack validation"
 ```
 
@@ -2779,8 +2779,8 @@ git commit -m "feat: add product sync endpoint POST /v1/sync/products with pack 
 ## Task 15: Webhook endpoint + widget session
 
 **Files:**
-- Create: `services/core/helix/api/routers/webhooks.py`
-- Create: `services/core/helix/api/routers/widget.py`
+- Create: `services/core/eshopeo/api/routers/webhooks.py`
+- Create: `services/core/eshopeo/api/routers/widget.py`
 - Test: `services/core/tests/test_webhooks_endpoint.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -2796,8 +2796,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -2821,7 +2821,7 @@ def wc_signature(body: bytes, secret: str) -> str:
 
 @pytest.fixture
 def tenant():
-    from helix.api.auth.crypto import encrypt_credentials
+    from eshopeo.api.auth.crypto import encrypt_credentials
     from tests.conftest import make_test_settings
     settings = make_test_settings()
     t = Tenant.__new__(Tenant)
@@ -2849,12 +2849,12 @@ async def client(app):
 @pytest.mark.asyncio
 async def test_webhook_bad_signature_returns_401(client, tenant):
     body = json.dumps(make_wc_product_payload()).encode()
-    with patch("helix.api.routers.webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant):
+    with patch("eshopeo.api.routers.webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant):
         resp = await client.post(
             "/v1/webhooks/products",
             content=body,
             headers={
-                "X-Helix-Tenant-Id": str(tenant.id),
+                "X-eShopeo-Tenant-Id": str(tenant.id),
                 "X-WC-Webhook-Signature": "badsig",
                 "Content-Type": "application/json",
             },
@@ -2868,18 +2868,18 @@ async def test_webhook_valid_signature_accepted(client, tenant):
     body = json.dumps(payload).encode()
     sig = wc_signature(body, "test-secret")
 
-    with patch("helix.api.routers.webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.webhooks.upsert_product", new_callable=AsyncMock), \
-         patch("helix.api.routers.webhooks.embed_product"), \
-         patch("helix.api.routers.webhooks.default_pack") as mock_pack, \
-         patch("helix.api.routers.webhooks.get_db"):
+    with patch("eshopeo.api.routers.webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.webhooks.upsert_product", new_callable=AsyncMock), \
+         patch("eshopeo.api.routers.webhooks.embed_product"), \
+         patch("eshopeo.api.routers.webhooks.default_pack") as mock_pack, \
+         patch("eshopeo.api.routers.webhooks.get_db"):
         mock_pack.return_value = MagicMock(product_schema={"type": "object", "properties": {}, "required": []})
 
         resp = await client.post(
             "/v1/webhooks/products",
             content=body,
             headers={
-                "X-Helix-Tenant-Id": str(tenant.id),
+                "X-eShopeo-Tenant-Id": str(tenant.id),
                 "X-WC-Webhook-Signature": sig,
                 "Content-Type": "application/json",
             },
@@ -2894,7 +2894,7 @@ cd services/core && pytest tests/test_webhooks_endpoint.py -v
 ```
 Expected: `404` or `ImportError`
 
-- [ ] **Step 3: Add `get_tenant_by_id` to `services/core/helix/db/crud/tenants.py`**
+- [ ] **Step 3: Add `get_tenant_by_id` to `services/core/eshopeo/db/crud/tenants.py`**
 
 ```python
 async def get_tenant_by_id(session: AsyncSession, tenant_id: UUID) -> Tenant | None:
@@ -2902,7 +2902,7 @@ async def get_tenant_by_id(session: AsyncSession, tenant_id: UUID) -> Tenant | N
     return result.scalar_one_or_none()
 ```
 
-- [ ] **Step 4: Create `services/core/helix/api/routers/webhooks.py`**
+- [ ] **Step 4: Create `services/core/eshopeo/api/routers/webhooks.py`**
 
 ```python
 import base64
@@ -2916,14 +2916,14 @@ import structlog
 from fastapi import APIRouter, Header, HTTPException, Request, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.auth.crypto import decrypt_credentials
-from helix.api.deps import get_db
-from helix.config import get_settings
-from helix.db.crud.products import delete_product, upsert_product
-from helix.db.crud.tenants import get_tenant_by_id
-from helix.db.models import Product, Tenant
-from helix.packs.registry import default_pack
-from helix.workers.tasks.embedding import embed_product
+from eshopeo.api.auth.crypto import decrypt_credentials
+from eshopeo.api.deps import get_db
+from eshopeo.config import get_settings
+from eshopeo.db.crud.products import delete_product, upsert_product
+from eshopeo.db.crud.tenants import get_tenant_by_id
+from eshopeo.db.models import Product, Tenant
+from eshopeo.packs.registry import default_pack
+from eshopeo.workers.tasks.embedding import embed_product
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/v1/webhooks", tags=["webhooks"])
@@ -2939,14 +2939,14 @@ def _verify_wc_signature(body: bytes, signature: str, secret: str) -> bool:
 @router.post("/products")
 async def product_webhook(
     request: Request,
-    x_helix_tenant_id: str = Header(...),
+    x_eshopeo_tenant_id: str = Header(...),
     x_wc_webhook_signature: str = Header(...),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
     body = await request.body()
 
     try:
-        tenant_id = UUID(x_helix_tenant_id)
+        tenant_id = UUID(x_eshopeo_tenant_id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid tenant ID")
 
@@ -2997,17 +2997,17 @@ def _extract_domain_attrs(payload: dict[str, Any]) -> dict[str, Any]:
     return attrs
 ```
 
-- [ ] **Step 5: Create `services/core/helix/api/routers/widget.py`**
+- [ ] **Step 5: Create `services/core/eshopeo/api/routers/widget.py`**
 
 ```python
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.auth.tokens import issue_widget_token
-from helix.api.deps import get_db, get_tenant
-from helix.config import get_settings
-from helix.db.models import Tenant
+from eshopeo.api.auth.tokens import issue_widget_token
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.config import get_settings
+from eshopeo.db.models import Tenant
 
 router = APIRouter(prefix="/v1/widget", tags=["widget"])
 
@@ -3030,7 +3030,7 @@ async def issue_session(
 
 Add to `create_app`:
 ```python
-    from helix.api.routers import webhooks, widget
+    from eshopeo.api.routers import webhooks, widget
     app.include_router(webhooks.router)
     app.include_router(widget.router)
 ```
@@ -3045,7 +3045,7 @@ Expected: `3 passed`
 - [ ] **Step 8: Commit**
 
 ```bash
-git add services/core/helix/api/routers/webhooks.py services/core/helix/api/routers/widget.py services/core/helix/api/app.py services/core/tests/test_webhooks_endpoint.py
+git add services/core/eshopeo/api/routers/webhooks.py services/core/eshopeo/api/routers/widget.py services/core/eshopeo/api/app.py services/core/tests/test_webhooks_endpoint.py
 git commit -m "feat: add webhook endpoint with HMAC verification and widget session endpoint"
 ```
 
@@ -3054,10 +3054,10 @@ git commit -m "feat: add webhook endpoint with HMAC verification and widget sess
 ## Task 16: Embedding pipeline
 
 **Files:**
-- Create: `services/core/helix/workers/__init__.py`
-- Create: `services/core/helix/workers/celery_app.py`
-- Create: `services/core/helix/workers/tasks/__init__.py`
-- Create: `services/core/helix/workers/tasks/embedding.py`
+- Create: `services/core/eshopeo/workers/__init__.py`
+- Create: `services/core/eshopeo/workers/celery_app.py`
+- Create: `services/core/eshopeo/workers/tasks/__init__.py`
+- Create: `services/core/eshopeo/workers/tasks/embedding.py`
 - Test: `services/core/tests/test_embedding_tasks.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -3070,7 +3070,7 @@ from uuid import uuid4
 
 
 def test_embed_product_calls_voyage(monkeypatch):
-    from helix.workers.tasks import embedding
+    from eshopeo.workers.tasks import embedding
 
     mock_response = MagicMock()
     mock_response.json.return_value = {"data": [{"embedding": [0.1] * 1024}]}
@@ -3082,8 +3082,8 @@ def test_embed_product_calls_voyage(monkeypatch):
     fake_product.categories = ["serum"]
     fake_product.domain_attributes = {"skin_types": ["dry"]}
 
-    with patch("helix.workers.tasks.embedding.httpx.post", return_value=mock_response) as mock_post, \
-         patch("helix.workers.tasks.embedding.get_sync_session") as mock_session_fn:
+    with patch("eshopeo.workers.tasks.embedding.httpx.post", return_value=mock_response) as mock_post, \
+         patch("eshopeo.workers.tasks.embedding.get_sync_session") as mock_session_fn:
         mock_session = MagicMock()
         mock_session_fn.return_value.__enter__ = MagicMock(return_value=mock_session)
         mock_session_fn.return_value.__exit__ = MagicMock(return_value=False)
@@ -3097,7 +3097,7 @@ def test_embed_product_calls_voyage(monkeypatch):
 
 
 def test_build_embed_text():
-    from helix.workers.tasks.embedding import _build_embed_text
+    from eshopeo.workers.tasks.embedding import _build_embed_text
     text = _build_embed_text("Snail Essence", ["serum"], {"skin_types": ["dry"]})
     assert "Snail Essence" in text
     assert "serum" in text
@@ -3110,21 +3110,21 @@ cd services/core && pytest tests/test_embedding_tasks.py -v
 ```
 Expected: `ImportError`
 
-- [ ] **Step 3: Create `services/core/helix/workers/__init__.py`** (empty)
+- [ ] **Step 3: Create `services/core/eshopeo/workers/__init__.py`** (empty)
 
-- [ ] **Step 4: Create `services/core/helix/workers/celery_app.py`**
+- [ ] **Step 4: Create `services/core/eshopeo/workers/celery_app.py`**
 
 ```python
 from celery import Celery
-from helix.config import get_settings
+from eshopeo.config import get_settings
 
 settings = get_settings()
 
 celery_app = Celery(
-    "helix",
+    "eshopeo",
     broker=str(settings.redis_url),
     backend=str(settings.redis_url),
-    include=["helix.workers.tasks.embedding"],
+    include=["eshopeo.workers.tasks.embedding"],
 )
 celery_app.conf.update(
     task_serializer="json",
@@ -3133,14 +3133,14 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     task_routes={
-        "helix.workers.tasks.embedding.*": {"queue": "embedding"},
+        "eshopeo.workers.tasks.embedding.*": {"queue": "embedding"},
     },
 )
 ```
 
-- [ ] **Step 5: Create `services/core/helix/workers/tasks/__init__.py`** (empty)
+- [ ] **Step 5: Create `services/core/eshopeo/workers/tasks/__init__.py`** (empty)
 
-- [ ] **Step 6: Create `services/core/helix/workers/tasks/embedding.py`**
+- [ ] **Step 6: Create `services/core/eshopeo/workers/tasks/embedding.py`**
 
 ```python
 import json
@@ -3150,10 +3150,10 @@ import httpx
 import structlog
 from sqlalchemy.orm import Session
 
-from helix.config import get_settings
-from helix.db.engine import get_sync_session
-from helix.db.models import Product
-from helix.workers.celery_app import celery_app
+from eshopeo.config import get_settings
+from eshopeo.db.engine import get_sync_session
+from eshopeo.db.models import Product
+from eshopeo.workers.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
 
@@ -3192,7 +3192,7 @@ def _embed_and_store(tenant_id: str, product_id: str) -> None:
         logger.info("embed_product_done", product_id=product_id, dims=len(embedding))
 
 
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=60, name="helix.workers.tasks.embedding.embed_product")
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=60, name="eshopeo.workers.tasks.embedding.embed_product")
 def embed_product(self, tenant_id: str, product_id: str) -> None:
     try:
         _embed_and_store(tenant_id, product_id)
@@ -3200,7 +3200,7 @@ def embed_product(self, tenant_id: str, product_id: str) -> None:
         raise self.retry(exc=exc)
 
 
-@celery_app.task(name="helix.workers.tasks.embedding.embed_product_batch")
+@celery_app.task(name="eshopeo.workers.tasks.embedding.embed_product_batch")
 def embed_product_batch(tenant_id: str, product_ids: list[str]) -> dict:
     settings = get_settings()
     results = {"ok": 0, "failed": 0}
@@ -3242,7 +3242,7 @@ def embed_product_batch(tenant_id: str, product_ids: list[str]) -> dict:
 
 - [ ] **Step 7: Update `engine.py` to expose `get_sync_session` as a context manager**
 
-Add to `services/core/helix/db/engine.py`:
+Add to `services/core/eshopeo/db/engine.py`:
 ```python
 from contextlib import contextmanager
 from collections.abc import Generator
@@ -3266,7 +3266,7 @@ Expected: `2 passed`
 - [ ] **Step 9: Commit**
 
 ```bash
-git add services/core/helix/workers/ services/core/tests/test_embedding_tasks.py
+git add services/core/eshopeo/workers/ services/core/tests/test_embedding_tasks.py
 git commit -m "feat: add Celery embedding pipeline with Voyage AI voyage-3-lite"
 ```
 
@@ -3275,19 +3275,19 @@ git commit -m "feat: add Celery embedding pipeline with Voyage AI voyage-3-lite"
 ## Task 17: WooCommerce PHP plugin
 
 **Files:**
-- Create: `connectors/woocommerce/helix-connector.php`
-- Create: `connectors/woocommerce/includes/class-helix-admin.php`
-- Create: `connectors/woocommerce/includes/class-helix-api-client.php`
-- Create: `connectors/woocommerce/includes/class-helix-sync.php`
-- Create: `connectors/woocommerce/includes/class-helix-webhooks.php`
+- Create: `connectors/woocommerce/eshopeo-connector.php`
+- Create: `connectors/woocommerce/includes/class-eshopeo-admin.php`
+- Create: `connectors/woocommerce/includes/class-eshopeo-api-client.php`
+- Create: `connectors/woocommerce/includes/class-eshopeo-sync.php`
+- Create: `connectors/woocommerce/includes/class-eshopeo-webhooks.php`
 
-- [ ] **Step 1: Create `connectors/woocommerce/helix-connector.php`**
+- [ ] **Step 1: Create `connectors/woocommerce/eshopeo-connector.php`**
 
 ```php
 <?php
 /**
- * Plugin Name: Helix Connector
- * Description: Syncs your WooCommerce catalog with the Helix AI commerce intelligence platform.
+ * Plugin Name: eShopeo Connector
+ * Description: Syncs your WooCommerce catalog with the eShopeo commerce intelligence platform.
  * Version: 0.1.0
  * Requires PHP: 8.0
  * WC requires at least: 7.0
@@ -3295,42 +3295,42 @@ git commit -m "feat: add Celery embedding pipeline with Voyage AI voyage-3-lite"
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'HELIX_CONNECTOR_VERSION', '0.1.0' );
-define( 'HELIX_CONNECTOR_DIR', plugin_dir_path( __FILE__ ) );
+define( 'ESHOPEO_CONNECTOR_VERSION', '0.1.0' );
+define( 'ESHOPEO_CONNECTOR_DIR', plugin_dir_path( __FILE__ ) );
 
-require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-api-client.php';
-require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-sync.php';
-require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-webhooks.php';
-require_once HELIX_CONNECTOR_DIR . 'includes/class-helix-admin.php';
+require_once ESHOPEO_CONNECTOR_DIR . 'includes/class-eshopeo-api-client.php';
+require_once ESHOPEO_CONNECTOR_DIR . 'includes/class-eshopeo-sync.php';
+require_once ESHOPEO_CONNECTOR_DIR . 'includes/class-eshopeo-webhooks.php';
+require_once ESHOPEO_CONNECTOR_DIR . 'includes/class-eshopeo-admin.php';
 
-function helix_connector_init(): void {
-    Helix_Admin::init();
-    Helix_Webhooks::init();
+function eshopeo_connector_init(): void {
+    Eshopeo_Admin::init();
+    Eshopeo_Webhooks::init();
 }
-add_action( 'plugins_loaded', 'helix_connector_init' );
+add_action( 'plugins_loaded', 'eshopeo_connector_init' );
 
-register_activation_hook( __FILE__, 'helix_connector_activate' );
-function helix_connector_activate(): void {
+register_activation_hook( __FILE__, 'eshopeo_connector_activate' );
+function eshopeo_connector_activate(): void {
     // Activation deferred to admin settings save so the user can enter API URL first.
-    update_option( 'helix_activated', true );
+    update_option( 'eshopeo_activated', true );
 }
 
-register_deactivation_hook( __FILE__, 'helix_connector_deactivate' );
-function helix_connector_deactivate(): void {
-    Helix_Webhooks::remove_webhooks();
-    delete_option( 'helix_tenant_id' );
-    delete_option( 'helix_public_key' );
-    delete_option( 'helix_webhook_secret' );
+register_deactivation_hook( __FILE__, 'eshopeo_connector_deactivate' );
+function eshopeo_connector_deactivate(): void {
+    Eshopeo_Webhooks::remove_webhooks();
+    delete_option( 'eshopeo_tenant_id' );
+    delete_option( 'eshopeo_public_key' );
+    delete_option( 'eshopeo_webhook_secret' );
 }
 ```
 
-- [ ] **Step 2: Create `connectors/woocommerce/includes/class-helix-api-client.php`**
+- [ ] **Step 2: Create `connectors/woocommerce/includes/class-eshopeo-api-client.php`**
 
 ```php
 <?php
 defined( 'ABSPATH' ) || exit;
 
-class Helix_API_Client {
+class Eshopeo_API_Client {
     private string $api_url;
     private string $tenant_key;
 
@@ -3340,11 +3340,11 @@ class Helix_API_Client {
     }
 
     public function provision( string $name, string $store_url, array $credentials ): array|WP_Error {
-        $provision_key = get_option( 'helix_provision_key', '' );
+        $provision_key = get_option( 'eshopeo_provision_key', '' );
         $response = wp_remote_post( $this->api_url . '/v1/tenants', [
             'headers' => [
                 'Content-Type'         => 'application/json',
-                'X-Helix-Provision-Key' => $provision_key,
+                'X-eShopeo-Provision-Key' => $provision_key,
             ],
             'body'    => wp_json_encode( [
                 'name'        => $name,
@@ -3360,7 +3360,7 @@ class Helix_API_Client {
         }
         $code = wp_remote_retrieve_response_code( $response );
         if ( $code !== 201 ) {
-            return new WP_Error( 'helix_provision_failed', "Helix API returned HTTP {$code}" );
+            return new WP_Error( 'eshopeo_provision_failed', "eShopeo API returned HTTP {$code}" );
         }
         return json_decode( wp_remote_retrieve_body( $response ), true );
     }
@@ -3369,7 +3369,7 @@ class Helix_API_Client {
         $response = wp_remote_post( $this->api_url . '/v1/sync/products', [
             'headers' => [
                 'Content-Type'       => 'application/json',
-                'X-Helix-Tenant-Key' => $this->tenant_key,
+                'X-eShopeo-Tenant-Key' => $this->tenant_key,
             ],
             'body'    => wp_json_encode( [ 'products' => $products ] ),
             'timeout' => 60,
@@ -3383,22 +3383,22 @@ class Helix_API_Client {
 }
 ```
 
-- [ ] **Step 3: Create `connectors/woocommerce/includes/class-helix-sync.php`**
+- [ ] **Step 3: Create `connectors/woocommerce/includes/class-eshopeo-sync.php`**
 
 ```php
 <?php
 defined( 'ABSPATH' ) || exit;
 
-class Helix_Sync {
+class Eshopeo_Sync {
     public static function run_full_sync(): array {
-        $api_url    = get_option( 'helix_api_url', '' );
-        $tenant_key = get_option( 'helix_public_key', '' );
+        $api_url    = get_option( 'eshopeo_api_url', '' );
+        $tenant_key = get_option( 'eshopeo_public_key', '' );
 
         if ( ! $api_url || ! $tenant_key ) {
             return [ 'error' => 'Plugin not configured. Enter API URL and connect store first.' ];
         }
 
-        $client  = new Helix_API_Client( $api_url, $tenant_key );
+        $client  = new Eshopeo_API_Client( $api_url, $tenant_key );
         $page    = 1;
         $synced  = 0;
         $failed  = 0;
@@ -3428,8 +3428,8 @@ class Helix_Sync {
             $page++;
         } while ( count( $wc_products ) === 100 );
 
-        update_option( 'helix_last_sync', current_time( 'mysql' ) );
-        update_option( 'helix_synced_count', $synced );
+        update_option( 'eshopeo_last_sync', current_time( 'mysql' ) );
+        update_option( 'eshopeo_synced_count', $synced );
 
         return [ 'synced' => $synced, 'failed' => $failed ];
     }
@@ -3439,7 +3439,7 @@ class Helix_Sync {
         $price_minor = (int) round( (float) $price_str * 100 );
 
         return [
-            'tenant_id'         => get_option( 'helix_tenant_id' ),
+            'tenant_id'         => get_option( 'eshopeo_tenant_id' ),
             'platform'          => 'woocommerce',
             'platform_id'       => (string) $wc_product->get_id(),
             'title'             => $wc_product->get_name(),
@@ -3475,13 +3475,13 @@ class Helix_Sync {
 }
 ```
 
-- [ ] **Step 4: Create `connectors/woocommerce/includes/class-helix-webhooks.php`**
+- [ ] **Step 4: Create `connectors/woocommerce/includes/class-eshopeo-webhooks.php`**
 
 ```php
 <?php
 defined( 'ABSPATH' ) || exit;
 
-class Helix_Webhooks {
+class Eshopeo_Webhooks {
     private const WEBHOOK_TOPICS = [ 'product.created', 'product.updated', 'product.deleted' ];
 
     public static function init(): void {
@@ -3494,7 +3494,7 @@ class Helix_Webhooks {
 
         foreach ( self::WEBHOOK_TOPICS as $topic ) {
             $webhook = new WC_Webhook();
-            $webhook->set_name( "Helix — {$topic}" );
+            $webhook->set_name( "eShopeo — {$topic}" );
             $webhook->set_topic( $topic );
             $webhook->set_delivery_url( $delivery_url );
             $webhook->set_secret( $secret );
@@ -3502,8 +3502,8 @@ class Helix_Webhooks {
             $webhook->save();
         }
 
-        update_option( 'helix_webhook_secret', $secret );
-        update_option( 'helix_tenant_id', $tenant_id );
+        update_option( 'eshopeo_webhook_secret', $secret );
+        update_option( 'eshopeo_tenant_id', $tenant_id );
     }
 
     public static function remove_webhooks(): void {
@@ -3511,7 +3511,7 @@ class Helix_Webhooks {
         $webhook_ids = $data_store->search_webhooks( [ 'limit' => 100, 'status' => 'active' ] );
         foreach ( $webhook_ids as $id ) {
             $webhook = new WC_Webhook( $id );
-            if ( str_starts_with( $webhook->get_name(), 'Helix — ' ) ) {
+            if ( str_starts_with( $webhook->get_name(), 'eShopeo — ' ) ) {
                 $webhook->delete( true );
             }
         }
@@ -3519,7 +3519,7 @@ class Helix_Webhooks {
 
     public static function sign_outbound_webhook( array $payload, string $resource, string $event, int $webhook_id ): array {
         $webhook = new WC_Webhook( $webhook_id );
-        if ( ! str_starts_with( $webhook->get_name(), 'Helix — ' ) ) {
+        if ( ! str_starts_with( $webhook->get_name(), 'eShopeo — ' ) ) {
             return $payload;
         }
         $body   = wp_json_encode( $payload );
@@ -3531,90 +3531,90 @@ class Helix_Webhooks {
 }
 ```
 
-- [ ] **Step 5: Create `connectors/woocommerce/includes/class-helix-admin.php`**
+- [ ] **Step 5: Create `connectors/woocommerce/includes/class-eshopeo-admin.php`**
 
 ```php
 <?php
 defined( 'ABSPATH' ) || exit;
 
-class Helix_Admin {
+class Eshopeo_Admin {
     public static function init(): void {
         add_action( 'admin_menu', [ self::class, 'add_settings_page' ] );
         add_action( 'admin_init', [ self::class, 'register_settings' ] );
-        add_action( 'admin_post_helix_save_settings', [ self::class, 'save_settings' ] );
-        add_action( 'admin_post_helix_run_sync', [ self::class, 'handle_sync' ] );
+        add_action( 'admin_post_eshopeo_save_settings', [ self::class, 'save_settings' ] );
+        add_action( 'admin_post_eshopeo_run_sync', [ self::class, 'handle_sync' ] );
     }
 
     public static function add_settings_page(): void {
         add_submenu_page(
             'woocommerce',
-            'Helix Connector',
-            'Helix',
+            'eShopeo Connector',
+            'eShopeo',
             'manage_woocommerce',
-            'helix-connector',
+            'eshopeo-connector',
             [ self::class, 'render_settings_page' ]
         );
     }
 
     public static function register_settings(): void {
-        register_setting( 'helix_settings', 'helix_api_url', [ 'sanitize_callback' => 'esc_url_raw' ] );
-        register_setting( 'helix_settings', 'helix_provision_key', [ 'sanitize_callback' => 'sanitize_text_field' ] );
-        register_setting( 'helix_settings', 'helix_consumer_key', [ 'sanitize_callback' => 'sanitize_text_field' ] );
-        register_setting( 'helix_settings', 'helix_consumer_secret', [ 'sanitize_callback' => 'sanitize_text_field' ] );
+        register_setting( 'eshopeo_settings', 'eshopeo_api_url', [ 'sanitize_callback' => 'esc_url_raw' ] );
+        register_setting( 'eshopeo_settings', 'eshopeo_provision_key', [ 'sanitize_callback' => 'sanitize_text_field' ] );
+        register_setting( 'eshopeo_settings', 'eshopeo_consumer_key', [ 'sanitize_callback' => 'sanitize_text_field' ] );
+        register_setting( 'eshopeo_settings', 'eshopeo_consumer_secret', [ 'sanitize_callback' => 'sanitize_text_field' ] );
     }
 
     public static function save_settings(): void {
-        check_admin_referer( 'helix_save_settings' );
+        check_admin_referer( 'eshopeo_save_settings' );
         if ( ! current_user_can( 'manage_woocommerce' ) ) {
             wp_die( 'Unauthorized' );
         }
 
-        update_option( 'helix_api_url', esc_url_raw( $_POST['helix_api_url'] ?? '' ) );
-        update_option( 'helix_provision_key', sanitize_text_field( $_POST['helix_provision_key'] ?? '' ) );
-        update_option( 'helix_consumer_key', sanitize_text_field( $_POST['helix_consumer_key'] ?? '' ) );
-        update_option( 'helix_consumer_secret', sanitize_text_field( $_POST['helix_consumer_secret'] ?? '' ) );
+        update_option( 'eshopeo_api_url', esc_url_raw( $_POST['eshopeo_api_url'] ?? '' ) );
+        update_option( 'eshopeo_provision_key', sanitize_text_field( $_POST['eshopeo_provision_key'] ?? '' ) );
+        update_option( 'eshopeo_consumer_key', sanitize_text_field( $_POST['eshopeo_consumer_key'] ?? '' ) );
+        update_option( 'eshopeo_consumer_secret', sanitize_text_field( $_POST['eshopeo_consumer_secret'] ?? '' ) );
 
-        // Provision with Helix if not yet connected.
-        if ( ! get_option( 'helix_tenant_id' ) ) {
-            $client = new Helix_API_Client( get_option( 'helix_api_url', '' ) );
+        // Provision with eShopeo if not yet connected.
+        if ( ! get_option( 'eshopeo_tenant_id' ) ) {
+            $client = new Eshopeo_API_Client( get_option( 'eshopeo_api_url', '' ) );
             $result = $client->provision(
                 get_bloginfo( 'name' ),
                 site_url(),
                 [
-                    'consumer_key'    => get_option( 'helix_consumer_key' ),
-                    'consumer_secret' => get_option( 'helix_consumer_secret' ),
+                    'consumer_key'    => get_option( 'eshopeo_consumer_key' ),
+                    'consumer_secret' => get_option( 'eshopeo_consumer_secret' ),
                 ]
             );
             if ( ! is_wp_error( $result ) ) {
-                update_option( 'helix_tenant_id', $result['tenant_id'] );
-                update_option( 'helix_public_key', $result['public_key'] );
-                Helix_Webhooks::register_webhooks( get_option( 'helix_api_url' ), $result['tenant_id'] );
+                update_option( 'eshopeo_tenant_id', $result['tenant_id'] );
+                update_option( 'eshopeo_public_key', $result['public_key'] );
+                Eshopeo_Webhooks::register_webhooks( get_option( 'eshopeo_api_url' ), $result['tenant_id'] );
             }
         }
 
-        wp_safe_redirect( admin_url( 'admin.php?page=helix-connector&saved=1' ) );
+        wp_safe_redirect( admin_url( 'admin.php?page=eshopeo-connector&saved=1' ) );
         exit;
     }
 
     public static function handle_sync(): void {
-        check_admin_referer( 'helix_run_sync' );
+        check_admin_referer( 'eshopeo_run_sync' );
         if ( ! current_user_can( 'manage_woocommerce' ) ) {
             wp_die( 'Unauthorized' );
         }
-        $result = Helix_Sync::run_full_sync();
+        $result = Eshopeo_Sync::run_full_sync();
         $synced = $result['synced'] ?? 0;
-        wp_safe_redirect( admin_url( "admin.php?page=helix-connector&synced={$synced}" ) );
+        wp_safe_redirect( admin_url( "admin.php?page=eshopeo-connector&synced={$synced}" ) );
         exit;
     }
 
     public static function render_settings_page(): void {
-        $tenant_id   = get_option( 'helix_tenant_id', '' );
-        $last_sync   = get_option( 'helix_last_sync', 'Never' );
-        $sync_count  = get_option( 'helix_synced_count', 0 );
+        $tenant_id   = get_option( 'eshopeo_tenant_id', '' );
+        $last_sync   = get_option( 'eshopeo_last_sync', 'Never' );
+        $sync_count  = get_option( 'eshopeo_synced_count', 0 );
         $connected   = ! empty( $tenant_id );
         ?>
         <div class="wrap">
-            <h1>Helix Connector</h1>
+            <h1>eShopeo Connector</h1>
 
             <?php if ( isset( $_GET['saved'] ) ) : ?>
                 <div class="notice notice-success"><p>Settings saved.</p></div>
@@ -3628,13 +3628,13 @@ class Helix_Admin {
             <p>Last sync: <?php echo esc_html( $last_sync ); ?> (<?php echo esc_html( $sync_count ); ?> products)</p>
 
             <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-                <?php wp_nonce_field( 'helix_save_settings' ); ?>
-                <input type="hidden" name="action" value="helix_save_settings">
+                <?php wp_nonce_field( 'eshopeo_save_settings' ); ?>
+                <input type="hidden" name="action" value="eshopeo_save_settings">
                 <table class="form-table">
-                    <tr><th>API URL</th><td><input type="url" name="helix_api_url" value="<?php echo esc_attr( get_option( 'helix_api_url' ) ); ?>" class="regular-text"></td></tr>
-                    <tr><th>Provision Key</th><td><input type="password" name="helix_provision_key" value="<?php echo esc_attr( get_option( 'helix_provision_key' ) ); ?>" class="regular-text"></td></tr>
-                    <tr><th>WC Consumer Key</th><td><input type="text" name="helix_consumer_key" value="<?php echo esc_attr( get_option( 'helix_consumer_key' ) ); ?>" class="regular-text"></td></tr>
-                    <tr><th>WC Consumer Secret</th><td><input type="password" name="helix_consumer_secret" value="" class="regular-text" placeholder="(unchanged)"></td></tr>
+                    <tr><th>API URL</th><td><input type="url" name="eshopeo_api_url" value="<?php echo esc_attr( get_option( 'eshopeo_api_url' ) ); ?>" class="regular-text"></td></tr>
+                    <tr><th>Provision Key</th><td><input type="password" name="eshopeo_provision_key" value="<?php echo esc_attr( get_option( 'eshopeo_provision_key' ) ); ?>" class="regular-text"></td></tr>
+                    <tr><th>WC Consumer Key</th><td><input type="text" name="eshopeo_consumer_key" value="<?php echo esc_attr( get_option( 'eshopeo_consumer_key' ) ); ?>" class="regular-text"></td></tr>
+                    <tr><th>WC Consumer Secret</th><td><input type="password" name="eshopeo_consumer_secret" value="" class="regular-text" placeholder="(unchanged)"></td></tr>
                 </table>
                 <?php submit_button( 'Save & Connect' ); ?>
             </form>
@@ -3642,8 +3642,8 @@ class Helix_Admin {
             <?php if ( $connected ) : ?>
                 <h2>Catalog Sync</h2>
                 <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-                    <?php wp_nonce_field( 'helix_run_sync' ); ?>
-                    <input type="hidden" name="action" value="helix_run_sync">
+                    <?php wp_nonce_field( 'eshopeo_run_sync' ); ?>
+                    <input type="hidden" name="action" value="eshopeo_run_sync">
                     <?php submit_button( 'Sync Catalog Now', 'secondary' ); ?>
                 </form>
             <?php endif; ?>
@@ -3802,7 +3802,7 @@ Expected: all tests pass (no failures).
 - [ ] **Step 2: Run lint and type checks**
 
 ```bash
-cd services/core && ruff check . && mypy helix/
+cd services/core && ruff check . && mypy eshopeo/
 ```
 Expected: no errors.
 

@@ -1,7 +1,7 @@
 # Convi Feature Parity Roadmap
 
 **Date:** 2026-06-17  
-**Goal:** Close the gap between Helix AI and Convi (confiapp.com) across all 13 identified commerce features.  
+**Goal:** Close the gap between eShopeo and Convi (confiapp.com) across all 13 identified commerce features.  
 **Platform scope:** WooCommerce first; Shopify in a later phase.
 
 ---
@@ -15,7 +15,7 @@
 | 3 | Lead Capture | MISSING |
 | 4 | AI FAQ Widget on product pages | MISSING |
 | 5 | Ask AI Button per product | PARTIAL — global float only; no per-product context |
-| 6 | Inline Chat shortcode | PARTIAL — `[helix_search]` exists; no full-chat shortcode |
+| 6 | Inline Chat shortcode | PARTIAL — `[eshopeo_search]` exists; no full-chat shortcode |
 | 7 | Cart Management (add/remove/qty) | PARTIAL — add-to-cart only; no remove/modify |
 | 8 | Order Tracking | MISSING |
 | 9 | Order Cancellation | MISSING |
@@ -38,12 +38,12 @@
 - Rate-limit per IP to prevent abuse
 
 **Plugin (`connectors/woocommerce`)**
-- New WP option: `helix_lead_capture_enabled` (checkbox in admin)
+- New WP option: `eshopeo_lead_capture_enabled` (checkbox in admin)
 - Widget JS: after N turns (configurable, default 2) or on chat close, show inline opt-in form inside `#hx-chat-body`
 - On submit, POST to `/v1/widget/capture-lead`; hide form, show "Thanks! We'll be in touch."
 
 **Admin**
-- Leads list page under Helix menu: table of leads with date, email, source URL, session link
+- Leads list page under eShopeo menu: table of leads with date, email, source URL, session link
 
 ---
 
@@ -71,7 +71,7 @@
 - Reuses existing `Product` model; no new DB work
 
 **Plugin**
-- New WP option: `helix_ask_ai_button_enabled`
+- New WP option: `eshopeo_ask_ai_button_enabled`
 - PHP hook on `woocommerce_after_add_to_cart_button`: inject `<button class="hx-ask-ai-btn">Ask AI about this product</button>` with `data-product-id="{id}"`
 - Widget JS: on button click, open embed widget and pre-seed the conversation with the product context fetched from `/v1/widget/product-context`
 
@@ -101,11 +101,11 @@
 **Backend**
 - New `SupportTicket` model: `tenant_id`, `session_id`, `customer_email`, `transcript_json`, `status` (`open`/`resolved`), `created_at`
 - `POST /v1/widget/escalate` — saves ticket, returns `{ticket_id, message}`
-- Tenant webhook: POST to configured `helix_escalation_webhook_url` with ticket payload (supports Zendesk, Freshdesk, plain email via SendGrid)
+- Tenant webhook: POST to configured `eshopeo_escalation_webhook_url` with ticket payload (supports Zendesk, Freshdesk, plain email via SendGrid)
 - New admin endpoint: `GET /v1/admin/tickets` — list open tickets with transcript
 
 **Plugin**
-- New WP option: `helix_escalation_enabled`, `helix_escalation_webhook_url`
+- New WP option: `eshopeo_escalation_enabled`, `eshopeo_escalation_webhook_url`
 - Widget JS: "Talk to a human" button in embed widget footer; confirm dialog → POST to `/v1/widget/escalate` → show ticket ID and "Someone will be in touch within {SLA}"
 
 ---
@@ -133,7 +133,7 @@
 - Retrieval: FAQ embeddings searched alongside product embeddings in the main semantic search; top FAQ match injected into context if score > threshold
 
 **Plugin**
-- New admin page "FAQs" under Helix menu: datatable, add/edit/delete forms
+- New admin page "FAQs" under eShopeo menu: datatable, add/edit/delete forms
 - Calls the admin API endpoints via `wp_remote_post`
 
 ---
@@ -150,7 +150,7 @@
 - `GET /v1/widget/product-faqs?platform_id={id}&public_key={key}` — returns active FAQs for product
 
 **Plugin**
-- New WP option: `helix_product_faq_enabled`
+- New WP option: `eshopeo_product_faq_enabled`
 - PHP hook `woocommerce_after_single_product_summary`: inject `<div id="hx-product-faqs" data-product-id="{id}"></div>`
 - Widget JS (or new lightweight `product-faqs.js`): fetches and renders accordion FAQ below product description; "Ask AI" link on each FAQ opens embed with pre-seeded question
 
@@ -166,7 +166,7 @@
 
 **Widget JS**
 - Web search results rendered as a separate card type with favicon, title, excerpt, URL
-- Toggle in admin: `helix_web_search_enabled`
+- Toggle in admin: `eshopeo_web_search_enabled`
 
 ---
 
@@ -194,14 +194,14 @@
 
 ### 6b. Inline Chat Shortcode (full chat, not just search bar)
 
-**Current state:** `[helix_search]` renders the search-bar-only experience. Users want a full inline chat (messages, not just product search).
+**Current state:** `[eshopeo_search]` renders the search-bar-only experience. Users want a full inline chat (messages, not just product search).
 
 **Backend:** No changes — the embed widget already supports full chat.
 
 **Plugin**
-- New shortcode `[helix_chat]` — renders a full-height inline chat container
+- New shortcode `[eshopeo_chat]` — renders a full-height inline chat container
 - Widget JS: new `inlineChat` mode; renders into `#hx-chat-target` div instead of floating button
-- Height configurable via shortcode attribute: `[helix_chat height="600px"]`
+- Height configurable via shortcode attribute: `[eshopeo_chat height="600px"]`
 
 ---
 

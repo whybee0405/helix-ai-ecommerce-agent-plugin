@@ -33,7 +33,7 @@ Event types:
 - `{"type": "token", "content": "..."}` — the full response text in one event (v1 approach)
 - `{"type": "done", "source": "template"|"rules"|"llm"}` — final event
 
-### Implementation in `helix/api/routers/widget.py`
+### Implementation in `eshopeo/api/routers/widget.py`
 
 ```python
 import json
@@ -110,7 +110,7 @@ Response:
 {"suggestions": ["Toner A", "Toner Serum"], "prefix": "ton"}
 ```
 
-### New CRUD function in `helix/db/crud/products.py`
+### New CRUD function in `eshopeo/db/crud/products.py`
 
 ```python
 async def suggest_product_titles(
@@ -131,7 +131,7 @@ async def suggest_product_titles(
     return [row.title for row in result]
 ```
 
-### New endpoint in `helix/api/routers/search.py`
+### New endpoint in `eshopeo/api/routers/search.py`
 
 ```python
 class SuggestResponse(BaseModel):
@@ -167,7 +167,7 @@ Response:
 }
 ```
 
-### New endpoint in `helix/api/routers/analytics.py`
+### New endpoint in `eshopeo/api/routers/analytics.py`
 
 ```python
 import redis.asyncio as aioredis
@@ -208,10 +208,10 @@ async def get_quota_status(
 ## 5. File map
 
 **Modified files:**
-- `services/core/helix/api/routers/widget.py` — add `POST /v1/widget/chat/stream`
-- `services/core/helix/db/crud/products.py` — add `suggest_product_titles()`
-- `services/core/helix/api/routers/search.py` — add `GET /v1/search/suggest`
-- `services/core/helix/api/routers/analytics.py` — add `GET /v1/analytics/quota`
+- `services/core/eshopeo/api/routers/widget.py` — add `POST /v1/widget/chat/stream`
+- `services/core/eshopeo/db/crud/products.py` — add `suggest_product_titles()`
+- `services/core/eshopeo/api/routers/search.py` — add `GET /v1/search/suggest`
+- `services/core/eshopeo/api/routers/analytics.py` — add `GET /v1/analytics/quota`
 
 **New tests:**
 - `services/core/tests/test_widget_chat_stream.py` (4 tests)
@@ -237,12 +237,12 @@ events = [json.loads(l[6:]) for l in lines]  # strip "data: "
 **test_search_suggest.py:**
 1. `test_suggest_returns_matching_titles` — mock `suggest_product_titles` returning `["Toner A", "Toner B"]`, assert response has those titles
 2. `test_suggest_empty_results_ok` — mock returns `[]`, assert 200 with empty suggestions
-3. `test_suggest_requires_auth` — no `X-Helix-Tenant-Key` → 401
+3. `test_suggest_requires_auth` — no `X-eShopeo-Tenant-Key` → 401
 
 **test_quota_status.py:**
 1. `test_quota_status_returns_used_count` — mock Redis `get` returning `"3421"`, assert response `used=3421, limit=10000, remaining=6579`
 2. `test_quota_status_zero_when_key_missing` — mock Redis `get` returning `None`, assert `used=0, remaining=10000`
-3. `test_quota_status_requires_auth` — no `X-Helix-Tenant-Key` → 401
+3. `test_quota_status_requires_auth` — no `X-eShopeo-Tenant-Key` → 401
 
 ---
 

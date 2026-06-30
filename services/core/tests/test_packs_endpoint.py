@@ -3,9 +3,9 @@ from unittest.mock import MagicMock
 from httpx import AsyncClient, ASGITransport
 from uuid import uuid4
 
-from helix.api.app import create_app
-from helix.db.models import Tenant
-from helix.packs import registry
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Tenant
+from eshopeo.packs import registry
 from tests.conftest import make_test_settings
 
 
@@ -61,7 +61,7 @@ def seeded_registry(mock_pack):
 @pytest.fixture
 async def client_with_auth(app, fake_tenant, seeded_registry):
     """Create a client with overridden get_tenant dependency."""
-    from helix.api.deps import get_tenant
+    from eshopeo.api.deps import get_tenant
 
     # Override the dependency so we skip the real header/DB lookup
     app.dependency_overrides[get_tenant] = lambda: fake_tenant

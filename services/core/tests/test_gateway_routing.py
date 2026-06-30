@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from helix.llm.gateway import LLMGateway, ModelTier, QueryIntent, RouteResult
+from eshopeo.llm.gateway import LLMGateway, ModelTier, QueryIntent, RouteResult
 from tests.conftest import make_test_settings
 
 
@@ -16,7 +16,7 @@ async def test_classify_intent_returns_intent(gateway):
     mock_message.content = [MagicMock(text='{"intent": "product_search", "confidence": 0.95}')]
     mock_message.usage = MagicMock(input_tokens=50, output_tokens=20)
 
-    with patch("helix.llm.gateway.anthropic.AsyncAnthropic") as mock_cls:
+    with patch("eshopeo.llm.gateway.anthropic.AsyncAnthropic") as mock_cls:
         mock_client = AsyncMock()
         mock_cls.return_value = mock_client
         mock_client.messages.create = AsyncMock(return_value=mock_message)
@@ -28,10 +28,10 @@ async def test_classify_intent_returns_intent(gateway):
 
 
 async def test_route_query_uses_template_layer_first(gateway):
-    from helix.llm.layers import LayerResult
+    from eshopeo.llm.layers import LayerResult
 
-    with patch("helix.llm.gateway.anthropic.AsyncAnthropic"), \
-         patch("helix.llm.layers.TemplateLayer.query", new_callable=AsyncMock) as mock_template, \
+    with patch("eshopeo.llm.gateway.anthropic.AsyncAnthropic"), \
+         patch("eshopeo.llm.layers.TemplateLayer.query", new_callable=AsyncMock) as mock_template, \
          patch.object(gateway, "classify_intent", new_callable=AsyncMock) as mock_intent:
 
         mock_intent.return_value = QueryIntent(intent="faq", confidence=0.9)

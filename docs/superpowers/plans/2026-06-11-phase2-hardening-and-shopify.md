@@ -13,21 +13,21 @@
 ## File Map
 
 **New files:**
-- `services/core/helix/api/middleware/__init__.py`
-- `services/core/helix/api/middleware/rate_limit.py`
-- `services/core/helix/api/routers/analytics.py`
-- `services/core/helix/connectors/shopify.py`
-- `services/core/helix/api/routers/shopify_webhooks.py`
-- `connectors/shopify/helix-shopify.php`
-- `connectors/shopify/includes/class-helix-shopify-api-client.php`
-- `connectors/shopify/includes/class-helix-shopify-sync.php`
-- `connectors/shopify/includes/class-helix-shopify-webhooks.php`
+- `services/core/eshopeo/api/middleware/__init__.py`
+- `services/core/eshopeo/api/middleware/rate_limit.py`
+- `services/core/eshopeo/api/routers/analytics.py`
+- `services/core/eshopeo/connectors/shopify.py`
+- `services/core/eshopeo/api/routers/shopify_webhooks.py`
+- `connectors/shopify/eshopeo-shopify.php`
+- `connectors/shopify/includes/class-eshopeo-shopify-api-client.php`
+- `connectors/shopify/includes/class-eshopeo-shopify-sync.php`
+- `connectors/shopify/includes/class-eshopeo-shopify-webhooks.php`
 
 **Modified files:**
-- `services/core/helix/llm/layers.py` — implement `TemplateLayer.query()`
-- `services/core/helix/db/crud/usage.py` — add `get_usage_summary()`
-- `services/core/helix/config.py` — add `widget_rate_limit: int = 30`
-- `services/core/helix/api/app.py` — register analytics router, Shopify webhook router, rate limit middleware
+- `services/core/eshopeo/llm/layers.py` — implement `TemplateLayer.query()`
+- `services/core/eshopeo/db/crud/usage.py` — add `get_usage_summary()`
+- `services/core/eshopeo/config.py` — add `widget_rate_limit: int = 30`
+- `services/core/eshopeo/api/app.py` — register analytics router, Shopify webhook router, rate limit middleware
 
 **New tests:**
 - `services/core/tests/test_template_layer.py`
@@ -40,10 +40,10 @@
 ## Task 1: TemplateLayer implementation
 
 **Files:**
-- Modify: `services/core/helix/llm/layers.py`
+- Modify: `services/core/eshopeo/llm/layers.py`
 - Create: `services/core/tests/test_template_layer.py`
 
-- [ ] **Step 1: Replace `TemplateLayer.query()` stub in `helix/llm/layers.py`**
+- [ ] **Step 1: Replace `TemplateLayer.query()` stub in `eshopeo/llm/layers.py`**
 
 Replace the entire `TemplateLayer` class (keep `LayerResult`, `VectorSearchLayer`, `RuleEngineLayer` unchanged):
 
@@ -63,7 +63,7 @@ class TemplateLayer:
 
 ```python
 import pytest
-from helix.llm.layers import TemplateLayer, LayerResult
+from eshopeo.llm.layers import TemplateLayer, LayerResult
 
 TEMPLATES = {
     "return policy": "We accept returns within 30 days.",
@@ -124,7 +124,7 @@ Expected: all pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add services/core/helix/llm/layers.py services/core/tests/test_template_layer.py
+git add services/core/eshopeo/llm/layers.py services/core/tests/test_template_layer.py
 git commit -m "feat: implement TemplateLayer keyword matching (Layer 3 FAQ)"
 ```
 
@@ -133,22 +133,22 @@ git commit -m "feat: implement TemplateLayer keyword matching (Layer 3 FAQ)"
 ## Task 2: Rate limiting middleware
 
 **Files:**
-- Modify: `services/core/helix/config.py`
-- Create: `services/core/helix/api/middleware/__init__.py`
-- Create: `services/core/helix/api/middleware/rate_limit.py`
-- Modify: `services/core/helix/api/app.py`
+- Modify: `services/core/eshopeo/config.py`
+- Create: `services/core/eshopeo/api/middleware/__init__.py`
+- Create: `services/core/eshopeo/api/middleware/rate_limit.py`
+- Modify: `services/core/eshopeo/api/app.py`
 - Create: `services/core/tests/test_rate_limit.py`
 
-- [ ] **Step 1: Add `widget_rate_limit` to `helix/config.py`**
+- [ ] **Step 1: Add `widget_rate_limit` to `eshopeo/config.py`**
 
 Append one field inside the `Settings` class, after `packs_dir`:
 ```python
     widget_rate_limit: int = 30
 ```
 
-- [ ] **Step 2: Create `helix/api/middleware/__init__.py`** (empty file)
+- [ ] **Step 2: Create `eshopeo/api/middleware/__init__.py`** (empty file)
 
-- [ ] **Step 3: Create `helix/api/middleware/rate_limit.py`**
+- [ ] **Step 3: Create `eshopeo/api/middleware/rate_limit.py`**
 
 ```python
 import structlog
@@ -157,7 +157,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from helix.config import Settings
+from eshopeo.config import Settings
 
 logger = structlog.get_logger(__name__)
 
@@ -211,11 +211,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 ```
 
-- [ ] **Step 4: Register middleware in `helix/api/app.py`**
+- [ ] **Step 4: Register middleware in `eshopeo/api/app.py`**
 
 Inside `create_app()`, after all routers are registered and before `return app`, add:
 ```python
-    from helix.api.middleware.rate_limit import RateLimitMiddleware
+    from eshopeo.api.middleware.rate_limit import RateLimitMiddleware
     app.add_middleware(RateLimitMiddleware, settings=s)
 ```
 
@@ -226,8 +226,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from helix.api.middleware.rate_limit import RateLimitMiddleware, _extract_tenant_id
-from helix.api.auth.tokens import issue_widget_token
+from eshopeo.api.middleware.rate_limit import RateLimitMiddleware, _extract_tenant_id
+from eshopeo.api.auth.tokens import issue_widget_token
 from tests.conftest import make_test_settings
 
 
@@ -255,7 +255,7 @@ async def test_rate_limit_allows_requests_under_limit():
     mock_redis = AsyncMock()
     mock_redis.incr.return_value = 1  # first request
 
-    with patch("helix.api.middleware.rate_limit.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.middleware.rate_limit.aioredis.from_url", return_value=mock_redis):
         middleware = RateLimitMiddleware(app=MagicMock(), settings=settings)
         middleware._redis = mock_redis
 
@@ -277,7 +277,7 @@ async def test_rate_limit_blocks_requests_over_limit():
     mock_redis = AsyncMock()
     mock_redis.incr.return_value = 31  # over the default limit of 30
 
-    with patch("helix.api.middleware.rate_limit.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.middleware.rate_limit.aioredis.from_url", return_value=mock_redis):
         middleware = RateLimitMiddleware(app=MagicMock(), settings=settings)
         middleware._redis = mock_redis
 
@@ -310,12 +310,12 @@ git commit -m "feat: add Redis sliding-window rate limiting to widget endpoints"
 ## Task 3: Usage analytics endpoint
 
 **Files:**
-- Modify: `services/core/helix/db/crud/usage.py`
-- Create: `services/core/helix/api/routers/analytics.py`
-- Modify: `services/core/helix/api/app.py`
+- Modify: `services/core/eshopeo/db/crud/usage.py`
+- Create: `services/core/eshopeo/api/routers/analytics.py`
+- Modify: `services/core/eshopeo/api/app.py`
 - Create: `services/core/tests/test_analytics_endpoint.py`
 
-- [ ] **Step 1: Add `get_usage_summary()` to `helix/db/crud/usage.py`**
+- [ ] **Step 1: Add `get_usage_summary()` to `eshopeo/db/crud/usage.py`**
 
 Append to the existing file:
 
@@ -325,7 +325,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 
-from helix.db.models import UsageEvent
+from eshopeo.db.models import UsageEvent
 
 
 async def get_usage_summary(
@@ -367,7 +367,7 @@ async def get_usage_summary(
 
 **Note:** `AsyncSession` is already imported in the existing file. The `date`, `datetime`, `timezone`, `UUID`, `func`, `select` imports must be added at the top.
 
-- [ ] **Step 2: Create `helix/api/routers/analytics.py`**
+- [ ] **Step 2: Create `eshopeo/api/routers/analytics.py`**
 
 ```python
 from datetime import date, timedelta
@@ -377,9 +377,9 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
-from helix.db.crud.usage import get_usage_summary
-from helix.db.models import Tenant
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.crud.usage import get_usage_summary
+from eshopeo.db.models import Tenant
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/v1/analytics", tags=["analytics"])
@@ -419,11 +419,11 @@ async def get_usage(
     )
 ```
 
-- [ ] **Step 3: Register analytics router in `helix/api/app.py`**
+- [ ] **Step 3: Register analytics router in `eshopeo/api/app.py`**
 
 Add inside `create_app()`:
 ```python
-    from helix.api.routers import analytics
+    from eshopeo.api.routers import analytics
     app.include_router(analytics.router)
 ```
 
@@ -435,8 +435,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -475,12 +475,12 @@ async def test_usage_returns_summary(client, tenant):
         ],
     }
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.analytics.get_usage_summary", new_callable=AsyncMock, return_value=mock_summary):
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.analytics.get_usage_summary", new_callable=AsyncMock, return_value=mock_summary):
 
         resp = await client.get(
             "/v1/analytics/usage",
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -499,13 +499,13 @@ async def test_usage_with_date_range(client, tenant):
         "by_model": [],
     }
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.analytics.get_usage_summary", new_callable=AsyncMock, return_value=mock_summary):
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.analytics.get_usage_summary", new_callable=AsyncMock, return_value=mock_summary):
 
         resp = await client.get(
             "/v1/analytics/usage",
             params={"start_date": "2026-06-01", "end_date": "2026-06-11"},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -532,19 +532,19 @@ git commit -m "feat: add usage analytics endpoint GET /v1/analytics/usage"
 ## Task 4: Shopify webhook router (Python)
 
 **Files:**
-- Create: `services/core/helix/connectors/shopify.py`
-- Create: `services/core/helix/api/routers/shopify_webhooks.py`
-- Modify: `services/core/helix/api/app.py`
+- Create: `services/core/eshopeo/connectors/shopify.py`
+- Create: `services/core/eshopeo/api/routers/shopify_webhooks.py`
+- Modify: `services/core/eshopeo/api/app.py`
 - Create: `services/core/tests/test_shopify_webhook.py`
 
-- [ ] **Step 1: Create `helix/connectors/shopify.py`**
+- [ ] **Step 1: Create `eshopeo/connectors/shopify.py`**
 
 ```python
 import base64
 import hashlib
 import hmac
 
-from helix.connectors.models import CanonicalProduct
+from eshopeo.connectors.models import CanonicalProduct
 from uuid import UUID
 
 
@@ -581,22 +581,22 @@ def translate_shopify_product(payload: dict, tenant_id: UUID) -> CanonicalProduc
     )
 ```
 
-- [ ] **Step 2: Create `helix/api/routers/shopify_webhooks.py`**
+- [ ] **Step 2: Create `eshopeo/api/routers/shopify_webhooks.py`**
 
 ```python
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.auth.crypto import decrypt_credentials
-from helix.api.deps import get_db
-from helix.config import get_settings
-from helix.connectors.shopify import translate_shopify_product, verify_shopify_webhook
-from helix.db.crud.products import delete_product, upsert_product
-from helix.db.crud.tenants import get_tenant_by_id
-from helix.db.models import Product
-from helix.packs.registry import default_pack
-from helix.workers.tasks.embedding import embed_product
+from eshopeo.api.auth.crypto import decrypt_credentials
+from eshopeo.api.deps import get_db
+from eshopeo.config import get_settings
+from eshopeo.connectors.shopify import translate_shopify_product, verify_shopify_webhook
+from eshopeo.db.crud.products import delete_product, upsert_product
+from eshopeo.db.crud.tenants import get_tenant_by_id
+from eshopeo.db.models import Product
+from eshopeo.packs.registry import default_pack
+from eshopeo.workers.tasks.embedding import embed_product
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/v1/webhooks/shopify", tags=["shopify"])
@@ -605,18 +605,18 @@ router = APIRouter(prefix="/v1/webhooks/shopify", tags=["shopify"])
 @router.post("/products")
 async def shopify_product_webhook(
     request: Request,
-    x_helix_tenant_id: str | None = Header(default=None),
+    x_eshopeo_tenant_id: str | None = Header(default=None),
     x_shopify_hmac_sha256: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ):
-    if x_helix_tenant_id is None:
+    if x_eshopeo_tenant_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing tenant ID")
     if x_shopify_hmac_sha256 is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing HMAC header")
 
     from uuid import UUID
     try:
-        tenant_id = UUID(x_helix_tenant_id)
+        tenant_id = UUID(x_eshopeo_tenant_id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid tenant ID")
 
@@ -668,11 +668,11 @@ async def shopify_product_webhook(
     return {"status": "ok"}
 ```
 
-- [ ] **Step 3: Register Shopify webhook router in `helix/api/app.py`**
+- [ ] **Step 3: Register Shopify webhook router in `eshopeo/api/app.py`**
 
 Add inside `create_app()`:
 ```python
-    from helix.api.routers import shopify_webhooks
+    from eshopeo.api.routers import shopify_webhooks
     app.include_router(shopify_webhooks.router)
 ```
 
@@ -688,9 +688,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.connectors.shopify import verify_shopify_webhook, translate_shopify_product
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.connectors.shopify import verify_shopify_webhook, translate_shopify_product
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -737,7 +737,7 @@ def test_translate_shopify_product():
 
 @pytest.fixture
 def tenant():
-    from helix.api.auth.crypto import encrypt_credentials
+    from eshopeo.api.auth.crypto import encrypt_credentials
     settings = make_test_settings()
     t = MagicMock(spec=Tenant)
     t.id = uuid4()
@@ -762,12 +762,12 @@ async def client(app):
 
 async def test_shopify_webhook_bad_sig_returns_401(client, tenant):
     body = json.dumps(make_shopify_product_payload()).encode()
-    with patch("helix.api.routers.shopify_webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant):
+    with patch("eshopeo.api.routers.shopify_webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant):
         resp = await client.post(
             "/v1/webhooks/shopify/products",
             content=body,
             headers={
-                "X-Helix-Tenant-Id": str(tenant.id),
+                "X-eShopeo-Tenant-Id": str(tenant.id),
                 "X-Shopify-Hmac-Sha256": "invalidsig==",
                 "Content-Type": "application/json",
             },
@@ -780,18 +780,18 @@ async def test_shopify_webhook_valid_accepted(client, tenant):
     body = json.dumps(payload).encode()
     sig = shopify_signature(body, "shop-secret")
 
-    with patch("helix.api.routers.shopify_webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.shopify_webhooks.upsert_product", new_callable=AsyncMock), \
-         patch("helix.api.routers.shopify_webhooks.embed_product"), \
-         patch("helix.api.routers.shopify_webhooks.default_pack") as mock_pack, \
-         patch("helix.api.routers.shopify_webhooks.get_db"):
+    with patch("eshopeo.api.routers.shopify_webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.shopify_webhooks.upsert_product", new_callable=AsyncMock), \
+         patch("eshopeo.api.routers.shopify_webhooks.embed_product"), \
+         patch("eshopeo.api.routers.shopify_webhooks.default_pack") as mock_pack, \
+         patch("eshopeo.api.routers.shopify_webhooks.get_db"):
         mock_pack.return_value = MagicMock(product_schema={"type": "object", "properties": {}, "required": []})
 
         resp = await client.post(
             "/v1/webhooks/shopify/products",
             content=body,
             headers={
-                "X-Helix-Tenant-Id": str(tenant.id),
+                "X-eShopeo-Tenant-Id": str(tenant.id),
                 "X-Shopify-Hmac-Sha256": sig,
                 "Content-Type": "application/json",
             },
@@ -817,73 +817,73 @@ git commit -m "feat: add Shopify webhook router and HMAC verification"
 ## Task 5: Shopify PHP plugin
 
 **Files:**
-- Create: `connectors/shopify/helix-shopify.php`
-- Create: `connectors/shopify/includes/class-helix-shopify-api-client.php`
-- Create: `connectors/shopify/includes/class-helix-shopify-sync.php`
-- Create: `connectors/shopify/includes/class-helix-shopify-webhooks.php`
+- Create: `connectors/shopify/eshopeo-shopify.php`
+- Create: `connectors/shopify/includes/class-eshopeo-shopify-api-client.php`
+- Create: `connectors/shopify/includes/class-eshopeo-shopify-sync.php`
+- Create: `connectors/shopify/includes/class-eshopeo-shopify-webhooks.php`
 
 No tests (PHP — same pattern as WooCommerce connector).
 
-- [ ] **Step 1: Create `connectors/shopify/helix-shopify.php`**
+- [ ] **Step 1: Create `connectors/shopify/eshopeo-shopify.php`**
 
 ```php
 <?php
 /**
- * Plugin Name: Helix AI Commerce – Shopify Connector
- * Description: Connects your Shopify store to the Helix AI commerce intelligence platform.
+ * Plugin Name: eShopeo Commerce – Shopify Connector
+ * Description: Connects your Shopify store to the eShopeo commerce intelligence platform.
  * Version: 1.0.0
  * Requires PHP: 8.0
  */
 
 defined('ABSPATH') || exit;
 
-define('HELIX_SHOPIFY_VERSION', '1.0.0');
-define('HELIX_SHOPIFY_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('ESHOPEO_SHOPIFY_VERSION', '1.0.0');
+define('ESHOPEO_SHOPIFY_PLUGIN_DIR', plugin_dir_path(__FILE__));
 
-require_once HELIX_SHOPIFY_PLUGIN_DIR . 'includes/class-helix-shopify-api-client.php';
-require_once HELIX_SHOPIFY_PLUGIN_DIR . 'includes/class-helix-shopify-sync.php';
-require_once HELIX_SHOPIFY_PLUGIN_DIR . 'includes/class-helix-shopify-webhooks.php';
+require_once ESHOPEO_SHOPIFY_PLUGIN_DIR . 'includes/class-eshopeo-shopify-api-client.php';
+require_once ESHOPEO_SHOPIFY_PLUGIN_DIR . 'includes/class-eshopeo-shopify-sync.php';
+require_once ESHOPEO_SHOPIFY_PLUGIN_DIR . 'includes/class-eshopeo-shopify-webhooks.php';
 
-register_activation_hook(__FILE__, 'helix_shopify_activate');
-register_deactivation_hook(__FILE__, 'helix_shopify_deactivate');
+register_activation_hook(__FILE__, 'eshopeo_shopify_activate');
+register_deactivation_hook(__FILE__, 'eshopeo_shopify_deactivate');
 
-function helix_shopify_activate(): void {
-    add_option('helix_shopify_api_url', '');
-    add_option('helix_shopify_public_key', '');
-    add_option('helix_shopify_webhook_secret', '');
+function eshopeo_shopify_activate(): void {
+    add_option('eshopeo_shopify_api_url', '');
+    add_option('eshopeo_shopify_public_key', '');
+    add_option('eshopeo_shopify_webhook_secret', '');
 }
 
-function helix_shopify_deactivate(): void {
-    $webhooks = new Helix_Shopify_Webhooks();
+function eshopeo_shopify_deactivate(): void {
+    $webhooks = new Eshopeo_Shopify_Webhooks();
     $webhooks->remove_webhooks();
 }
 
-add_action('admin_menu', 'helix_shopify_admin_menu');
-function helix_shopify_admin_menu(): void {
+add_action('admin_menu', 'eshopeo_shopify_admin_menu');
+function eshopeo_shopify_admin_menu(): void {
     add_options_page(
-        'Helix Shopify',
-        'Helix Shopify',
+        'eShopeo Shopify',
+        'eShopeo Shopify',
         'manage_options',
-        'helix-shopify',
-        'helix_shopify_admin_page'
+        'eshopeo-shopify',
+        'eshopeo_shopify_admin_page'
     );
 }
 
-function helix_shopify_admin_page(): void {
-    if (isset($_POST['helix_shopify_save']) && check_admin_referer('helix_shopify_save')) {
-        update_option('helix_shopify_api_url', sanitize_url($_POST['api_url'] ?? ''));
-        update_option('helix_shopify_public_key', sanitize_text_field($_POST['public_key'] ?? ''));
-        update_option('helix_shopify_webhook_secret', sanitize_text_field($_POST['webhook_secret'] ?? ''));
+function eshopeo_shopify_admin_page(): void {
+    if (isset($_POST['eshopeo_shopify_save']) && check_admin_referer('eshopeo_shopify_save')) {
+        update_option('eshopeo_shopify_api_url', sanitize_url($_POST['api_url'] ?? ''));
+        update_option('eshopeo_shopify_public_key', sanitize_text_field($_POST['public_key'] ?? ''));
+        update_option('eshopeo_shopify_webhook_secret', sanitize_text_field($_POST['webhook_secret'] ?? ''));
         echo '<div class="notice notice-success"><p>Settings saved.</p></div>';
     }
-    $api_url = get_option('helix_shopify_api_url', '');
-    $public_key = get_option('helix_shopify_public_key', '');
-    $webhook_secret = get_option('helix_shopify_webhook_secret', '');
+    $api_url = get_option('eshopeo_shopify_api_url', '');
+    $public_key = get_option('eshopeo_shopify_public_key', '');
+    $webhook_secret = get_option('eshopeo_shopify_webhook_secret', '');
     ?>
     <div class="wrap">
-        <h1>Helix Shopify Connector</h1>
+        <h1>eShopeo Shopify Connector</h1>
         <form method="post">
-            <?php wp_nonce_field('helix_shopify_save'); ?>
+            <?php wp_nonce_field('eshopeo_shopify_save'); ?>
             <table class="form-table">
                 <tr>
                     <th>API URL</th>
@@ -898,26 +898,26 @@ function helix_shopify_admin_page(): void {
                     <td><input name="webhook_secret" type="password" value="<?php echo esc_attr($webhook_secret); ?>" class="regular-text" /></td>
                 </tr>
             </table>
-            <?php submit_button('Save Settings', 'primary', 'helix_shopify_save'); ?>
+            <?php submit_button('Save Settings', 'primary', 'eshopeo_shopify_save'); ?>
         </form>
     </div>
     <?php
 }
 ```
 
-- [ ] **Step 2: Create `connectors/shopify/includes/class-helix-shopify-api-client.php`**
+- [ ] **Step 2: Create `connectors/shopify/includes/class-eshopeo-shopify-api-client.php`**
 
 ```php
 <?php
 defined('ABSPATH') || exit;
 
-class Helix_Shopify_Api_Client {
+class Eshopeo_Shopify_Api_Client {
     private string $api_url;
     private string $public_key;
 
     public function __construct() {
-        $this->api_url    = rtrim(get_option('helix_shopify_api_url', ''), '/');
-        $this->public_key = get_option('helix_shopify_public_key', '');
+        $this->api_url    = rtrim(get_option('eshopeo_shopify_api_url', ''), '/');
+        $this->public_key = get_option('eshopeo_shopify_public_key', '');
     }
 
     public function sync_products(array $products): array|WP_Error {
@@ -948,7 +948,7 @@ class Helix_Shopify_Api_Client {
         $response = wp_remote_post($this->api_url . $path, [
             'headers' => [
                 'Content-Type'        => 'application/json',
-                'X-Helix-Tenant-Key'  => $this->public_key,
+                'X-eShopeo-Tenant-Key'  => $this->public_key,
             ],
             'body'    => wp_json_encode($body),
             'timeout' => 30,
@@ -961,17 +961,17 @@ class Helix_Shopify_Api_Client {
 }
 ```
 
-- [ ] **Step 3: Create `connectors/shopify/includes/class-helix-shopify-sync.php`**
+- [ ] **Step 3: Create `connectors/shopify/includes/class-eshopeo-shopify-sync.php`**
 
 ```php
 <?php
 defined('ABSPATH') || exit;
 
-class Helix_Shopify_Sync {
-    private Helix_Shopify_Api_Client $client;
+class Eshopeo_Shopify_Sync {
+    private Eshopeo_Shopify_Api_Client $client;
 
     public function __construct() {
-        $this->client = new Helix_Shopify_Api_Client();
+        $this->client = new Eshopeo_Shopify_Api_Client();
     }
 
     public function run_full_sync(array $shopify_products): void {
@@ -979,35 +979,35 @@ class Helix_Shopify_Sync {
         foreach ($chunks as $chunk) {
             $result = $this->client->sync_products($chunk);
             if (is_wp_error($result)) {
-                error_log('[Helix Shopify] Sync error: ' . $result->get_error_message());
+                error_log('[eShopeo Shopify] Sync error: ' . $result->get_error_message());
             }
         }
     }
 }
 ```
 
-- [ ] **Step 4: Create `connectors/shopify/includes/class-helix-shopify-webhooks.php`**
+- [ ] **Step 4: Create `connectors/shopify/includes/class-eshopeo-shopify-webhooks.php`**
 
 ```php
 <?php
 defined('ABSPATH') || exit;
 
-class Helix_Shopify_Webhooks {
-    private string $helix_url;
+class Eshopeo_Shopify_Webhooks {
+    private string $eshopeo_url;
 
     public function __construct() {
-        $this->helix_url = rtrim(get_option('helix_shopify_api_url', ''), '/');
+        $this->eshopeo_url = rtrim(get_option('eshopeo_shopify_api_url', ''), '/');
     }
 
     public function register_webhooks(string $shopify_access_token, string $shopify_store_url): void {
         $endpoints = [
-            'products/create' => $this->helix_url . '/v1/webhooks/shopify/products',
-            'products/update' => $this->helix_url . '/v1/webhooks/shopify/products',
-            'products/delete' => $this->helix_url . '/v1/webhooks/shopify/products',
+            'products/create' => $this->eshopeo_url . '/v1/webhooks/shopify/products',
+            'products/update' => $this->eshopeo_url . '/v1/webhooks/shopify/products',
+            'products/delete' => $this->eshopeo_url . '/v1/webhooks/shopify/products',
         ];
 
         foreach ($endpoints as $topic => $address) {
-            $tenant_id = get_option('helix_shopify_tenant_id', '');
+            $tenant_id = get_option('eshopeo_shopify_tenant_id', '');
             wp_remote_post("https://{$shopify_store_url}/admin/api/2024-01/webhooks.json", [
                 'headers' => [
                     'Content-Type'                => 'application/json',

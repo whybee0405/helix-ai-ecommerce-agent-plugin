@@ -1,5 +1,5 @@
 from cryptography.fernet import Fernet
-from helix.config import Settings, get_settings
+from eshopeo.config import Settings, get_settings
 
 # Fixed test encryption key so all tests share the same Fernet key
 _TEST_FERNET_KEY = Fernet.generate_key().decode()
@@ -9,7 +9,7 @@ _TEST_SETTINGS = None
 
 def make_test_settings(**overrides) -> Settings:
     base = dict(
-        database_url="postgresql://helix:helix@localhost:5432/helix_test",
+        database_url="postgresql://eshopeo:eshopeo@localhost:5432/eshopeo_test",
         redis_url="redis://localhost:6379/1",
         anthropic_api_key="sk-ant-test",
         voyage_api_key="pa-test",
@@ -23,9 +23,9 @@ def make_test_settings(**overrides) -> Settings:
 
 
 def _seed_settings_cache() -> None:
-    """Populate helix.config.get_settings so that any module-level
+    """Populate eshopeo.config.get_settings so that any module-level
     get_settings() call (e.g. engine.py lazy init) uses stable test values."""
-    import helix.config as _cfg
+    import eshopeo.config as _cfg
     global _TEST_SETTINGS
     _TEST_SETTINGS = make_test_settings()
     # Replace the cached function with a simple lambda that returns test settings

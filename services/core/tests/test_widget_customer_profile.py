@@ -3,8 +3,8 @@ from uuid import uuid4
 
 import pytest
 
-from helix.api.routers.widget import widget_chat
-from helix.db.models import Customer, Tenant
+from eshopeo.api.routers.widget import widget_chat
+from eshopeo.db.models import Customer, Tenant
 
 
 @pytest.fixture
@@ -43,26 +43,26 @@ class TestWidgetCustomerProfile:
         mock_db = AsyncMock()
 
         with patch(
-            "helix.api.routers.widget.embed_query",
+            "eshopeo.api.routers.widget.embed_query",
             new_callable=AsyncMock,
             return_value=[0.1] * 1024,
         ), patch(
-            "helix.api.routers.widget.vector_search_products",
+            "eshopeo.api.routers.widget.vector_search_products",
             new_callable=AsyncMock,
             return_value=[],
         ), patch(
-            "helix.api.routers.widget.handle_query",
+            "eshopeo.api.routers.widget.handle_query",
             new_callable=AsyncMock,
         ) as mock_handle, patch(
-            "helix.api.routers.widget.create_usage_event",
+            "eshopeo.api.routers.widget.create_usage_event",
             new_callable=AsyncMock,
         ), patch(
-            "helix.api.routers.widget.get_pack_for_tenant",
+            "eshopeo.api.routers.widget.get_pack_for_tenant",
             return_value={},
         ), patch(
-            "helix.api.routers.widget.get_settings",
+            "eshopeo.api.routers.widget.get_settings",
         ), patch(
-            "helix.api.routers.widget.get_customer_by_id",
+            "eshopeo.api.routers.widget.get_customer_by_id",
             new_callable=AsyncMock,
         ) as mock_get_customer:
             mock_get_customer.return_value = test_customer
@@ -95,26 +95,26 @@ class TestWidgetCustomerProfile:
         mock_db = AsyncMock()
 
         with patch(
-            "helix.api.routers.widget.embed_query",
+            "eshopeo.api.routers.widget.embed_query",
             new_callable=AsyncMock,
             return_value=[0.1] * 1024,
         ), patch(
-            "helix.api.routers.widget.vector_search_products",
+            "eshopeo.api.routers.widget.vector_search_products",
             new_callable=AsyncMock,
             return_value=[],
         ), patch(
-            "helix.api.routers.widget.handle_query",
+            "eshopeo.api.routers.widget.handle_query",
             new_callable=AsyncMock,
         ) as mock_handle, patch(
-            "helix.api.routers.widget.create_usage_event",
+            "eshopeo.api.routers.widget.create_usage_event",
             new_callable=AsyncMock,
         ), patch(
-            "helix.api.routers.widget.get_pack_for_tenant",
+            "eshopeo.api.routers.widget.get_pack_for_tenant",
             return_value={},
         ), patch(
-            "helix.api.routers.widget.get_settings",
+            "eshopeo.api.routers.widget.get_settings",
         ), patch(
-            "helix.api.routers.widget.get_customer_by_id",
+            "eshopeo.api.routers.widget.get_customer_by_id",
             new_callable=AsyncMock,
         ) as mock_get_customer:
             mock_get_customer.return_value = test_customer
@@ -148,26 +148,26 @@ class TestWidgetCustomerProfile:
         mock_db = AsyncMock()
 
         with patch(
-            "helix.api.routers.widget.embed_query",
+            "eshopeo.api.routers.widget.embed_query",
             new_callable=AsyncMock,
             return_value=[0.1] * 1024,
         ), patch(
-            "helix.api.routers.widget.vector_search_products",
+            "eshopeo.api.routers.widget.vector_search_products",
             new_callable=AsyncMock,
             return_value=[],
         ), patch(
-            "helix.api.routers.widget.handle_query",
+            "eshopeo.api.routers.widget.handle_query",
             new_callable=AsyncMock,
         ) as mock_handle, patch(
-            "helix.api.routers.widget.create_usage_event",
+            "eshopeo.api.routers.widget.create_usage_event",
             new_callable=AsyncMock,
         ), patch(
-            "helix.api.routers.widget.get_pack_for_tenant",
+            "eshopeo.api.routers.widget.get_pack_for_tenant",
             return_value={},
         ), patch(
-            "helix.api.routers.widget.get_settings",
+            "eshopeo.api.routers.widget.get_settings",
         ), patch(
-            "helix.api.routers.widget.get_customer_by_id",
+            "eshopeo.api.routers.widget.get_customer_by_id",
             new_callable=AsyncMock,
         ) as mock_get_customer:
             mock_handle.return_value = MagicMock(
@@ -200,26 +200,26 @@ class TestWidgetCustomerProfile:
         mock_db = AsyncMock()
 
         with patch(
-            "helix.api.routers.widget.embed_query",
+            "eshopeo.api.routers.widget.embed_query",
             new_callable=AsyncMock,
             return_value=[0.1] * 1024,
         ), patch(
-            "helix.api.routers.widget.vector_search_products",
+            "eshopeo.api.routers.widget.vector_search_products",
             new_callable=AsyncMock,
             return_value=[],
         ), patch(
-            "helix.api.routers.widget.handle_query",
+            "eshopeo.api.routers.widget.handle_query",
             new_callable=AsyncMock,
         ) as mock_handle, patch(
-            "helix.api.routers.widget.create_usage_event",
+            "eshopeo.api.routers.widget.create_usage_event",
             new_callable=AsyncMock,
         ), patch(
-            "helix.api.routers.widget.get_pack_for_tenant",
+            "eshopeo.api.routers.widget.get_pack_for_tenant",
             return_value={},
         ), patch(
-            "helix.api.routers.widget.get_settings",
+            "eshopeo.api.routers.widget.get_settings",
         ), patch(
-            "helix.api.routers.widget.get_customer_by_id",
+            "eshopeo.api.routers.widget.get_customer_by_id",
             new_callable=AsyncMock,
         ) as mock_get_customer:
             mock_handle.return_value = MagicMock(

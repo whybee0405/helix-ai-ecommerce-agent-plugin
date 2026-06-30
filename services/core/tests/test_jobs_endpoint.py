@@ -5,9 +5,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import Job, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import Job, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -44,8 +44,8 @@ def client(tenant, job):
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with (
-        patch("helix.api.routers.jobs.jobs_crud.get_job", AsyncMock(return_value=job)),
-        patch("helix.api.routers.jobs.jobs_crud.list_jobs", AsyncMock(return_value=[job])),
+        patch("eshopeo.api.routers.jobs.jobs_crud.get_job", AsyncMock(return_value=job)),
+        patch("eshopeo.api.routers.jobs.jobs_crud.list_jobs", AsyncMock(return_value=[job])),
     ):
         yield TestClient(app), tenant, job, settings
 
@@ -53,7 +53,7 @@ def client(tenant, job):
 def test_get_job_returns_details(client):
     c, tenant, job, _ = client
     r = c.get(f"/v1/jobs/{job.id}",
-              headers={"X-Helix-Tenant-Key": str(tenant.public_key)})
+              headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)})
     assert r.status_code == 200
     data = r.json()
     assert data["id"] == str(job.id)
@@ -64,16 +64,16 @@ def test_get_job_returns_details(client):
 
 def test_get_job_404_when_not_found(client):
     c, tenant, _, _ = client
-    with patch("helix.api.routers.jobs.jobs_crud.get_job", AsyncMock(return_value=None)):
+    with patch("eshopeo.api.routers.jobs.jobs_crud.get_job", AsyncMock(return_value=None)):
         r = c.get(f"/v1/jobs/{uuid4()}",
-                  headers={"X-Helix-Tenant-Key": str(tenant.public_key)})
+                  headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)})
     assert r.status_code == 404
 
 
 def test_list_jobs_returns_list(client):
     c, tenant, job, _ = client
     r = c.get("/v1/jobs",
-              headers={"X-Helix-Tenant-Key": str(tenant.public_key)})
+              headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)})
     assert r.status_code == 200
     data = r.json()
     assert isinstance(data, list)
@@ -84,6 +84,6 @@ def test_list_jobs_returns_list(client):
 def test_list_jobs_filter_by_type(client):
     c, tenant, job, _ = client
     r = c.get("/v1/jobs?type=product_sync",
-              headers={"X-Helix-Tenant-Key": str(tenant.public_key)})
+              headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)})
     assert r.status_code == 200
     assert len(r.json()) == 1

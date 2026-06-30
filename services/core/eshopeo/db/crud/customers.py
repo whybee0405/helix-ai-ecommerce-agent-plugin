@@ -1,0 +1,116 @@
+from uuid import UUID, uuid4
+
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from eshopeo.db.models import Customer
+
+
+async def get_customer_by_id(
+    session: AsyncSession,
+    customer_id: UUID,
+    tenant_id: UUID,
+) -> Customer | None:
+    result = await session.execute(
+        select(Customer).where(
+            Customer.id == customer_id,
+            Customer.tenant_id == tenant_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_customer_by_platform_id(
+    session: AsyncSession,
+    tenant_id: UUID,
+    platform_id: str,
+) -> Customer | None:
+    result = await session.execute(
+        select(Customer).where(
+            Customer.tenant_id == tenant_id,
+            Customer.platform_id == platform_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def upsert_customer(session: AsyncSession, customer: Customer) -> Customer:
+    stmt = (
+        insert(Customer)
+        .values(
+            id=customer.id,
+            tenant_id=customer.tenant_id,
+            platform_id=customer.platform_id,
+            email_hash=customer.email_hash,
+            profile=customer.profile,
+        )
+        .on_conflict_do_update(
+            constraint="uq_customer_tenant_platform",
+            set_=dict(
+                email_hash=customer.email_hash,
+                profile=customer.profile,
+            ),
+        )
+        .returning(Customer)
+    )
+    result = await session.execute(stmt)
+    await session.flush()
+    return result.scalar_one()
+
+
+async def update_customer_profile(
+    session: AsyncSession,
+    customer: Customer,
+    new_profile: dict,
+) -> Customer:
+    customer.profile = new_profile
+    session.add(customer)
+    await session.flush()
+    await session.refresh(customer)
+    return customer
+
+
+async def list_customers(
+    session: AsyncSession,
+    tenant_id: UUID,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[Customer]:
+    result = await session.execute(
+        select(Customer)
+        .where(Customer.tenant_id == tenant_id)
+        .order_by(Customer.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return result.scalars().all()
+
+
+async def count_customers(
+    session: AsyncSession,
+    tenant_id: UUID,
+) -> int:
+    result = await session.execute(
+        select(func.count(Customer.id)).where(Customer.tenant_id == tenant_id)
+    )
+    return result.scalar_one()
+
+
+async def get_customer_segments(
+    session: AsyncSession,
+    tenant_id: UUID,
+) -> list[dict]:
+    skin_type_col = func.jsonb_extract_path_text(
+        Customer.profile, "skin_type"
+    ).label("skin_type")
+    result = await session.execute(
+        select(skin_type_col, func.count(Customer.id).label("count"))
+        .where(Customer.tenant_id == tenant_id)
+        .group_by(skin_type_col)
+        .order_by(func.count(Customer.id).desc())
+    )
+    return [
+        {"skin_type": row.skin_type or "unknown", "count": row.count}
+        for row in result.all()
+    ]

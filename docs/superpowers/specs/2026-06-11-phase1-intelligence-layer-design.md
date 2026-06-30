@@ -11,8 +11,8 @@
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| `GET` | `/v1/search/products` | `X-Helix-Tenant-Key` | Semantic product search |
-| `POST` | `/v1/sync/customers` | `X-Helix-Tenant-Key` | Batch upsert customers |
+| `GET` | `/v1/search/products` | `X-eShopeo-Tenant-Key` | Semantic product search |
+| `POST` | `/v1/sync/customers` | `X-eShopeo-Tenant-Key` | Batch upsert customers |
 | `POST` | `/v1/widget/chat` | `Authorization: Bearer <jwt>` | AI consultant query |
 | `POST` | `/v1/widget/routine` | `Authorization: Bearer <jwt>` | Personalised routine builder |
 
@@ -80,7 +80,7 @@ Intent directs which layer to try first:
 
 ## 5. Rule engine layer (Layer 2)
 
-`helix/domain/rules.py` implements two operations:
+`eshopeo/domain/rules.py` implements two operations:
 
 **Compatibility check** — given a list of product platform IDs, extract their `key_ingredients` from `domain_attributes`, then test every pair against the pack's `compatibility_rules`. Returns any conflicts or cautions.
 
@@ -184,7 +184,7 @@ Cached responses write a zero-cost event (`tokens_in=0, tokens_out=0, cost_usd=0
 
 ## 10. Redis response cache
 
-`helix/llm/cache.py` wraps `redis.asyncio`. Cache key: `sha256(model_id + ":" + system_prompt_hash + ":" + user_prompt)`. TTL: 24h for classification, 1h for generated responses.
+`eshopeo/llm/cache.py` wraps `redis.asyncio`. Cache key: `sha256(model_id + ":" + system_prompt_hash + ":" + user_prompt)`. TTL: 24h for classification, 1h for generated responses.
 
 Cache is opt-in — the gateway passes `cache_ttl` to `route_query()`. Classification and FAQ responses are always cached. Personalized consultant responses are not cached (profile context differs per user).
 
@@ -193,23 +193,23 @@ Cache is opt-in — the gateway passes `cache_ttl` to `route_query()`. Classific
 ## 11. File map
 
 **New files:**
-- `services/core/helix/db/crud/customers.py`
-- `services/core/helix/db/crud/products.py` — add `vector_search_products()`
-- `services/core/helix/domain/__init__.py`
-- `services/core/helix/domain/search.py`
-- `services/core/helix/domain/rules.py`
-- `services/core/helix/domain/consultant.py`
-- `services/core/helix/domain/routine.py`
-- `services/core/helix/llm/cache.py`
-- `services/core/helix/llm/layers.py` — implement all three stub layers
-- `services/core/helix/llm/gateway.py` — add `route_query()` method
-- `services/core/helix/api/routers/search.py`
-- `services/core/helix/api/routers/sync.py` — add `POST /v1/sync/customers`
-- `services/core/helix/api/routers/widget.py` — add chat + routine endpoints
+- `services/core/eshopeo/db/crud/customers.py`
+- `services/core/eshopeo/db/crud/products.py` — add `vector_search_products()`
+- `services/core/eshopeo/domain/__init__.py`
+- `services/core/eshopeo/domain/search.py`
+- `services/core/eshopeo/domain/rules.py`
+- `services/core/eshopeo/domain/consultant.py`
+- `services/core/eshopeo/domain/routine.py`
+- `services/core/eshopeo/llm/cache.py`
+- `services/core/eshopeo/llm/layers.py` — implement all three stub layers
+- `services/core/eshopeo/llm/gateway.py` — add `route_query()` method
+- `services/core/eshopeo/api/routers/search.py`
+- `services/core/eshopeo/api/routers/sync.py` — add `POST /v1/sync/customers`
+- `services/core/eshopeo/api/routers/widget.py` — add chat + routine endpoints
 
 **Modified files:**
-- `services/core/helix/api/app.py` — register new routers
-- `services/core/helix/api/deps.py` — add `get_widget_tenant()` (JWT auth)
+- `services/core/eshopeo/api/app.py` — register new routers
+- `services/core/eshopeo/api/deps.py` — add `get_widget_tenant()` (JWT auth)
 
 **New tests:**
 - `test_search_endpoint.py`

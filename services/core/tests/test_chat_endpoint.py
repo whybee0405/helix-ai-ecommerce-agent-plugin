@@ -3,11 +3,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.api.deps import get_widget_tenant
-from helix.db.models import Tenant
-from helix.api.auth.tokens import issue_widget_token
-from helix.llm.gateway import RouteResult
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_widget_tenant
+from eshopeo.db.models import Tenant
+from eshopeo.api.auth.tokens import issue_widget_token
+from eshopeo.llm.gateway import RouteResult
 from tests.conftest import make_test_settings
 
 
@@ -49,10 +49,10 @@ async def test_chat_with_valid_token_returns_response(client, app, tenant):
     # Override the dependency so we skip the real JWT/DB lookup
     app.dependency_overrides[get_widget_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack:
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack:
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(
             response="For dry skin I recommend the Snail Essence.",

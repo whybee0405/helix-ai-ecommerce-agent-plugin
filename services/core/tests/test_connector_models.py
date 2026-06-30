@@ -1,6 +1,6 @@
 import pytest
 from uuid import uuid4
-from helix.connectors.models import CanonicalProduct, CanonicalCustomer, CanonicalOrder
+from eshopeo.connectors.models import CanonicalProduct, CanonicalCustomer, CanonicalOrder
 from datetime import datetime, timezone
 
 

@@ -21,7 +21,7 @@
 
 The fix requires the least disruption: route_query already tracks which LLM model was called and can compute cost. We add cost metadata to `RouteResult`, then write one `UsageEvent` per chat/routine request in the widget endpoint — after the call succeeds, before the commit.
 
-### 2a. Extend `RouteResult` in `helix/llm/gateway.py`
+### 2a. Extend `RouteResult` in `eshopeo/llm/gateway.py`
 
 Add fields to `RouteResult`:
 ```python
@@ -45,7 +45,7 @@ Populate in `route_query` when the LLM path is actually taken:
 
 The `_log_usage` method currently logs to structlog — leave it unchanged (dual signal: log + DB).
 
-### 2b. New CRUD: `helix/db/crud/usage_events.py`
+### 2b. New CRUD: `eshopeo/db/crud/usage_events.py`
 
 ```python
 async def create_usage_event(
@@ -72,7 +72,7 @@ async def create_usage_event(
 
 ### 2c. Widget chat writes usage event
 
-In `helix/api/routers/widget.py`, after `handle_query` returns:
+In `eshopeo/api/routers/widget.py`, after `handle_query` returns:
 ```python
 result = await handle_query(...)
 if result.cost_usd > 0:
@@ -92,7 +92,7 @@ Note: `widget_chat` currently has no `db.commit()` — one must be added. The db
 
 ## 3. Customer profile in widget chat (P6-2)
 
-Widget sessions are anonymous today. Merchants can identify their customers by passing a `customer_id` (the Helix UUID of the customer, obtained after sync). When provided, the stored `Customer.profile` is merged with the request's `customer_profile`.
+Widget sessions are anonymous today. Merchants can identify their customers by passing a `customer_id` (the eShopeo UUID of the customer, obtained after sync). When provided, the stored `Customer.profile` is merged with the request's `customer_profile`.
 
 ### 3a. `ChatRequest` model change
 
@@ -100,7 +100,7 @@ Widget sessions are anonymous today. Merchants can identify their customers by p
 class ChatRequest(BaseModel):
     query: str
     customer_profile: dict = {}
-    customer_id: str | None = None  # Helix customer UUID (optional)
+    customer_id: str | None = None  # eShopeo customer UUID (optional)
 ```
 
 ### 3b. Profile merge in `widget_chat`
@@ -119,7 +119,7 @@ if body.customer_id:
 
 Pass `merged_profile` to `handle_query` instead of `body.customer_profile`.
 
-### 3c. New CRUD function in `helix/db/crud/customers.py`
+### 3c. New CRUD function in `eshopeo/db/crud/customers.py`
 
 ```python
 async def get_customer_by_id(
@@ -144,7 +144,7 @@ Tenant scoping: `Customer.tenant_id == tenant_id` ensures cross-tenant isolation
 
 Operators can update a customer's skin profile after sync (e.g. after the customer fills in a questionnaire on the storefront). Profile is merged — existing keys are overwritten, new keys are added.
 
-### New endpoint in `helix/api/routers/sync.py`
+### New endpoint in `eshopeo/api/routers/sync.py`
 
 `PATCH /v1/sync/customers/{platform_id}/profile`
 
@@ -164,7 +164,7 @@ Logic:
 4. Call `update_customer_profile(session, customer, new_profile)` CRUD function
 5. `await db.commit()`
 
-### New CRUD function in `helix/db/crud/customers.py`
+### New CRUD function in `eshopeo/db/crud/customers.py`
 
 ```python
 async def update_customer_profile(
@@ -179,7 +179,7 @@ async def update_customer_profile(
     return customer
 ```
 
-Add `get_customer_by_platform_id_and_tenant` to `helix/db/crud/customers.py` (check if it already exists, just look up by platform_id + tenant_id):
+Add `get_customer_by_platform_id_and_tenant` to `eshopeo/db/crud/customers.py` (check if it already exists, just look up by platform_id + tenant_id):
 ```python
 async def get_customer_by_platform_id(
     session: AsyncSession,
@@ -195,20 +195,20 @@ async def get_customer_by_platform_id(
     return result.scalar_one_or_none()
 ```
 
-(Check orders.py — `get_customer_id_by_platform_id` in `helix/db/crud/orders.py` does something similar but returns UUID. We need the full Customer object here.)
+(Check orders.py — `get_customer_id_by_platform_id` in `eshopeo/db/crud/orders.py` does something similar but returns UUID. We need the full Customer object here.)
 
 ---
 
 ## 5. File map
 
 **New files:**
-- `services/core/helix/db/crud/usage_events.py`
+- `services/core/eshopeo/db/crud/usage_events.py`
 
 **Modified files:**
-- `services/core/helix/llm/gateway.py` — extend `RouteResult` with cost fields, populate in `route_query`
-- `services/core/helix/api/routers/widget.py` — write UsageEvent after LLM calls; add `customer_id` to `ChatRequest`; merge stored profile
-- `services/core/helix/db/crud/customers.py` — add `get_customer_by_id` and `update_customer_profile` (check existing file for `get_customer_by_platform_id`)
-- `services/core/helix/api/routers/sync.py` — add `PATCH /v1/sync/customers/{platform_id}/profile`
+- `services/core/eshopeo/llm/gateway.py` — extend `RouteResult` with cost fields, populate in `route_query`
+- `services/core/eshopeo/api/routers/widget.py` — write UsageEvent after LLM calls; add `customer_id` to `ChatRequest`; merge stored profile
+- `services/core/eshopeo/db/crud/customers.py` — add `get_customer_by_id` and `update_customer_profile` (check existing file for `get_customer_by_platform_id`)
+- `services/core/eshopeo/api/routers/sync.py` — add `PATCH /v1/sync/customers/{platform_id}/profile`
 
 **New tests:**
 - `services/core/tests/test_usage_event_persistence.py` (4 tests)
@@ -234,14 +234,14 @@ async def get_customer_by_platform_id(
 **test_customer_profile_update.py:**
 1. `test_patch_profile_merges_with_existing` — customer has `profile={"skin_type": "oily"}`, PATCH sends `{"skin_type": "dry", "concerns": ["acne"]}` → stored profile becomes `{"skin_type": "dry", "concerns": ["acne"]}`
 2. `test_patch_profile_404_unknown_customer` — unknown `platform_id` → 404
-3. `test_patch_profile_requires_auth` — no `X-Helix-Tenant-Key` → 401
+3. `test_patch_profile_requires_auth` — no `X-eShopeo-Tenant-Key` → 401
 
 ---
 
 ## 7. Security constraints
 
 - Customer profile lookup in widget: scoped by `tenant_id` from the authenticated JWT — a customer from tenant A is invisible to tenant B even if their UUID is known
-- Profile update endpoint: auth via `X-Helix-Tenant-Key` (same as all sync endpoints)
+- Profile update endpoint: auth via `X-eShopeo-Tenant-Key` (same as all sync endpoints)
 - Usage events: tenant_id comes from authenticated tenant object, never from request body
 - `customer_id` in ChatRequest is treated as untrusted input — invalid UUID silently ignored, and the DB lookup is tenant-scoped
 

@@ -4,7 +4,7 @@
 
 **Goal:** A widget session holder can query the AI consultant and receive answers sourced from pgvector search, compatibility rules, templates, and (fallback) Claude. The routine builder produces a step-ordered product list. All LLM calls are metered.
 
-**Architecture:** Domain logic lives in `helix/domain/`. Routers are thin. All Claude calls go through `helix/llm/gateway.route_query()`. Layers are implemented in `helix/llm/layers.py`. Redis cache wraps LLM calls in `helix/llm/cache.py`.
+**Architecture:** Domain logic lives in `eshopeo/domain/`. Routers are thin. All Claude calls go through `eshopeo/llm/gateway.route_query()`. Layers are implemented in `eshopeo/llm/layers.py`. Redis cache wraps LLM calls in `eshopeo/llm/cache.py`.
 
 **Tech Stack:** Python 3.12 · FastAPI · SQLAlchemy 2.0 + pgvector · Redis · Anthropic SDK (Haiku + Sonnet) · Voyage AI REST · structlog
 
@@ -13,23 +13,23 @@
 ## File Map
 
 **New files:**
-- `services/core/helix/db/crud/customers.py`
-- `services/core/helix/domain/__init__.py`
-- `services/core/helix/domain/search.py`
-- `services/core/helix/domain/rules.py`
-- `services/core/helix/domain/consultant.py`
-- `services/core/helix/domain/routine.py`
-- `services/core/helix/llm/cache.py`
-- `services/core/helix/api/routers/search.py`
+- `services/core/eshopeo/db/crud/customers.py`
+- `services/core/eshopeo/domain/__init__.py`
+- `services/core/eshopeo/domain/search.py`
+- `services/core/eshopeo/domain/rules.py`
+- `services/core/eshopeo/domain/consultant.py`
+- `services/core/eshopeo/domain/routine.py`
+- `services/core/eshopeo/llm/cache.py`
+- `services/core/eshopeo/api/routers/search.py`
 
 **Modified files:**
-- `services/core/helix/db/crud/products.py` — add `vector_search_products()`
-- `services/core/helix/llm/layers.py` — implement all three stub layers
-- `services/core/helix/llm/gateway.py` — add `route_query()` method
-- `services/core/helix/api/routers/sync.py` — add `POST /v1/sync/customers`
-- `services/core/helix/api/routers/widget.py` — add `/chat` and `/routine`
-- `services/core/helix/api/deps.py` — add `get_widget_tenant()` JWT dep
-- `services/core/helix/api/app.py` — register search router
+- `services/core/eshopeo/db/crud/products.py` — add `vector_search_products()`
+- `services/core/eshopeo/llm/layers.py` — implement all three stub layers
+- `services/core/eshopeo/llm/gateway.py` — add `route_query()` method
+- `services/core/eshopeo/api/routers/sync.py` — add `POST /v1/sync/customers`
+- `services/core/eshopeo/api/routers/widget.py` — add `/chat` and `/routine`
+- `services/core/eshopeo/api/deps.py` — add `get_widget_tenant()` JWT dep
+- `services/core/eshopeo/api/app.py` — register search router
 
 **New tests:**
 - `services/core/tests/test_search_endpoint.py`
@@ -45,14 +45,14 @@
 ## Task 1: Vector search — DB query + search endpoint
 
 **Files:**
-- Modify: `services/core/helix/db/crud/products.py`
-- Create: `services/core/helix/domain/__init__.py`
-- Create: `services/core/helix/domain/search.py`
-- Create: `services/core/helix/api/routers/search.py`
-- Modify: `services/core/helix/api/app.py`
+- Modify: `services/core/eshopeo/db/crud/products.py`
+- Create: `services/core/eshopeo/domain/__init__.py`
+- Create: `services/core/eshopeo/domain/search.py`
+- Create: `services/core/eshopeo/api/routers/search.py`
+- Modify: `services/core/eshopeo/api/app.py`
 - Test: `services/core/tests/test_search_endpoint.py`
 
-- [ ] **Step 1: Add `vector_search_products()` to `helix/db/crud/products.py`**
+- [ ] **Step 1: Add `vector_search_products()` to `eshopeo/db/crud/products.py`**
 
 Append to the existing file:
 ```python
@@ -83,15 +83,15 @@ async def vector_search_products(
     return [(row.Product, 1.0 - row.distance) for row in result]
 ```
 
-- [ ] **Step 2: Create `services/core/helix/domain/__init__.py`** (empty)
+- [ ] **Step 2: Create `services/core/eshopeo/domain/__init__.py`** (empty)
 
-- [ ] **Step 3: Create `services/core/helix/domain/search.py`**
+- [ ] **Step 3: Create `services/core/eshopeo/domain/search.py`**
 
 ```python
 import httpx
 import structlog
 
-from helix.config import Settings
+from eshopeo.config import Settings
 
 logger = structlog.get_logger(__name__)
 
@@ -110,7 +110,7 @@ async def embed_query(query: str, settings: Settings) -> list[float]:
     return resp.json()["data"][0]["embedding"]
 ```
 
-- [ ] **Step 4: Create `services/core/helix/api/routers/search.py`**
+- [ ] **Step 4: Create `services/core/eshopeo/api/routers/search.py`**
 
 ```python
 from typing import Annotated
@@ -121,11 +121,11 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
-from helix.config import get_settings
-from helix.db.crud.products import vector_search_products
-from helix.db.models import Tenant
-from helix.domain.search import embed_query
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.config import get_settings
+from eshopeo.db.crud.products import vector_search_products
+from eshopeo.db.models import Tenant
+from eshopeo.domain.search import embed_query
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/v1/search", tags=["search"])
@@ -180,7 +180,7 @@ async def search_products(
 
 Add inside `create_app()`:
 ```python
-    from helix.api.routers import search
+    from eshopeo.api.routers import search
     app.include_router(search.router)
 ```
 
@@ -192,8 +192,8 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -234,14 +234,14 @@ async def test_search_returns_results(client, tenant):
     fake_product.categories = ["Essence"]
     fake_product.domain_attributes = {}
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.search.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.search.vector_search_products", new_callable=AsyncMock, return_value=[(fake_product, 0.91)]):
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.search.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.search.vector_search_products", new_callable=AsyncMock, return_value=[(fake_product, 0.91)]):
 
         resp = await client.get(
             "/v1/search/products",
             params={"q": "hydration serum"},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -253,11 +253,11 @@ async def test_search_returns_results(client, tenant):
 
 @pytest.mark.asyncio
 async def test_search_empty_query_returns_422(client, tenant):
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant):
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant):
         resp = await client.get(
             "/v1/search/products",
             params={"q": ""},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
     assert resp.status_code == 422
 ```
@@ -280,11 +280,11 @@ git commit -m "feat: add semantic product search endpoint GET /v1/search/product
 ## Task 2: Customer sync endpoint
 
 **Files:**
-- Create: `services/core/helix/db/crud/customers.py`
-- Modify: `services/core/helix/api/routers/sync.py`
+- Create: `services/core/eshopeo/db/crud/customers.py`
+- Modify: `services/core/eshopeo/api/routers/sync.py`
 - Test: `services/core/tests/test_customer_sync.py`
 
-- [ ] **Step 1: Create `services/core/helix/db/crud/customers.py`**
+- [ ] **Step 1: Create `services/core/eshopeo/db/crud/customers.py`**
 
 ```python
 from uuid import UUID
@@ -292,7 +292,7 @@ from uuid import UUID
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.db.models import Customer
+from eshopeo.db.models import Customer
 
 
 async def upsert_customer(session: AsyncSession, customer: Customer) -> Customer:
@@ -319,13 +319,13 @@ async def upsert_customer(session: AsyncSession, customer: Customer) -> Customer
     return result.scalar_one()
 ```
 
-- [ ] **Step 2: Add `POST /v1/sync/customers` to `services/core/helix/api/routers/sync.py`**
+- [ ] **Step 2: Add `POST /v1/sync/customers` to `services/core/eshopeo/api/routers/sync.py`**
 
 Append to the existing file (after the imports, add the new route):
 ```python
-from helix.connectors.models import CanonicalCustomer
-from helix.db.crud.customers import upsert_customer
-from helix.db.models import Customer
+from eshopeo.connectors.models import CanonicalCustomer
+from eshopeo.db.crud.customers import upsert_customer
+from eshopeo.db.models import Customer
 import jsonschema as _jsonschema
 
 
@@ -385,8 +385,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Customer, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Customer, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -429,9 +429,9 @@ async def test_customer_sync_without_key_returns_401(client):
 async def test_customer_sync_valid(client, tenant):
     customers = [make_canonical_customer(str(tenant.id))]
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.sync.upsert_customer", new_callable=AsyncMock) as mock_upsert, \
-         patch("helix.api.routers.sync.default_pack") as mock_pack:
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.sync.upsert_customer", new_callable=AsyncMock) as mock_upsert, \
+         patch("eshopeo.api.routers.sync.default_pack") as mock_pack:
         mock_pack.return_value = MagicMock(profile_schema={
             "type": "object",
             "properties": {"skin_type": {"type": "string"}},
@@ -442,7 +442,7 @@ async def test_customer_sync_valid(client, tenant):
         resp = await client.post(
             "/v1/sync/customers",
             json={"customers": customers},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -455,8 +455,8 @@ async def test_customer_sync_valid(client, tenant):
 async def test_customer_sync_invalid_profile_fails(client, tenant):
     customers = [make_canonical_customer(str(tenant.id)) | {"profile": {"skin_type": "invalid_enum_value"}}]
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.sync.default_pack") as mock_pack:
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.sync.default_pack") as mock_pack:
         mock_pack.return_value = MagicMock(profile_schema={
             "type": "object",
             "properties": {
@@ -468,7 +468,7 @@ async def test_customer_sync_invalid_profile_fails(client, tenant):
         resp = await client.post(
             "/v1/sync/customers",
             json={"customers": customers},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -495,11 +495,11 @@ git commit -m "feat: add customer sync endpoint POST /v1/sync/customers with pro
 ## Task 3: Rule engine
 
 **Files:**
-- Create: `services/core/helix/domain/rules.py`
-- Modify: `services/core/helix/llm/layers.py`
+- Create: `services/core/eshopeo/domain/rules.py`
+- Modify: `services/core/eshopeo/llm/layers.py`
 - Test: `services/core/tests/test_rules_engine.py`
 
-- [ ] **Step 1: Create `services/core/helix/domain/rules.py`**
+- [ ] **Step 1: Create `services/core/eshopeo/domain/rules.py`**
 
 ```python
 from dataclasses import dataclass
@@ -571,11 +571,11 @@ def missing_steps(
     return [s for s in order if s not in covered and s != "mask"]
 ```
 
-- [ ] **Step 2: Implement `RuleEngineLayer.query()` in `services/core/helix/llm/layers.py`**
+- [ ] **Step 2: Implement `RuleEngineLayer.query()` in `services/core/eshopeo/llm/layers.py`**
 
 Replace the stub `RuleEngineLayer` class:
 ```python
-from helix.domain.rules import check_compatibility, CompatibilityResult
+from eshopeo.domain.rules import check_compatibility, CompatibilityResult
 
 
 class RuleEngineLayer:
@@ -599,7 +599,7 @@ class RuleEngineLayer:
 
 ```python
 import pytest
-from helix.domain.rules import (
+from eshopeo.domain.rules import (
     check_compatibility,
     order_routine,
     missing_steps,
@@ -690,12 +690,12 @@ git commit -m "feat: add rule engine (compatibility check, routine ordering) and
 ## Task 4: Redis cache + gateway routing
 
 **Files:**
-- Create: `services/core/helix/llm/cache.py`
-- Modify: `services/core/helix/llm/gateway.py`
+- Create: `services/core/eshopeo/llm/cache.py`
+- Modify: `services/core/eshopeo/llm/gateway.py`
 - Test: `services/core/tests/test_llm_cache.py`
 - Test: `services/core/tests/test_gateway_routing.py`
 
-- [ ] **Step 1: Create `services/core/helix/llm/cache.py`**
+- [ ] **Step 1: Create `services/core/eshopeo/llm/cache.py`**
 
 ```python
 import hashlib
@@ -703,7 +703,7 @@ import json
 
 import redis.asyncio as aioredis
 
-from helix.config import Settings
+from eshopeo.config import Settings
 
 
 def _cache_key(model_id: str, system: str, user: str) -> str:
@@ -725,13 +725,13 @@ class LLMCache:
         await self._redis.aclose()
 ```
 
-- [ ] **Step 2: Add `route_query()` and `classify_intent()` to `services/core/helix/llm/gateway.py`**
+- [ ] **Step 2: Add `route_query()` and `classify_intent()` to `services/core/eshopeo/llm/gateway.py`**
 
 Append to the existing `LLMGateway` class:
 
 ```python
     async def classify_intent(self, query: str, cache: "LLMCache | None" = None) -> "QueryIntent":
-        from helix.llm.gateway import QueryIntent  # local to avoid circular
+        from eshopeo.llm.gateway import QueryIntent  # local to avoid circular
         import json as _json
 
         cache_key_sys = "Classify user query intent."
@@ -768,8 +768,8 @@ Append to the existing `LLMGateway` class:
         pack_templates: dict[str, str],
         cache: "LLMCache | None" = None,
     ) -> "RouteResult":
-        from helix.llm.layers import VectorSearchLayer, RuleEngineLayer, TemplateLayer
-        from helix.llm.gateway import RouteResult
+        from eshopeo.llm.layers import VectorSearchLayer, RuleEngineLayer, TemplateLayer
+        from eshopeo.llm.gateway import RouteResult
 
         intent = await self.classify_intent(query, cache)
 
@@ -796,7 +796,7 @@ Append to the existing `LLMGateway` class:
         else:
             grounded_user = f"Customer profile: {customer_profile}\n\nCustomer question: {query}"
 
-        from helix.llm.gateway import ConsultantResponse
+        from eshopeo.llm.gateway import ConsultantResponse
         llm_result = await self.complete(
             tier=ModelTier.GENERATE,
             system=system_prompt,
@@ -840,7 +840,7 @@ class RouteResult:
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from helix.llm.cache import LLMCache, _cache_key
+from eshopeo.llm.cache import LLMCache, _cache_key
 from tests.conftest import make_test_settings
 
 
@@ -859,7 +859,7 @@ def test_cache_key_differs_on_input():
 @pytest.mark.asyncio
 async def test_cache_get_miss_returns_none():
     settings = make_test_settings()
-    with patch("helix.llm.cache.aioredis.from_url") as mock_redis_cls:
+    with patch("eshopeo.llm.cache.aioredis.from_url") as mock_redis_cls:
         mock_redis = AsyncMock()
         mock_redis.get.return_value = None
         mock_redis_cls.return_value = mock_redis
@@ -872,7 +872,7 @@ async def test_cache_get_miss_returns_none():
 @pytest.mark.asyncio
 async def test_cache_set_and_get():
     settings = make_test_settings()
-    with patch("helix.llm.cache.aioredis.from_url") as mock_redis_cls:
+    with patch("eshopeo.llm.cache.aioredis.from_url") as mock_redis_cls:
         mock_redis = AsyncMock()
         mock_redis.get.return_value = '{"intent": "product_search", "confidence": 0.9}'
         mock_redis_cls.return_value = mock_redis
@@ -890,7 +890,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from helix.llm.gateway import LLMGateway, ModelTier, QueryIntent, RouteResult
+from eshopeo.llm.gateway import LLMGateway, ModelTier, QueryIntent, RouteResult
 from tests.conftest import make_test_settings
 
 
@@ -905,7 +905,7 @@ async def test_classify_intent_returns_intent(gateway):
     mock_message.content = [MagicMock(text='{"intent": "product_search", "confidence": 0.95}')]
     mock_message.usage = MagicMock(input_tokens=50, output_tokens=20)
 
-    with patch("helix.llm.gateway.anthropic.AsyncAnthropic") as mock_cls:
+    with patch("eshopeo.llm.gateway.anthropic.AsyncAnthropic") as mock_cls:
         mock_client = AsyncMock()
         mock_cls.return_value = mock_client
         mock_client.messages.create = AsyncMock(return_value=mock_message)
@@ -918,9 +918,9 @@ async def test_classify_intent_returns_intent(gateway):
 
 @pytest.mark.asyncio
 async def test_route_query_uses_template_layer_first(gateway):
-    with patch("helix.llm.gateway.anthropic.AsyncAnthropic"), \
-         patch("helix.llm.layers.TemplateLayer.query", new_callable=AsyncMock) as mock_template:
-        from helix.llm.layers import LayerResult
+    with patch("eshopeo.llm.gateway.anthropic.AsyncAnthropic"), \
+         patch("eshopeo.llm.layers.TemplateLayer.query", new_callable=AsyncMock) as mock_template:
+        from eshopeo.llm.layers import LayerResult
         mock_template.return_value = LayerResult(answered=True, response="Returns within 30 days.")
 
         with patch.object(gateway, "classify_intent", new_callable=AsyncMock) as mock_intent:
@@ -957,18 +957,18 @@ git commit -m "feat: add Redis LLM cache and gateway route_query with intent cla
 ## Task 5: Widget chat endpoint + usage metering
 
 **Files:**
-- Create: `services/core/helix/domain/consultant.py`
-- Modify: `services/core/helix/api/deps.py`
-- Modify: `services/core/helix/api/routers/widget.py`
-- Create: `services/core/helix/db/crud/usage.py`
+- Create: `services/core/eshopeo/domain/consultant.py`
+- Modify: `services/core/eshopeo/api/deps.py`
+- Modify: `services/core/eshopeo/api/routers/widget.py`
+- Create: `services/core/eshopeo/db/crud/usage.py`
 - Test: `services/core/tests/test_chat_endpoint.py`
 
-- [ ] **Step 1: Create `services/core/helix/db/crud/usage.py`**
+- [ ] **Step 1: Create `services/core/eshopeo/db/crud/usage.py`**
 
 ```python
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.db.models import UsageEvent
+from eshopeo.db.models import UsageEvent
 
 
 async def record_usage(session: AsyncSession, event: UsageEvent) -> None:
@@ -976,11 +976,11 @@ async def record_usage(session: AsyncSession, event: UsageEvent) -> None:
     await session.flush()
 ```
 
-- [ ] **Step 2: Add `get_widget_tenant()` dependency to `services/core/helix/api/deps.py`**
+- [ ] **Step 2: Add `get_widget_tenant()` dependency to `services/core/eshopeo/api/deps.py`**
 
 Append:
 ```python
-from helix.api.auth.tokens import InvalidTokenError, validate_widget_token
+from eshopeo.api.auth.tokens import InvalidTokenError, validate_widget_token
 
 
 async def get_widget_tenant(
@@ -990,7 +990,7 @@ async def get_widget_tenant(
     if authorization is None or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
     token = authorization.removeprefix("Bearer ")
-    from helix.config import get_settings as _gs
+    from eshopeo.config import get_settings as _gs
     settings = _gs()
     try:
         tenant_id = validate_widget_token(token, settings.session_secret.get_secret_value())
@@ -1002,20 +1002,20 @@ async def get_widget_tenant(
     return tenant
 ```
 
-Also add the import `from helix.db.crud.tenants import get_tenant_by_id` to deps.py if not already present.
+Also add the import `from eshopeo.db.crud.tenants import get_tenant_by_id` to deps.py if not already present.
 
-- [ ] **Step 3: Create `services/core/helix/domain/consultant.py`**
+- [ ] **Step 3: Create `services/core/eshopeo/domain/consultant.py`**
 
 ```python
 import structlog
 from uuid import UUID
 
-from helix.config import Settings
-from helix.db.crud.usage import record_usage
-from helix.db.models import UsageEvent
-from helix.llm.cache import LLMCache
-from helix.llm.gateway import LLMGateway, ModelTier, RouteResult
-from helix.packs.loader import LoadedPack
+from eshopeo.config import Settings
+from eshopeo.db.crud.usage import record_usage
+from eshopeo.db.models import UsageEvent
+from eshopeo.llm.cache import LLMCache
+from eshopeo.llm.gateway import LLMGateway, ModelTier, RouteResult
+from eshopeo.packs.loader import LoadedPack
 
 logger = structlog.get_logger(__name__)
 
@@ -1052,15 +1052,15 @@ async def handle_query(
     return result
 ```
 
-- [ ] **Step 4: Add `POST /v1/widget/chat` to `services/core/helix/api/routers/widget.py`**
+- [ ] **Step 4: Add `POST /v1/widget/chat` to `services/core/eshopeo/api/routers/widget.py`**
 
 Add to the existing file:
 ```python
-from helix.api.deps import get_db, get_tenant, get_widget_tenant
-from helix.domain.consultant import handle_query
-from helix.domain.search import embed_query
-from helix.db.crud.products import vector_search_products
-from helix.packs.registry import default_pack
+from eshopeo.api.deps import get_db, get_tenant, get_widget_tenant
+from eshopeo.domain.consultant import handle_query
+from eshopeo.domain.search import embed_query
+from eshopeo.db.crud.products import vector_search_products
+from eshopeo.packs.registry import default_pack
 
 
 class ChatRequest(BaseModel):
@@ -1080,7 +1080,7 @@ async def widget_chat(
     tenant: Tenant = Depends(get_widget_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ChatResponse:
-    from helix.config import get_settings
+    from eshopeo.config import get_settings
     settings = get_settings()
     pack = default_pack()
 
@@ -1124,9 +1124,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Tenant
-from helix.api.auth.tokens import issue_widget_token
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Tenant
+from eshopeo.api.auth.tokens import issue_widget_token
 from tests.conftest import make_test_settings
 
 
@@ -1167,13 +1167,13 @@ async def test_chat_without_token_returns_401(client):
 
 @pytest.mark.asyncio
 async def test_chat_with_valid_token_returns_response(client, tenant, jwt_token):
-    from helix.llm.gateway import RouteResult
+    from eshopeo.llm.gateway import RouteResult
 
-    with patch("helix.api.routers.widget.get_widget_tenant", return_value=tenant), \
-         patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.default_pack") as mock_pack:
+    with patch("eshopeo.api.routers.widget.get_widget_tenant", return_value=tenant), \
+         patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.default_pack") as mock_pack:
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(
             response="For dry skin I recommend the Snail Essence.",
@@ -1211,22 +1211,22 @@ git commit -m "feat: add widget chat endpoint POST /v1/widget/chat with JWT auth
 ## Task 6: Routine builder
 
 **Files:**
-- Create: `services/core/helix/domain/routine.py`
-- Modify: `services/core/helix/api/routers/widget.py`
+- Create: `services/core/eshopeo/domain/routine.py`
+- Modify: `services/core/eshopeo/api/routers/widget.py`
 - Test: `services/core/tests/test_routine_endpoint.py`
 
-- [ ] **Step 1: Create `services/core/helix/domain/routine.py`**
+- [ ] **Step 1: Create `services/core/eshopeo/domain/routine.py`**
 
 ```python
 from dataclasses import dataclass
 
-from helix.domain.rules import (
+from eshopeo.domain.rules import (
     CompatibilityResult,
     check_compatibility,
     missing_steps,
     order_routine,
 )
-from helix.packs.loader import LoadedPack
+from eshopeo.packs.loader import LoadedPack
 
 
 @dataclass
@@ -1269,11 +1269,11 @@ def build_routine(
     )
 ```
 
-- [ ] **Step 2: Add `POST /v1/widget/routine` to `services/core/helix/api/routers/widget.py`**
+- [ ] **Step 2: Add `POST /v1/widget/routine` to `services/core/eshopeo/api/routers/widget.py`**
 
 Append:
 ```python
-from helix.domain.routine import build_routine, RoutineResult
+from eshopeo.domain.routine import build_routine, RoutineResult
 
 
 class RoutineRequest(BaseModel):
@@ -1300,7 +1300,7 @@ async def widget_routine(
     tenant: Tenant = Depends(get_widget_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> RoutineResponse:
-    from helix.config import get_settings
+    from eshopeo.config import get_settings
     settings = get_settings()
     pack = default_pack()
 
@@ -1343,10 +1343,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Product, Tenant
-from helix.api.auth.tokens import issue_widget_token
-from helix.domain.routine import build_routine, RoutineResult
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Product, Tenant
+from eshopeo.api.auth.tokens import issue_widget_token
+from eshopeo.domain.routine import build_routine, RoutineResult
 from tests.conftest import make_test_settings
 
 
@@ -1362,7 +1362,7 @@ def make_product_dict(step: str, title: str) -> dict:
 
 
 def test_build_routine_orders_by_step():
-    from helix.packs.loader import LoadedPack
+    from eshopeo.packs.loader import LoadedPack
     pack = MagicMock(spec=LoadedPack)
     pack.compatibility_rules = []
     pack.taxonomy = {"routine_steps": ["cleanse", "treat", "moisturize"]}
@@ -1379,7 +1379,7 @@ def test_build_routine_orders_by_step():
 
 
 def test_build_routine_identifies_conflicts():
-    from helix.packs.loader import LoadedPack
+    from eshopeo.packs.loader import LoadedPack
     pack = MagicMock(spec=LoadedPack)
     pack.compatibility_rules = [
         {"id": "r1", "type": "conflict", "description": "Conflict", "ingredients": ["retinol", "glycolic acid"]}
@@ -1431,10 +1431,10 @@ async def test_routine_without_token_returns_401(client):
 
 @pytest.mark.asyncio
 async def test_routine_returns_response(client, tenant, jwt_token):
-    with patch("helix.api.routers.widget.get_widget_tenant", return_value=tenant), \
-         patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.default_pack") as mock_pack:
+    with patch("eshopeo.api.routers.widget.get_widget_tenant", return_value=tenant), \
+         patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.default_pack") as mock_pack:
         mock_pack.return_value = MagicMock(
             compatibility_rules=[],
             taxonomy={"routine_steps": ["cleanse", "treat", "moisturize"]},

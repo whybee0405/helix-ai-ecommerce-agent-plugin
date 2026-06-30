@@ -14,8 +14,8 @@ Two big pieces in one release:
 ## What's new for end clients
 
 ### New WP admin pages
-- **WooCommerce → Helix Branding** — brand identity, colors, copy, suggestion chips, industry preset, custom CSS
-- **WooCommerce → Helix Usage** — today's spend, daily budget bar (green/amber/red), tier, 30-day cost breakdown
+- **WooCommerce → eShopeo Branding** — brand identity, colors, copy, suggestion chips, industry preset, custom CSS
+- **WooCommerce → eShopeo Usage** — today's spend, daily budget bar (green/amber/red), tier, 30-day cost breakdown
 
 ### Five industry presets
 Pick one on provision (or via "Apply preset" in admin):
@@ -58,9 +58,9 @@ Pick one on provision (or via "Apply preset" in admin):
 
 Headers required on every admin request:
 ```
-X-Helix-Tenant-Id: <tenant uuid>
-X-Helix-Timestamp: <unix epoch seconds>
-X-Helix-Signature: base64( HMAC-SHA256(admin_secret, timestamp + "." + raw_body) )
+X-eShopeo-Tenant-Id: <tenant uuid>
+X-eShopeo-Timestamp: <unix epoch seconds>
+X-eShopeo-Signature: base64( HMAC-SHA256(admin_secret, timestamp + "." + raw_body) )
 ```
 Timestamp window: ±300 s.
 
@@ -132,18 +132,18 @@ The encrypted Fernet blob now also stores `admin_secret`. For tenants provisione
 ## New / modified files
 
 ### Backend (`services/core/`)
-- `helix/branding/{__init__,schemas,presets,service,css_sanitizer}.py`
-- `helix/branding/presets/{general,skincare,electronics,fashion,automotive}.json`
-- `helix/api/routers/branding.py`
-- `helix/llm/{embeddings,semantic_cache,history,budget}.py`
-- `helix/workers/tasks/faq_warm.py`
-- `helix/db/migrations/versions/0006_branding.py`
-- Modified: `helix/db/models.py`, `helix/api/{app,routers/tenants,routers/widget}.py`, `helix/domain/consultant.py`, `helix/llm/{cache,gateway}.py`, `helix/workers/celery_app.py`, `pyproject.toml`
+- `eshopeo/branding/{__init__,schemas,presets,service,css_sanitizer}.py`
+- `eshopeo/branding/presets/{general,skincare,electronics,fashion,automotive}.json`
+- `eshopeo/api/routers/branding.py`
+- `eshopeo/llm/{embeddings,semantic_cache,history,budget}.py`
+- `eshopeo/workers/tasks/faq_warm.py`
+- `eshopeo/db/migrations/versions/0006_branding.py`
+- Modified: `eshopeo/db/models.py`, `eshopeo/api/{app,routers/tenants,routers/widget}.py`, `eshopeo/domain/consultant.py`, `eshopeo/llm/{cache,gateway}.py`, `eshopeo/workers/celery_app.py`, `pyproject.toml`
 
 ### Connector (`connectors/woocommerce/`)
-- `includes/class-helix-branding.php` (new — admin Branding tab)
-- `includes/class-helix-cost-dashboard.php` (new — Usage page)
-- Modified: `helix-connector.php`, `includes/class-helix-admin.php`, `includes/class-helix-api-client.php`
+- `includes/class-eshopeo-branding.php` (new — admin Branding tab)
+- `includes/class-eshopeo-cost-dashboard.php` (new — Usage page)
+- Modified: `eshopeo-connector.php`, `includes/class-eshopeo-admin.php`, `includes/class-eshopeo-api-client.php`
 
 ---
 
@@ -195,13 +195,13 @@ What it does:
 Once API is up, the WP plugin auto-update mechanism will offer v0.4.0 to each installed connector.
 
 ### After deploy, in WordPress
-1. **Updates** → "Helix Connector v0.4.0" → click **Update Now**
-2. Open **WooCommerce → Helix Branding** — admin secret bootstraps automatically on first load
+1. **Updates** → "eShopeo Connector v0.4.0" → click **Update Now**
+2. Open **WooCommerce → eShopeo Branding** — admin secret bootstraps automatically on first load
 3. Tweak brand name / colors / chips / custom CSS, or click "Apply preset"
-4. Open **WooCommerce → Helix Usage** to see live cost tracking
+4. Open **WooCommerce → eShopeo Usage** to see live cost tracking
 
 ### On the storefront
-Existing pages using `[helix_search]` keep working — branding now flows through automatically.
+Existing pages using `[eshopeo_search]` keep working — branding now flows through automatically.
 
 ---
 
@@ -216,7 +216,7 @@ The 0006 migration's `downgrade()` cleanly drops the four new columns. Existing 
 
 **Caveats:**
 - Tenants provisioned during the new release will have `admin_secret` in `credentials_enc` — that's a no-op extra dict key, doesn't break anything
-- WP plugin v0.4.0 stays installed; uninstalling triggers `delete_option('helix_admin_secret')` cleanup
+- WP plugin v0.4.0 stays installed; uninstalling triggers `delete_option('eshopeo_admin_secret')` cleanup
 - Semantic cache keys are TTL'd so they'll evict on their own
 
 ---
@@ -225,13 +225,13 @@ The 0006 migration's `downgrade()` cleanly drops the four new columns. Existing 
 
 ```bash
 # 1. Manifest serves new version
-curl -s https://helix.cloudia.co.za/v1/plugin/manifest | grep '"version"'
+curl -s https://eshopeo.cloudia.co.za/v1/plugin/manifest | grep '"version"'
 
 # 2. Branding endpoint returns sane JSON + ETag
-curl -isv "https://helix.cloudia.co.za/v1/widget/branding?key=<a_public_key>" | grep -i 'etag\|primary_color'
+curl -isv "https://eshopeo.cloudia.co.za/v1/widget/branding?key=<a_public_key>" | grep -i 'etag\|primary_color'
 
 # 3. Admin presets list works (no auth needed for shape check — auth will 401)
-curl -s https://helix.cloudia.co.za/v1/admin/presets
+curl -s https://eshopeo.cloudia.co.za/v1/admin/presets
 
 # 4. Migration applied
 docker compose -f infra/compose.yaml exec api alembic current
@@ -241,10 +241,10 @@ docker compose -f infra/compose.yaml logs worker --tail 50 | grep faq_warm
 ```
 
 In WP admin:
-- Helix Branding page loads and shows current values
+- eShopeo Branding page loads and shows current values
 - Color picker / media picker work
 - "Apply preset" warning shows, applies cleanly
-- Helix Usage shows tier, today's spend, daily breakdown
+- eShopeo Usage shows tier, today's spend, daily breakdown
 
 In the storefront:
 - Search bar renders with branded colors / headline / chips / placeholder
@@ -280,9 +280,9 @@ $signature = base64_encode( hash_hmac( 'sha256', $payload, $admin_secret, true )
 wp_remote_post( $api_url . '/v1/admin/branding', [
     'headers' => [
         'Content-Type'      => 'application/json',
-        'X-Helix-Tenant-Id' => $tenant_id,
-        'X-Helix-Timestamp' => $timestamp,
-        'X-Helix-Signature' => $signature,
+        'X-eShopeo-Tenant-Id' => $tenant_id,
+        'X-eShopeo-Timestamp' => $timestamp,
+        'X-eShopeo-Signature' => $signature,
     ],
     'body' => $body,
 ] );
@@ -294,8 +294,8 @@ Backend verifies by reconstructing `payload`, computing the HMAC with the stored
 
 ## Contact
 
-Questions or issues — check the `services/core/helix/` source for the relevant module:
-- Branding: `helix/branding/`
-- Cost layers: `helix/llm/{cache,semantic_cache,history,budget,embeddings}.py`
-- Routing: `helix/llm/gateway.py` (`_pick_model_for_intent`, `route_query`)
-- WP admin: `connectors/woocommerce/includes/class-helix-branding.php` + `class-helix-cost-dashboard.php`
+Questions or issues — check the `services/core/eshopeo/` source for the relevant module:
+- Branding: `eshopeo/branding/`
+- Cost layers: `eshopeo/llm/{cache,semantic_cache,history,budget,embeddings}.py`
+- Routing: `eshopeo/llm/gateway.py` (`_pick_model_for_intent`, `route_query`)
+- WP admin: `connectors/woocommerce/includes/class-eshopeo-branding.php` + `class-eshopeo-cost-dashboard.php`

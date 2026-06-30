@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -30,11 +30,11 @@ def test_bulk_embed_queues_products():
 
     with (
         patch(
-            "helix.api.routers.jobs.list_products_without_embedding",
+            "eshopeo.api.routers.jobs.list_products_without_embedding",
             new_callable=AsyncMock,
             return_value=mock_products,
         ),
-        patch("helix.api.routers.jobs.embed_product", mock_task),
+        patch("eshopeo.api.routers.jobs.embed_product", mock_task),
     ):
         r = client.post("/v1/jobs/embed/bulk")
 
@@ -56,11 +56,11 @@ def test_bulk_embed_no_products():
 
     with (
         patch(
-            "helix.api.routers.jobs.list_products_without_embedding",
+            "eshopeo.api.routers.jobs.list_products_without_embedding",
             new_callable=AsyncMock,
             return_value=[],
         ),
-        patch("helix.api.routers.jobs.embed_product", MagicMock()),
+        patch("eshopeo.api.routers.jobs.embed_product", MagicMock()),
     ):
         r = client.post("/v1/jobs/embed/bulk")
 

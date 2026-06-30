@@ -7,9 +7,9 @@ def test_embed_product_calls_voyage():
     from tests.conftest import make_test_settings
     test_settings = make_test_settings()
 
-    # Patch get_settings at helix.config level BEFORE engine.py gets imported by the lazy import
-    with patch("helix.config.get_settings", return_value=test_settings):
-        from helix.workers.tasks import embedding
+    # Patch get_settings at eshopeo.config level BEFORE engine.py gets imported by the lazy import
+    with patch("eshopeo.config.get_settings", return_value=test_settings):
+        from eshopeo.workers.tasks import embedding
 
         mock_response = MagicMock()
         mock_response.json.return_value = {"data": [{"embedding": [0.1] * 1024}]}
@@ -29,9 +29,9 @@ def test_embed_product_calls_voyage():
         mock_ctx.__enter__ = MagicMock(return_value=mock_session)
         mock_ctx.__exit__ = MagicMock(return_value=False)
 
-        with patch("helix.workers.tasks.embedding.httpx.post", return_value=mock_response) as mock_post:
+        with patch("eshopeo.workers.tasks.embedding.httpx.post", return_value=mock_response) as mock_post:
             # Override the lazy-imported get_sync_session and get_settings inside _embed_and_store
-            import helix.db.engine as eng
+            import eshopeo.db.engine as eng
             eng_ctx = MagicMock()
             eng_ctx.__enter__ = MagicMock(return_value=mock_session)
             eng_ctx.__exit__ = MagicMock(return_value=False)
@@ -44,7 +44,7 @@ def test_embed_product_calls_voyage():
 
 
 def test_build_embed_text():
-    from helix.workers.tasks.embedding import _build_embed_text
+    from eshopeo.workers.tasks.embedding import _build_embed_text
     text = _build_embed_text("Snail Essence", ["serum"], {"skin_types": ["dry"]})
     assert "Snail Essence" in text
     assert "serum" in text

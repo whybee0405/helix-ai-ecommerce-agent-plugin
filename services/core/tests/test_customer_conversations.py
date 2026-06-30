@@ -4,9 +4,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Conversation, Customer, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Conversation, Customer, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -39,12 +39,12 @@ def test_customer_conversations_returns_200():
 
     with (
         patch(
-            "helix.api.routers.customers.get_customer_by_id",
+            "eshopeo.api.routers.customers.get_customer_by_id",
             new_callable=AsyncMock,
             return_value=mock_customer,
         ),
         patch(
-            "helix.api.routers.customers.list_conversations_by_customer",
+            "eshopeo.api.routers.customers.list_conversations_by_customer",
             new_callable=AsyncMock,
             return_value=mock_convs,
         ),
@@ -69,7 +69,7 @@ def test_customer_conversations_404_on_unknown_customer():
     customer_id = uuid4()
 
     with patch(
-        "helix.api.routers.customers.get_customer_by_id",
+        "eshopeo.api.routers.customers.get_customer_by_id",
         new_callable=AsyncMock,
         return_value=None,
     ):

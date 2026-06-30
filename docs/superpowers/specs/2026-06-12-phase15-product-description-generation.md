@@ -15,13 +15,13 @@
 | No content approval workflow | Generated content needs a human gate before it goes live |
 | No bulk content generation trigger | Merchants must generate one product at a time |
 
-**Already done:** LLM gateway (`helix.llm`) supports `generate` tier (Sonnet). Embedding pipeline pattern (`embed_product` Celery task + `POST /v1/jobs/embed/bulk`) is the exact model to follow. Domain pack has product schema + prompt fragments.
+**Already done:** LLM gateway (`eshopeo.llm`) supports `generate` tier (Sonnet). Embedding pipeline pattern (`embed_product` Celery task + `POST /v1/jobs/embed/bulk`) is the exact model to follow. Domain pack has product schema + prompt fragments.
 
 ---
 
 ## 2. Data model — `ContentDraft` (P15-1)
 
-New SQLAlchemy model in `helix/db/models.py`:
+New SQLAlchemy model in `eshopeo/db/models.py`:
 
 ```python
 class ContentDraft(Base):
@@ -61,7 +61,7 @@ op.create_index("ix_content_draft_product_id", "content_draft", ["product_id"])
 
 The `UniqueConstraint` on `(tenant_id, product_id, field)` means each product has one draft per field at a time — upsert (delete + insert) on re-generation.
 
-### New CRUD in `helix/db/crud/content.py`
+### New CRUD in `eshopeo/db/crud/content.py`
 
 ```python
 async def upsert_content_draft(
@@ -129,10 +129,10 @@ async def count_products_without_draft(
 
 ## 3. Celery task — `generate_description` (P15-2)
 
-New task in `helix/workers/tasks/content.py`:
+New task in `eshopeo/workers/tasks/content.py`:
 
 ```python
-@celery_app.task(name="helix.generate_description")
+@celery_app.task(name="eshopeo.generate_description")
 def generate_description(tenant_id_str: str, product_id_str: str) -> None:
     """Generate a product description draft using the LLM gateway."""
     import asyncio
@@ -140,12 +140,12 @@ def generate_description(tenant_id_str: str, product_id_str: str) -> None:
 
 
 async def _generate_description_async(tenant_id: UUID, product_id: UUID) -> None:
-    from helix.db.engine import async_session_factory
-    from helix.db.crud.products import get_product_by_id
-    from helix.db.crud.tenants import get_tenant_by_id
-    from helix.db.crud.content import upsert_content_draft
-    from helix.packs.loader import get_pack_for_tenant
-    from helix.llm.gateway import complete
+    from eshopeo.db.engine import async_session_factory
+    from eshopeo.db.crud.products import get_product_by_id
+    from eshopeo.db.crud.tenants import get_tenant_by_id
+    from eshopeo.db.crud.content import upsert_content_draft
+    from eshopeo.packs.loader import get_pack_for_tenant
+    from eshopeo.llm.gateway import complete
 
     async with async_session_factory() as session:
         tenant = await get_tenant_by_id(session, tenant_id)
@@ -182,7 +182,7 @@ def _build_description_prompt(product, pack) -> str:
 
 ### New CRUD needed: `get_product_by_id`
 
-Add to `helix/db/crud/products.py`:
+Add to `eshopeo/db/crud/products.py`:
 ```python
 async def get_product_by_id(
     session: AsyncSession, tenant_id: UUID, product_id: UUID
@@ -197,7 +197,7 @@ async def get_product_by_id(
 
 ## 4. Content endpoints (P15-3)
 
-New router `helix/api/routers/content.py`, prefix `/v1/content`, registered in `app.py`.
+New router `eshopeo/api/routers/content.py`, prefix `/v1/content`, registered in `app.py`.
 
 ### `POST /v1/content/products/{product_id}/generate`
 
@@ -322,9 +322,9 @@ async def list_products_without_draft(
 ## 5. File map
 
 **New files:**
-- `services/core/helix/db/crud/content.py` — `upsert_content_draft`, `get_content_draft`, `approve_content_draft`, `count_products_without_draft`, `list_products_without_draft`
-- `services/core/helix/workers/tasks/content.py` — `generate_description` Celery task + `_generate_description_async` + `_build_description_prompt`
-- `services/core/helix/api/routers/content.py` — 4 endpoints
+- `services/core/eshopeo/db/crud/content.py` — `upsert_content_draft`, `get_content_draft`, `approve_content_draft`, `count_products_without_draft`, `list_products_without_draft`
+- `services/core/eshopeo/workers/tasks/content.py` — `generate_description` Celery task + `_generate_description_async` + `_build_description_prompt`
+- `services/core/eshopeo/api/routers/content.py` — 4 endpoints
 - `services/core/alembic/versions/0004_content_draft.py` — migration
 - `services/core/tests/test_content_draft_crud.py` — CRUD tests (3 tests)
 - `services/core/tests/test_content_generate.py` — endpoint tests (3 tests)
@@ -332,9 +332,9 @@ async def list_products_without_draft(
 - `services/core/tests/test_content_bulk.py` — bulk trigger tests (3 tests)
 
 **Modified files:**
-- `services/core/helix/db/models.py` — add `ContentDraft` model
-- `services/core/helix/db/crud/products.py` — add `get_product_by_id`
-- `services/core/helix/api/app.py` — `app.include_router(content.router)`
+- `services/core/eshopeo/db/models.py` — add `ContentDraft` model
+- `services/core/eshopeo/db/crud/products.py` — add `get_product_by_id`
+- `services/core/eshopeo/api/app.py` — `app.include_router(content.router)`
 
 ---
 

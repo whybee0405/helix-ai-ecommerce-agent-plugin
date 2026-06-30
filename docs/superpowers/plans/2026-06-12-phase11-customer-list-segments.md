@@ -13,13 +13,13 @@
 ## Context for all tasks
 
 - `asyncio_mode = "auto"` — NEVER add `@pytest.mark.asyncio`
-- Patch at namespace where name is USED (`helix.api.routers.customers.X`)
+- Patch at namespace where name is USED (`eshopeo.api.routers.customers.X`)
 - Tests call `app.dependency_overrides.clear()` after running
-- Auth dep is `get_tenant` from `helix.api.deps`; `get_db` is also from there
+- Auth dep is `get_tenant` from `eshopeo.api.deps`; `get_db` is also from there
 - `Customer` model fields: `id (UUID)`, `tenant_id (UUID)`, `platform_id (str)`, `email_hash (str)`, `profile (dict JSONB)`, `created_at (datetime)`
 - `Conversation` model fields: `id (UUID)`, `tenant_id (UUID)`, `customer_id (UUID|None)`, `created_at (datetime)`, `updated_at (datetime)`
-- `list_customers` / `count_customers` / `get_customer_segments` are added to `helix.db.crud.customers`
-- `list_conversations_by_customer` is added to `helix.db.crud.conversations`
+- `list_customers` / `count_customers` / `get_customer_segments` are added to `eshopeo.db.crud.customers`
+- `list_conversations_by_customer` is added to `eshopeo.db.crud.conversations`
 - `CRUD pattern`: `result.scalars().all()` for list queries (not `.scalars()`)
 
 ---
@@ -27,14 +27,14 @@
 ## Task P11-1: Customer list & detail endpoints
 
 **Files:**
-- Modify: `services/core/helix/db/crud/customers.py`
-- Create: `services/core/helix/api/routers/customers.py`
-- Modify: `services/core/helix/api/app.py`
+- Modify: `services/core/eshopeo/db/crud/customers.py`
+- Create: `services/core/eshopeo/api/routers/customers.py`
+- Modify: `services/core/eshopeo/api/app.py`
 - Create: `services/core/tests/test_customer_list.py`
 
 ### Step 1: Add CRUD functions to `customers.py`
 
-Add at the end of `services/core/helix/db/crud/customers.py`:
+Add at the end of `services/core/eshopeo/db/crud/customers.py`:
 
 ```python
 from sqlalchemy import func
@@ -70,7 +70,7 @@ Note: `select` is already imported; add `func` to the `sqlalchemy` import line i
 
 ### Step 2: Create `customers.py` router
 
-Create `services/core/helix/api/routers/customers.py`:
+Create `services/core/eshopeo/api/routers/customers.py`:
 
 ```python
 from typing import Annotated
@@ -80,9 +80,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
-from helix.db.crud.customers import count_customers, get_customer_by_id, list_customers
-from helix.db.models import Tenant
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.crud.customers import count_customers, get_customer_by_id, list_customers
+from eshopeo.db.models import Tenant
 
 router = APIRouter(prefix="/v1/customers", tags=["customers"])
 
@@ -148,10 +148,10 @@ async def get_customer_endpoint(
 
 ### Step 3: Register router in `app.py`
 
-In `services/core/helix/api/app.py`, add after the `conversations` router import block:
+In `services/core/eshopeo/api/app.py`, add after the `conversations` router import block:
 
 ```python
-from helix.api.routers import customers
+from eshopeo.api.routers import customers
 app.include_router(customers.router)
 ```
 
@@ -165,9 +165,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Customer, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Customer, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -195,12 +195,12 @@ def test_customer_list_returns_200():
 
     with (
         patch(
-            "helix.api.routers.customers.list_customers",
+            "eshopeo.api.routers.customers.list_customers",
             new_callable=AsyncMock,
             return_value=mock_customers,
         ),
         patch(
-            "helix.api.routers.customers.count_customers",
+            "eshopeo.api.routers.customers.count_customers",
             new_callable=AsyncMock,
             return_value=2,
         ),
@@ -228,7 +228,7 @@ def test_customer_detail_returns_200():
     customer_id = mock_customer.id
 
     with patch(
-        "helix.api.routers.customers.get_customer_by_id",
+        "eshopeo.api.routers.customers.get_customer_by_id",
         new_callable=AsyncMock,
         return_value=mock_customer,
     ):
@@ -252,7 +252,7 @@ def test_customer_detail_404_on_unknown():
     customer_id = uuid4()
 
     with patch(
-        "helix.api.routers.customers.get_customer_by_id",
+        "eshopeo.api.routers.customers.get_customer_by_id",
         new_callable=AsyncMock,
         return_value=None,
     ):
@@ -266,13 +266,13 @@ def test_customer_detail_404_on_unknown():
 ### Step 5: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile helix/db/crud/customers.py helix/api/routers/customers.py helix/api/app.py tests/test_customer_list.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile eshopeo/db/crud/customers.py eshopeo/api/routers/customers.py eshopeo/api/app.py tests/test_customer_list.py
 ```
 
 ### Step 6: Commit
 
 ```bash
-git add services/core/helix/db/crud/customers.py services/core/helix/api/routers/customers.py services/core/helix/api/app.py services/core/tests/test_customer_list.py
+git add services/core/eshopeo/db/crud/customers.py services/core/eshopeo/api/routers/customers.py services/core/eshopeo/api/app.py services/core/tests/test_customer_list.py
 git commit -m "feat: customer list and detail GET /v1/customers"
 ```
 
@@ -281,13 +281,13 @@ git commit -m "feat: customer list and detail GET /v1/customers"
 ## Task P11-2: Customer conversation history
 
 **Files:**
-- Modify: `services/core/helix/db/crud/conversations.py`
-- Modify: `services/core/helix/api/routers/customers.py`
+- Modify: `services/core/eshopeo/db/crud/conversations.py`
+- Modify: `services/core/eshopeo/api/routers/customers.py`
 - Create: `services/core/tests/test_customer_conversations.py`
 
 ### Step 1: Add `list_conversations_by_customer` to `conversations.py` CRUD
 
-Add at the end of `services/core/helix/db/crud/conversations.py`:
+Add at the end of `services/core/eshopeo/db/crud/conversations.py`:
 
 ```python
 async def list_conversations_by_customer(
@@ -312,11 +312,11 @@ async def list_conversations_by_customer(
 
 ### Step 2: Add endpoint to `customers.py` router
 
-Add to `services/core/helix/api/routers/customers.py`:
+Add to `services/core/eshopeo/api/routers/customers.py`:
 
 Add import at the top:
 ```python
-from helix.db.crud.conversations import list_conversations_by_customer
+from eshopeo.db.crud.conversations import list_conversations_by_customer
 ```
 
 Add model:
@@ -372,9 +372,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Conversation, Customer, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Conversation, Customer, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -407,12 +407,12 @@ def test_customer_conversations_returns_200():
 
     with (
         patch(
-            "helix.api.routers.customers.get_customer_by_id",
+            "eshopeo.api.routers.customers.get_customer_by_id",
             new_callable=AsyncMock,
             return_value=mock_customer,
         ),
         patch(
-            "helix.api.routers.customers.list_conversations_by_customer",
+            "eshopeo.api.routers.customers.list_conversations_by_customer",
             new_callable=AsyncMock,
             return_value=mock_convs,
         ),
@@ -437,7 +437,7 @@ def test_customer_conversations_404_on_unknown_customer():
     customer_id = uuid4()
 
     with patch(
-        "helix.api.routers.customers.get_customer_by_id",
+        "eshopeo.api.routers.customers.get_customer_by_id",
         new_callable=AsyncMock,
         return_value=None,
     ):
@@ -461,13 +461,13 @@ def test_customer_conversations_requires_auth():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile helix/db/crud/conversations.py helix/api/routers/customers.py tests/test_customer_conversations.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile eshopeo/db/crud/conversations.py eshopeo/api/routers/customers.py tests/test_customer_conversations.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/conversations.py services/core/helix/api/routers/customers.py services/core/tests/test_customer_conversations.py
+git add services/core/eshopeo/db/crud/conversations.py services/core/eshopeo/api/routers/customers.py services/core/tests/test_customer_conversations.py
 git commit -m "feat: customer conversation history GET /v1/customers/{id}/conversations"
 ```
 
@@ -476,13 +476,13 @@ git commit -m "feat: customer conversation history GET /v1/customers/{id}/conver
 ## Task P11-3: Customer segment analytics
 
 **Files:**
-- Modify: `services/core/helix/db/crud/customers.py`
-- Modify: `services/core/helix/api/routers/analytics.py`
+- Modify: `services/core/eshopeo/db/crud/customers.py`
+- Modify: `services/core/eshopeo/api/routers/analytics.py`
 - Create: `services/core/tests/test_customer_segments.py`
 
 ### Step 1: Add `get_customer_segments` to `customers.py` CRUD
 
-Add at the end of `services/core/helix/db/crud/customers.py` (after `count_customers`):
+Add at the end of `services/core/eshopeo/db/crud/customers.py` (after `count_customers`):
 
 ```python
 async def get_customer_segments(
@@ -508,10 +508,10 @@ async def get_customer_segments(
 
 ### Step 2: Add endpoint to `analytics.py`
 
-Add import at the top of `services/core/helix/api/routers/analytics.py`:
+Add import at the top of `services/core/eshopeo/api/routers/analytics.py`:
 
 ```python
-from helix.db.crud.customers import get_customer_segments
+from eshopeo.db.crud.customers import get_customer_segments
 ```
 
 Add model and endpoint at the end of `analytics.py`:
@@ -547,9 +547,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -568,7 +568,7 @@ def test_customer_segments_returns_200():
     ]
 
     with patch(
-        "helix.api.routers.analytics.get_customer_segments",
+        "eshopeo.api.routers.analytics.get_customer_segments",
         new_callable=AsyncMock,
         return_value=mock_segments,
     ):
@@ -603,7 +603,7 @@ def test_customer_segments_empty():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
-        "helix.api.routers.analytics.get_customer_segments",
+        "eshopeo.api.routers.analytics.get_customer_segments",
         new_callable=AsyncMock,
         return_value=[],
     ):
@@ -618,13 +618,13 @@ def test_customer_segments_empty():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile helix/db/crud/customers.py helix/api/routers/analytics.py tests/test_customer_segments.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core" && python -m py_compile eshopeo/db/crud/customers.py eshopeo/api/routers/analytics.py tests/test_customer_segments.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/customers.py helix/api/routers/analytics.py services/core/tests/test_customer_segments.py
+git add services/core/eshopeo/db/crud/customers.py eshopeo/api/routers/analytics.py services/core/tests/test_customer_segments.py
 git commit -m "feat: customer segment analytics GET /v1/analytics/customers/segments"
 ```
 

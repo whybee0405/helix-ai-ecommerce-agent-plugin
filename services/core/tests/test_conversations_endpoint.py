@@ -4,9 +4,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Conversation, ConversationMessage, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Conversation, ConversationMessage, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -30,7 +30,7 @@ def test_list_conversations_returns_200():
     mock_conv.updated_at = _now()
 
     with patch(
-        "helix.api.routers.conversations.list_conversations",
+        "eshopeo.api.routers.conversations.list_conversations",
         new_callable=AsyncMock,
         return_value=[mock_conv],
     ):
@@ -69,8 +69,8 @@ def test_get_conversation_returns_messages():
     mock_msg.feedback = None
     mock_msg.created_at = _now()
 
-    with patch("helix.api.routers.conversations.get_conversation", new_callable=AsyncMock, return_value=mock_conv), \
-         patch("helix.api.routers.conversations.get_messages", new_callable=AsyncMock, return_value=[mock_msg]):
+    with patch("eshopeo.api.routers.conversations.get_conversation", new_callable=AsyncMock, return_value=mock_conv), \
+         patch("eshopeo.api.routers.conversations.get_messages", new_callable=AsyncMock, return_value=[mock_msg]):
         r = client.get(f"/v1/conversations/{conv_id}")
 
     app.dependency_overrides.clear()
@@ -91,7 +91,7 @@ def test_get_conversation_404_when_not_found():
     tenant.id = uuid4()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.conversations.get_conversation", new_callable=AsyncMock, return_value=None):
+    with patch("eshopeo.api.routers.conversations.get_conversation", new_callable=AsyncMock, return_value=None):
         r = client.get(f"/v1/conversations/{uuid4()}")
 
     app.dependency_overrides.clear()

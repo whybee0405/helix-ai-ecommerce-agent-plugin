@@ -14,21 +14,21 @@
 
 - `asyncio_mode = "auto"` — NEVER add `@pytest.mark.asyncio`
 - Admin auth: `_auth_provision` dependency (not `get_tenant`)
-- Override in tests: `from helix.api.routers.admin import _auth_provision` then `app.dependency_overrides[_auth_provision] = lambda: "test-key"`
-- 401 test: do NOT set `_auth_provision` override — call without `X-Helix-Provision-Key` header
+- Override in tests: `from eshopeo.api.routers.admin import _auth_provision` then `app.dependency_overrides[_auth_provision] = lambda: "test-key"`
+- 401 test: do NOT set `_auth_provision` override — call without `X-eShopeo-Provision-Key` header
 - `credentials_enc` MUST NOT appear in any response model
 - `Tenant` model fields: `id`, `name`, `platform`, `store_url`, `credentials_enc` (secret — never expose), `public_key`, `created_at`, `pack_id`
 - `UsageEvent` fields: `tenant_id`, `model`, `tokens_in`, `tokens_out`, `cost_usd`, `created_at`
 - Redis key format: `f"quota:{tenant_id}:{today.year}-{today.month:02d}"`
-- Patch target for Redis: `helix.api.routers.admin.aioredis`
+- Patch target for Redis: `eshopeo.api.routers.admin.aioredis`
 
 ---
 
 ## Task P14-1: List all tenants + tenant detail
 
 **Files:**
-- Modify: `services/core/helix/db/crud/tenants.py`
-- Modify: `services/core/helix/api/routers/admin.py`
+- Modify: `services/core/eshopeo/db/crud/tenants.py`
+- Modify: `services/core/eshopeo/api/routers/admin.py`
 - Create: `services/core/tests/test_admin_tenant_list.py`
 
 ### Step 1: Add CRUD to `tenants.py`
@@ -60,7 +60,7 @@ Read the file first. Add imports:
 ```python
 from typing import Annotated
 from uuid import UUID
-from helix.db.crud.tenants import count_tenants, get_tenant_by_id, list_tenants
+from eshopeo.db.crud.tenants import count_tenants, get_tenant_by_id, list_tenants
 ```
 
 Note: `Annotated` may already be imported — check before adding. `UUID` is likely not yet imported in admin.py.
@@ -142,9 +142,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.routers.admin import _auth_provision
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.routers.admin import _auth_provision
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -171,12 +171,12 @@ def test_admin_tenant_list_returns_200():
 
     with (
         patch(
-            "helix.api.routers.admin.list_tenants",
+            "eshopeo.api.routers.admin.list_tenants",
             new_callable=AsyncMock,
             return_value=mock_tenants,
         ),
         patch(
-            "helix.api.routers.admin.count_tenants",
+            "eshopeo.api.routers.admin.count_tenants",
             new_callable=AsyncMock,
             return_value=2,
         ),
@@ -203,7 +203,7 @@ def test_admin_tenant_detail_returns_200():
     tenant_id = mock_tenant.id
 
     with patch(
-        "helix.api.routers.admin.get_tenant_by_id",
+        "eshopeo.api.routers.admin.get_tenant_by_id",
         new_callable=AsyncMock,
         return_value=mock_tenant,
     ):
@@ -224,7 +224,7 @@ def test_admin_tenant_detail_404_on_unknown():
     app.dependency_overrides[_auth_provision] = lambda: "test-key"
 
     with patch(
-        "helix.api.routers.admin.get_tenant_by_id",
+        "eshopeo.api.routers.admin.get_tenant_by_id",
         new_callable=AsyncMock,
         return_value=None,
     ):
@@ -238,13 +238,13 @@ def test_admin_tenant_detail_404_on_unknown():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile helix/db/crud/tenants.py helix/api/routers/admin.py tests/test_admin_tenant_list.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile eshopeo/db/crud/tenants.py eshopeo/api/routers/admin.py tests/test_admin_tenant_list.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/tenants.py services/core/helix/api/routers/admin.py services/core/tests/test_admin_tenant_list.py
+git add services/core/eshopeo/db/crud/tenants.py services/core/eshopeo/api/routers/admin.py services/core/tests/test_admin_tenant_list.py
 git commit -m "feat: admin tenant list and detail GET /v1/admin/tenants"
 ```
 
@@ -253,8 +253,8 @@ git commit -m "feat: admin tenant list and detail GET /v1/admin/tenants"
 ## Task P14-2: Per-tenant usage summary
 
 **Files:**
-- Modify: `services/core/helix/db/crud/admin.py`
-- Modify: `services/core/helix/api/routers/admin.py`
+- Modify: `services/core/eshopeo/db/crud/admin.py`
+- Modify: `services/core/eshopeo/api/routers/admin.py`
 - Create: `services/core/tests/test_admin_tenant_usage.py`
 
 ### Step 1: Add `get_tenant_usage_summary` to `admin.py` CRUD
@@ -296,7 +296,7 @@ async def get_tenant_usage_summary(
 
 Read the file. Add `get_tenant_usage_summary` to the admin CRUD import:
 ```python
-from helix.db.crud.admin import get_platform_stats, get_tenant_usage_summary
+from eshopeo.db.crud.admin import get_platform_stats, get_tenant_usage_summary
 ```
 
 Add model and endpoint (after `get_tenant_endpoint`):
@@ -343,8 +343,8 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.routers.admin import _auth_provision
+from eshopeo.api.app import create_app
+from eshopeo.api.routers.admin import _auth_provision
 from tests.conftest import make_test_settings
 
 
@@ -364,7 +364,7 @@ def test_admin_tenant_usage_returns_200():
     }
 
     with patch(
-        "helix.api.routers.admin.get_tenant_usage_summary",
+        "eshopeo.api.routers.admin.get_tenant_usage_summary",
         new_callable=AsyncMock,
         return_value=mock_usage,
     ):
@@ -404,7 +404,7 @@ def test_admin_tenant_usage_zero_when_no_events():
     }
 
     with patch(
-        "helix.api.routers.admin.get_tenant_usage_summary",
+        "eshopeo.api.routers.admin.get_tenant_usage_summary",
         new_callable=AsyncMock,
         return_value=mock_usage,
     ):
@@ -419,13 +419,13 @@ def test_admin_tenant_usage_zero_when_no_events():
 ### Step 4: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile helix/db/crud/admin.py helix/api/routers/admin.py tests/test_admin_tenant_usage.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile eshopeo/db/crud/admin.py eshopeo/api/routers/admin.py tests/test_admin_tenant_usage.py
 ```
 
 ### Step 5: Commit
 
 ```bash
-git add services/core/helix/db/crud/admin.py services/core/helix/api/routers/admin.py services/core/tests/test_admin_tenant_usage.py
+git add services/core/eshopeo/db/crud/admin.py services/core/eshopeo/api/routers/admin.py services/core/tests/test_admin_tenant_usage.py
 git commit -m "feat: per-tenant usage summary GET /v1/admin/tenants/{id}/usage"
 ```
 
@@ -434,12 +434,12 @@ git commit -m "feat: per-tenant usage summary GET /v1/admin/tenants/{id}/usage"
 ## Task P14-3: Tenant quota reset
 
 **Files:**
-- Modify: `services/core/helix/api/routers/admin.py`
+- Modify: `services/core/eshopeo/api/routers/admin.py`
 - Create: `services/core/tests/test_admin_quota_reset.py`
 
 ### Step 1: Add endpoint to `admin.py` router
 
-Read the file. Add `import redis.asyncio as aioredis` at the top with other imports (or `import helix.api.routers.admin` already imports it via health — check first; if not, add it).
+Read the file. Add `import redis.asyncio as aioredis` at the top with other imports (or `import eshopeo.api.routers.admin` already imports it via health — check first; if not, add it).
 
 Add endpoint at the end of `admin.py`:
 
@@ -468,8 +468,8 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.routers.admin import _auth_provision
+from eshopeo.api.app import create_app
+from eshopeo.api.routers.admin import _auth_provision
 from tests.conftest import make_test_settings
 
 
@@ -483,7 +483,7 @@ def test_quota_reset_returns_200():
     tenant_id = uuid4()
 
     mock_redis = AsyncMock()
-    with patch("helix.api.routers.admin.aioredis") as mock_aioredis:
+    with patch("eshopeo.api.routers.admin.aioredis") as mock_aioredis:
         mock_aioredis.from_url.return_value = mock_redis
         r = client.post(f"/v1/admin/tenants/{tenant_id}/quota/reset")
 
@@ -505,7 +505,7 @@ def test_quota_reset_calls_delete():
     tenant_id = uuid4()
     mock_redis = AsyncMock()
 
-    with patch("helix.api.routers.admin.aioredis") as mock_aioredis:
+    with patch("eshopeo.api.routers.admin.aioredis") as mock_aioredis:
         mock_aioredis.from_url.return_value = mock_redis
         client.post(f"/v1/admin/tenants/{tenant_id}/quota/reset")
 
@@ -527,13 +527,13 @@ def test_quota_reset_requires_provision_key():
 ### Step 3: Syntax check
 
 ```
-cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile helix/api/routers/admin.py tests/test_admin_quota_reset.py
+cd "D:/Dev Projects/ai-ecommerce-master-plugin-beauty/services/core"; python -m py_compile eshopeo/api/routers/admin.py tests/test_admin_quota_reset.py
 ```
 
 ### Step 4: Commit
 
 ```bash
-git add services/core/helix/api/routers/admin.py services/core/tests/test_admin_quota_reset.py
+git add services/core/eshopeo/api/routers/admin.py services/core/tests/test_admin_quota_reset.py
 git commit -m "feat: tenant quota reset POST /v1/admin/tenants/{id}/quota/reset"
 ```
 

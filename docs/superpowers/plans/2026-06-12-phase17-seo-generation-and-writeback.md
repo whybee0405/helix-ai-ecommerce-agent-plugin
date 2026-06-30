@@ -13,7 +13,7 @@
 ## Key conventions (read before touching any file)
 
 - `asyncio_mode = "auto"` in pyproject.toml — **NEVER add `@pytest.mark.asyncio`**
-- Patch at where the name is USED: `helix.api.routers.content.get_content_draft`, not `helix.db.crud.content.get_content_draft`
+- Patch at where the name is USED: `eshopeo.api.routers.content.get_content_draft`, not `eshopeo.db.crud.content.get_content_draft`
 - `app.dependency_overrides[dep] = lambda: mock` + `app.dependency_overrides.clear()` after each test
 - For endpoints that call `db.add()` or `db.commit()`, override `get_db` with `AsyncMock()` whose `.add = MagicMock()` and `.commit = AsyncMock()`
 - `conftest.py` at `services/core/tests/conftest.py` — import `make_test_settings` from `tests.conftest`
@@ -25,9 +25,9 @@
 ## Task P17-1: SEO metadata generation task + CRUD + router
 
 **Files:**
-- Create: `services/core/helix/workers/tasks/seo.py`
-- Modify: `services/core/helix/db/crud/content.py` — add `field` param to `list_products_without_draft`
-- Modify: `services/core/helix/api/routers/content.py` — `?field=` on GET draft, 2 new endpoints
+- Create: `services/core/eshopeo/workers/tasks/seo.py`
+- Modify: `services/core/eshopeo/db/crud/content.py` — add `field` param to `list_products_without_draft`
+- Modify: `services/core/eshopeo/api/routers/content.py` — `?field=` on GET draft, 2 new endpoints
 - Create: `services/core/tests/test_seo_generation.py`
 
 - [ ] **Step 1: Write the 3 failing tests**
@@ -40,10 +40,10 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import Tenant
-from helix.workers.tasks.seo import _generate_seo_async, SeoMeta
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import Tenant
+from eshopeo.workers.tasks.seo import _generate_seo_async, SeoMeta
 from tests.conftest import make_test_settings
 
 
@@ -75,12 +75,12 @@ async def test_generate_seo_async_upserts_two_drafts():
     mock_session.commit = AsyncMock()
 
     with (
-        patch("helix.workers.tasks.seo.get_tenant_by_id", new_callable=AsyncMock, return_value=mock_tenant),
-        patch("helix.workers.tasks.seo.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
-        patch("helix.workers.tasks.seo.upsert_content_draft", new_callable=AsyncMock) as mock_upsert,
-        patch("helix.workers.tasks.seo.LLMGateway") as mock_gw_cls,
-        patch("helix.workers.tasks.seo.async_session_factory") as mock_factory,
-        patch("helix.workers.tasks.seo.get_settings", return_value=MagicMock()),
+        patch("eshopeo.workers.tasks.seo.get_tenant_by_id", new_callable=AsyncMock, return_value=mock_tenant),
+        patch("eshopeo.workers.tasks.seo.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
+        patch("eshopeo.workers.tasks.seo.upsert_content_draft", new_callable=AsyncMock) as mock_upsert,
+        patch("eshopeo.workers.tasks.seo.LLMGateway") as mock_gw_cls,
+        patch("eshopeo.workers.tasks.seo.async_session_factory") as mock_factory,
+        patch("eshopeo.workers.tasks.seo.get_settings", return_value=MagicMock()),
     ):
         mock_gw = AsyncMock()
         mock_gw.complete = AsyncMock(return_value=mock_result)
@@ -103,11 +103,11 @@ async def test_generate_seo_async_skips_when_product_not_found():
     mock_session = AsyncMock()
 
     with (
-        patch("helix.workers.tasks.seo.get_tenant_by_id", new_callable=AsyncMock, return_value=MagicMock()),
-        patch("helix.workers.tasks.seo.get_product_by_id", new_callable=AsyncMock, return_value=None),
-        patch("helix.workers.tasks.seo.upsert_content_draft", new_callable=AsyncMock) as mock_upsert,
-        patch("helix.workers.tasks.seo.async_session_factory") as mock_factory,
-        patch("helix.workers.tasks.seo.get_settings", return_value=MagicMock()),
+        patch("eshopeo.workers.tasks.seo.get_tenant_by_id", new_callable=AsyncMock, return_value=MagicMock()),
+        patch("eshopeo.workers.tasks.seo.get_product_by_id", new_callable=AsyncMock, return_value=None),
+        patch("eshopeo.workers.tasks.seo.upsert_content_draft", new_callable=AsyncMock) as mock_upsert,
+        patch("eshopeo.workers.tasks.seo.async_session_factory") as mock_factory,
+        patch("eshopeo.workers.tasks.seo.get_settings", return_value=MagicMock()),
     ):
         mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
         mock_factory.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -129,8 +129,8 @@ def test_generate_seo_endpoint_queues_task():
     app.dependency_overrides[get_db] = lambda: AsyncMock()
 
     with (
-        patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
-        patch("helix.api.routers.content.generate_seo_metadata") as mock_task,
+        patch("eshopeo.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
+        patch("eshopeo.api.routers.content.generate_seo_metadata") as mock_task,
     ):
         mock_task.delay = MagicMock()
         r = client.post(f"/v1/content/products/{product_id}/generate-seo")
@@ -148,9 +148,9 @@ def test_generate_seo_endpoint_queues_task():
 cd services/core && python -m pytest tests/test_seo_generation.py -v 2>&1 | head -40
 ```
 
-Expected: `ModuleNotFoundError` or `ImportError` — `helix.workers.tasks.seo` does not exist yet.
+Expected: `ModuleNotFoundError` or `ImportError` — `eshopeo.workers.tasks.seo` does not exist yet.
 
-- [ ] **Step 3: Create `helix/workers/tasks/seo.py`**
+- [ ] **Step 3: Create `eshopeo/workers/tasks/seo.py`**
 
 ```python
 import asyncio
@@ -159,13 +159,13 @@ from uuid import UUID
 import structlog
 from pydantic import BaseModel
 
-from helix.workers.celery_app import celery_app
-from helix.config import get_settings
-from helix.db.engine import async_session_factory
-from helix.db.crud.products import get_product_by_id
-from helix.db.crud.tenants import get_tenant_by_id
-from helix.db.crud.content import upsert_content_draft
-from helix.llm.gateway import LLMGateway, LLMParseError, ModelTier
+from eshopeo.workers.celery_app import celery_app
+from eshopeo.config import get_settings
+from eshopeo.db.engine import async_session_factory
+from eshopeo.db.crud.products import get_product_by_id
+from eshopeo.db.crud.tenants import get_tenant_by_id
+from eshopeo.db.crud.content import upsert_content_draft
+from eshopeo.llm.gateway import LLMGateway, LLMParseError, ModelTier
 
 logger = structlog.get_logger(__name__)
 
@@ -232,7 +232,7 @@ async def _generate_seo_async(tenant_id_str: str, product_id_str: str) -> None:
     bind=True,
     max_retries=3,
     default_retry_delay=60,
-    name="helix.workers.tasks.seo.generate_seo_metadata",
+    name="eshopeo.workers.tasks.seo.generate_seo_metadata",
 )
 def generate_seo_metadata(self, tenant_id_str: str, product_id_str: str) -> None:
     try:
@@ -243,7 +243,7 @@ def generate_seo_metadata(self, tenant_id_str: str, product_id_str: str) -> None
         raise self.retry(exc=exc)
 ```
 
-- [ ] **Step 4: Generalise `list_products_without_draft` in `helix/db/crud/content.py`**
+- [ ] **Step 4: Generalise `list_products_without_draft` in `eshopeo/db/crud/content.py`**
 
 Replace the existing function (lines 63-80) with:
 
@@ -268,11 +268,11 @@ async def list_products_without_draft(
     return list(result.scalars().all())
 ```
 
-- [ ] **Step 5: Add `?field=` to GET draft + 2 new endpoints in `helix/api/routers/content.py`**
+- [ ] **Step 5: Add `?field=` to GET draft + 2 new endpoints in `eshopeo/api/routers/content.py`**
 
 Add import at top (after existing imports):
 ```python
-from helix.workers.tasks.seo import generate_seo_metadata
+from eshopeo.workers.tasks.seo import generate_seo_metadata
 ```
 
 Add `SeoGenerateResponse` model (after `BulkGenerateResponse`):
@@ -347,9 +347,9 @@ Expected: same number of failures as Phase 16 end-state (17 infra-only). No new 
 - [ ] **Step 8: Commit**
 
 ```
-git add services/core/helix/workers/tasks/seo.py \
-        services/core/helix/db/crud/content.py \
-        services/core/helix/api/routers/content.py \
+git add services/core/eshopeo/workers/tasks/seo.py \
+        services/core/eshopeo/db/crud/content.py \
+        services/core/eshopeo/api/routers/content.py \
         services/core/tests/test_seo_generation.py
 git commit -m "feat(p17-1): SEO metadata generation task + bulk-generate-seo endpoints"
 ```
@@ -359,8 +359,8 @@ git commit -m "feat(p17-1): SEO metadata generation task + bulk-generate-seo end
 ## Task P17-2: Platform write-back client
 
 **Files:**
-- Create: `services/core/helix/connectors/__init__.py` (empty)
-- Create: `services/core/helix/connectors/writeback.py`
+- Create: `services/core/eshopeo/connectors/__init__.py` (empty)
+- Create: `services/core/eshopeo/connectors/writeback.py`
 - Create: `services/core/tests/test_writeback.py`
 
 - [ ] **Step 1: Write the 3 failing tests**
@@ -376,7 +376,7 @@ from uuid import uuid4
 import pytest
 from cryptography.fernet import Fernet
 
-from helix.connectors.writeback import write_back_to_platform
+from eshopeo.connectors.writeback import write_back_to_platform
 from tests.conftest import make_test_settings
 
 
@@ -404,7 +404,7 @@ async def test_write_back_woocommerce_success():
     mock_client.__aexit__ = AsyncMock(return_value=False)
     mock_client.put = AsyncMock(return_value=mock_response)
 
-    with patch("helix.connectors.writeback.httpx.AsyncClient", return_value=mock_client):
+    with patch("eshopeo.connectors.writeback.httpx.AsyncClient", return_value=mock_client):
         result = await write_back_to_platform(
             tenant, "123", "description_html", "<p>New</p>", settings
         )
@@ -430,7 +430,7 @@ async def test_write_back_shopify_success():
     mock_client.__aexit__ = AsyncMock(return_value=False)
     mock_client.put = AsyncMock(return_value=mock_response)
 
-    with patch("helix.connectors.writeback.httpx.AsyncClient", return_value=mock_client):
+    with patch("eshopeo.connectors.writeback.httpx.AsyncClient", return_value=mock_client):
         result = await write_back_to_platform(
             tenant, "456", "description_html", "<p>New</p>", settings
         )
@@ -461,13 +461,13 @@ async def test_write_back_unknown_platform_returns_false():
 cd services/core && python -m pytest tests/test_writeback.py -v 2>&1 | head -20
 ```
 
-Expected: `ModuleNotFoundError` — `helix.connectors.writeback` does not exist.
+Expected: `ModuleNotFoundError` — `eshopeo.connectors.writeback` does not exist.
 
-- [ ] **Step 3: Create `helix/connectors/__init__.py`**
+- [ ] **Step 3: Create `eshopeo/connectors/__init__.py`**
 
-Create an empty file at `services/core/helix/connectors/__init__.py`.
+Create an empty file at `services/core/eshopeo/connectors/__init__.py`.
 
-- [ ] **Step 4: Create `helix/connectors/writeback.py`**
+- [ ] **Step 4: Create `eshopeo/connectors/writeback.py`**
 
 ```python
 import base64
@@ -477,8 +477,8 @@ import httpx
 import structlog
 from cryptography.fernet import Fernet
 
-from helix.config import Settings
-from helix.db.models import Tenant
+from eshopeo.config import Settings
+from eshopeo.db.models import Tenant
 
 logger = structlog.get_logger(__name__)
 
@@ -573,8 +573,8 @@ Expected: same failure count as before (17 infra-only). No new failures.
 - [ ] **Step 7: Commit**
 
 ```
-git add services/core/helix/connectors/__init__.py \
-        services/core/helix/connectors/writeback.py \
+git add services/core/eshopeo/connectors/__init__.py \
+        services/core/eshopeo/connectors/writeback.py \
         services/core/tests/test_writeback.py
 git commit -m "feat(p17-2): platform write-back client (WooCommerce + Shopify)"
 ```
@@ -584,7 +584,7 @@ git commit -m "feat(p17-2): platform write-back client (WooCommerce + Shopify)"
 ## Task P17-3: Wire write-back into approve endpoint
 
 **Files:**
-- Modify: `services/core/helix/api/routers/content.py` — add `?field=` to approve, `ApproveDraftOut`, write-back call
+- Modify: `services/core/eshopeo/api/routers/content.py` — add `?field=` to approve, `ApproveDraftOut`, write-back call
 - Create: `services/core/tests/test_content_approve_writeback.py`
 
 - [ ] **Step 1: Write the 3 failing tests**
@@ -598,9 +598,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import ContentDraft, Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import ContentDraft, Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -648,11 +648,11 @@ def test_approve_description_draft_triggers_writeback():
     app.dependency_overrides[get_db] = lambda: mock_db
 
     with (
-        patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
-        patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
-        patch("helix.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
-        patch("helix.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=True) as mock_wb,
-        patch("helix.api.routers.content.get_settings", return_value=MagicMock()),
+        patch("eshopeo.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
+        patch("eshopeo.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
+        patch("eshopeo.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
+        patch("eshopeo.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=True) as mock_wb,
+        patch("eshopeo.api.routers.content.get_settings", return_value=MagicMock()),
     ):
         r = client.post(f"/v1/content/products/{product_id}/draft/approve")
 
@@ -688,11 +688,11 @@ def test_approve_writeback_failure_still_returns_200():
     app.dependency_overrides[get_db] = lambda: mock_db
 
     with (
-        patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
-        patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
-        patch("helix.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
-        patch("helix.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=False),
-        patch("helix.api.routers.content.get_settings", return_value=MagicMock()),
+        patch("eshopeo.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
+        patch("eshopeo.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=mock_product),
+        patch("eshopeo.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
+        patch("eshopeo.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=False),
+        patch("eshopeo.api.routers.content.get_settings", return_value=MagicMock()),
     ):
         r = client.post(f"/v1/content/products/{product_id}/draft/approve")
 
@@ -721,9 +721,9 @@ def test_approve_seo_field_skips_writeback():
     app.dependency_overrides[get_db] = lambda: mock_db
 
     with (
-        patch("helix.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
-        patch("helix.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
-        patch("helix.api.routers.content.write_back_to_platform", new_callable=AsyncMock) as mock_wb,
+        patch("eshopeo.api.routers.content.get_content_draft", new_callable=AsyncMock, return_value=draft),
+        patch("eshopeo.api.routers.content.approve_content_draft", new_callable=AsyncMock, return_value=approved_draft),
+        patch("eshopeo.api.routers.content.write_back_to_platform", new_callable=AsyncMock) as mock_wb,
     ):
         r = client.post(f"/v1/content/products/{product_id}/draft/approve?field=meta_title")
 
@@ -742,12 +742,12 @@ cd services/core && python -m pytest tests/test_content_approve_writeback.py -v 
 
 Expected: failures because `write_back_to_platform` import doesn't exist in the router yet, and `ApproveDraftOut` doesn't exist.
 
-- [ ] **Step 3: Update `helix/api/routers/content.py`**
+- [ ] **Step 3: Update `eshopeo/api/routers/content.py`**
 
 Add to imports at top:
 ```python
-from helix.config import get_settings
-from helix.connectors.writeback import write_back_to_platform
+from eshopeo.config import get_settings
+from eshopeo.connectors.writeback import write_back_to_platform
 ```
 
 Add `ApproveDraftOut` model (after `ContentDraftListResponse`):
@@ -825,11 +825,11 @@ The old tests POST to `/v1/content/products/{id}/draft/approve` without `?field=
 Add to both passing tests in `test_content_approve_endpoint.py` (wrap existing patches with):
 ```python
 with (
-    patch("helix.api.routers.content.get_content_draft", ...),
-    patch("helix.api.routers.content.get_product_by_id", ...),
-    patch("helix.api.routers.content.approve_content_draft", ...),
-    patch("helix.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=False),
-    patch("helix.api.routers.content.get_settings", return_value=MagicMock()),
+    patch("eshopeo.api.routers.content.get_content_draft", ...),
+    patch("eshopeo.api.routers.content.get_product_by_id", ...),
+    patch("eshopeo.api.routers.content.approve_content_draft", ...),
+    patch("eshopeo.api.routers.content.write_back_to_platform", new_callable=AsyncMock, return_value=False),
+    patch("eshopeo.api.routers.content.get_settings", return_value=MagicMock()),
 ):
 ```
 
@@ -844,7 +844,7 @@ Expected: same infra-only failures (17). New passing tests: 3 from writeback + 3
 - [ ] **Step 7: Commit**
 
 ```
-git add services/core/helix/api/routers/content.py \
+git add services/core/eshopeo/api/routers/content.py \
         services/core/tests/test_content_approve_writeback.py \
         services/core/tests/test_content_approve_endpoint.py
 git commit -m "feat(p17-3): wire write-back into approve endpoint; ApproveDraftOut with platform_synced"
@@ -875,10 +875,10 @@ Update the Phase 17 entry:
 **Date:** 2026-06-12
 
 ### What was built
-- `helix/workers/tasks/seo.py` — `generate_seo_metadata` Celery task; one LLM call produces `meta_title` + `meta_description` stored as two separate ContentDraft rows
-- `helix/connectors/writeback.py` — `write_back_to_platform`; WooCommerce (Basic auth) and Shopify (access token) write-back; never raises; returns bool
-- `helix/db/crud/content.py` — `list_products_without_draft(field=)` generalised (backwards-compatible default `"description_html"`)
-- `helix/api/routers/content.py` — `?field=` on GET draft; `POST /v1/content/products/{id}/generate-seo` (202); `POST /v1/content/bulk-generate-seo`; approve endpoint wired with write-back; `ApproveDraftOut` adds `platform_synced: bool`
+- `eshopeo/workers/tasks/seo.py` — `generate_seo_metadata` Celery task; one LLM call produces `meta_title` + `meta_description` stored as two separate ContentDraft rows
+- `eshopeo/connectors/writeback.py` — `write_back_to_platform`; WooCommerce (Basic auth) and Shopify (access token) write-back; never raises; returns bool
+- `eshopeo/db/crud/content.py` — `list_products_without_draft(field=)` generalised (backwards-compatible default `"description_html"`)
+- `eshopeo/api/routers/content.py` — `?field=` on GET draft; `POST /v1/content/products/{id}/generate-seo` (202); `POST /v1/content/bulk-generate-seo`; approve endpoint wired with write-back; `ApproveDraftOut` adds `platform_synced: bool`
 
 ### Test counts
 - Tests: [total] total, [passed] passed, [failed] failed (infra-only)

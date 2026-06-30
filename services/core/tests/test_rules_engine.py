@@ -1,5 +1,5 @@
 import pytest
-from helix.domain.rules import (
+from eshopeo.domain.rules import (
     check_compatibility,
     order_routine,
     missing_steps,

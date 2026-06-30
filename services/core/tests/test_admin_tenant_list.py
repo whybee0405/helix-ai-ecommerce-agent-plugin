@@ -4,9 +4,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.routers.admin import _auth_provision
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.routers.admin import _auth_provision
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -33,12 +33,12 @@ def test_admin_tenant_list_returns_200():
 
     with (
         patch(
-            "helix.api.routers.admin.list_tenants",
+            "eshopeo.api.routers.admin.list_tenants",
             new_callable=AsyncMock,
             return_value=mock_tenants,
         ),
         patch(
-            "helix.api.routers.admin.count_tenants",
+            "eshopeo.api.routers.admin.count_tenants",
             new_callable=AsyncMock,
             return_value=2,
         ),
@@ -65,7 +65,7 @@ def test_admin_tenant_detail_returns_200():
     tenant_id = mock_tenant.id
 
     with patch(
-        "helix.api.routers.admin.get_tenant_by_id",
+        "eshopeo.api.routers.admin.get_tenant_by_id",
         new_callable=AsyncMock,
         return_value=mock_tenant,
     ):
@@ -86,7 +86,7 @@ def test_admin_tenant_detail_404_on_unknown():
     app.dependency_overrides[_auth_provision] = lambda: "test-key"
 
     with patch(
-        "helix.api.routers.admin.get_tenant_by_id",
+        "eshopeo.api.routers.admin.get_tenant_by_id",
         new_callable=AsyncMock,
         return_value=None,
     ):

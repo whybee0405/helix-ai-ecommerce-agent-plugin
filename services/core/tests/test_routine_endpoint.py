@@ -3,12 +3,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.api.deps import get_widget_tenant
-from helix.db.models import Tenant
-from helix.api.auth.tokens import issue_widget_token
-from helix.domain.routine import build_routine, RoutineResult
-from helix.packs.loader import LoadedPack
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_widget_tenant
+from eshopeo.db.models import Tenant
+from eshopeo.api.auth.tokens import issue_widget_token
+from eshopeo.domain.routine import build_routine, RoutineResult
+from eshopeo.packs.loader import LoadedPack
 from tests.conftest import make_test_settings
 
 
@@ -86,9 +86,9 @@ async def test_routine_without_token_returns_401(client):
 async def test_routine_returns_response(client, app, tenant):
     app.dependency_overrides[get_widget_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack:
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack:
         mock_pack.return_value = MagicMock(
             spec=LoadedPack,
             compatibility_rules=[],

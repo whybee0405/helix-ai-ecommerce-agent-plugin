@@ -2,13 +2,13 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from helix.db.crud.conversations import (
+from eshopeo.db.crud.conversations import (
     append_messages,
     create_conversation,
     get_conversation,
     set_message_feedback,
 )
-from helix.db.models import ConversationMessage
+from eshopeo.db.models import ConversationMessage
 
 
 def _make_session():

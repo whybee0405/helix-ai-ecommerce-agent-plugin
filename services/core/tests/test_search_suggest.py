@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -19,7 +19,7 @@ def test_suggest_returns_matching_titles():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
-        "helix.api.routers.search.suggest_product_titles",
+        "eshopeo.api.routers.search.suggest_product_titles",
         new_callable=AsyncMock,
         return_value=["Toner A", "Toner B"],
     ):
@@ -43,7 +43,7 @@ def test_suggest_empty_results_ok():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
-        "helix.api.routers.search.suggest_product_titles",
+        "eshopeo.api.routers.search.suggest_product_titles",
         new_callable=AsyncMock,
         return_value=[],
     ):

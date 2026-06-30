@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
+from eshopeo.api.app import create_app
 from tests.conftest import make_test_settings
 
 
@@ -24,12 +24,12 @@ def test_admin_stats_returns_data(client):
         "cost_this_month_usd": 2.50,
     }
 
-    with patch("helix.api.routers.admin.get_platform_stats", new_callable=AsyncMock) as mock:
+    with patch("eshopeo.api.routers.admin.get_platform_stats", new_callable=AsyncMock) as mock:
         mock.return_value = mock_stats
 
         response = client.get(
             "/v1/admin/stats",
-            headers={"X-Helix-Provision-Key": "test-provision-key"},
+            headers={"X-eShopeo-Provision-Key": "test-provision-key"},
         )
 
     assert response.status_code == 200
@@ -45,7 +45,7 @@ def test_admin_stats_401_bad_key(client):
     """Test that wrong provision key returns 401."""
     response = client.get(
         "/v1/admin/stats",
-        headers={"X-Helix-Provision-Key": "wrong-key"},
+        headers={"X-eShopeo-Provision-Key": "wrong-key"},
     )
 
     assert response.status_code == 401

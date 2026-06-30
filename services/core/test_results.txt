@@ -162,7 +162,7 @@ C:\Users\whybe\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi
     from starlette.testclient import TestClient as TestClient  # noqa
 
 tests/test_usage_event_persistence.py::TestCreateUsageEventCRUD::test_create_usage_event_writes_to_db
-  D:\Dev Projects\ai-ecommerce-master-plugin-beauty\services\core\helix\db\crud\usage_events.py:26: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+  D:\Dev Projects\ai-ecommerce-master-plugin-beauty\services\core\eshopeo\db\crud\usage_events.py:26: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
     session.add(event)
   Enable tracemalloc to get traceback where the object was allocated.
   See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.

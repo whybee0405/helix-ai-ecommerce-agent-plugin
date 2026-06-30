@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -32,7 +32,7 @@ def wc_signature(body: bytes, secret: str) -> str:
 
 @pytest.fixture
 def tenant():
-    from helix.api.auth.crypto import encrypt_credentials
+    from eshopeo.api.auth.crypto import encrypt_credentials
     from tests.conftest import make_test_settings
     settings = make_test_settings()
     t = MagicMock()
@@ -60,12 +60,12 @@ async def client(app):
 @pytest.mark.asyncio
 async def test_webhook_bad_signature_returns_401(client, tenant):
     body = json.dumps(make_wc_product_payload()).encode()
-    with patch("helix.api.routers.webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant):
+    with patch("eshopeo.api.routers.webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant):
         resp = await client.post(
             "/v1/webhooks/products",
             content=body,
             headers={
-                "X-Helix-Tenant-Id": str(tenant.id),
+                "X-eShopeo-Tenant-Id": str(tenant.id),
                 "X-WC-Webhook-Signature": "badsig",
                 "Content-Type": "application/json",
             },
@@ -79,16 +79,16 @@ async def test_webhook_valid_signature_accepted(client, tenant):
     body = json.dumps(payload).encode()
     sig = wc_signature(body, "test-secret")
 
-    with patch("helix.api.routers.webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.webhooks.upsert_product", new_callable=AsyncMock), \
-         patch("helix.api.routers.webhooks.embed_product"), \
-         patch("helix.api.routers.webhooks.get_db"):
+    with patch("eshopeo.api.routers.webhooks.get_tenant_by_id", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.webhooks.upsert_product", new_callable=AsyncMock), \
+         patch("eshopeo.api.routers.webhooks.embed_product"), \
+         patch("eshopeo.api.routers.webhooks.get_db"):
 
         resp = await client.post(
             "/v1/webhooks/products",
             content=body,
             headers={
-                "X-Helix-Tenant-Id": str(tenant.id),
+                "X-eShopeo-Tenant-Id": str(tenant.id),
                 "X-WC-Webhook-Signature": sig,
                 "Content-Type": "application/json",
             },

@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from helix.api.middleware.rate_limit import RateLimitMiddleware, _extract_tenant_id
-from helix.api.auth.tokens import issue_widget_token
+from eshopeo.api.middleware.rate_limit import RateLimitMiddleware, _extract_tenant_id
+from eshopeo.api.auth.tokens import issue_widget_token
 from tests.conftest import make_test_settings
 
 
@@ -31,7 +31,7 @@ async def test_rate_limit_allows_requests_under_limit():
     mock_redis = AsyncMock()
     mock_redis.incr.return_value = 1  # first request
 
-    with patch("helix.api.middleware.rate_limit.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.middleware.rate_limit.aioredis.from_url", return_value=mock_redis):
         middleware = RateLimitMiddleware(app=MagicMock(), settings=settings)
         middleware._redis = mock_redis
 
@@ -53,7 +53,7 @@ async def test_rate_limit_blocks_requests_over_limit():
     mock_redis = AsyncMock()
     mock_redis.incr.return_value = 31  # over the default limit of 30
 
-    with patch("helix.api.middleware.rate_limit.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.middleware.rate_limit.aioredis.from_url", return_value=mock_redis):
         middleware = RateLimitMiddleware(app=MagicMock(), settings=settings)
         middleware._redis = mock_redis
 

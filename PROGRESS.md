@@ -1,4 +1,4 @@
-# PROGRESS.md — Helix Commerce Intelligence
+# PROGRESS.md — eShopeo Commerce Intelligence
 
 > **This file is the running state of the project. Read it in full at the start of every
 > session, before doing anything. Update it as you work — when you start a task, finish
@@ -51,11 +51,11 @@ in place.
       `product`, `customer`, `order`, `job`, `usage_event`; enable `pgvector`.
 - [ ] `TODO` Tenancy + auth: tenant provisioning, encrypted credential storage,
       tenant-scoped query enforcement at the data layer.
-- [ ] `TODO` LLM gateway (`helix.llm`): tiered model selection, prompt assembly,
+- [ ] `TODO` LLM gateway (`eshopeo.llm`): tiered model selection, prompt assembly,
       structured-output parse+validate+repair, retries, per-tenant usage metering.
-- [ ] `TODO` Domain-pack loader (`helix.packs`): load a pack, validate its schemas, expose
+- [ ] `TODO` Domain-pack loader (`eshopeo.packs`): load a pack, validate its schemas, expose
       profile/product schema + prompt fragments to the rest of the app.
-- [ ] `TODO` Connector contract (`helix.connectors`): canonical models, the `/v1` sync +
+- [ ] `TODO` Connector contract (`eshopeo.connectors`): canonical models, the `/v1` sync +
       webhook endpoints, signature verification.
 - [ ] `TODO` WooCommerce connector (thin PHP plugin): install handshake, full catalog
       sync, product webhooks, translate to `CanonicalProduct`.
@@ -112,7 +112,7 @@ in place.
 > Things an agent should not decide alone — pricing tiers, brand name, legal/PoPIA,
 > which Claude model tier per feature once cost data exists.
 
-- Public brand name (codename `helix` is a placeholder).
+- Public brand name (codename `eshopeo` is a placeholder).
 - Confirm target host (Hetzner ZA region) and managed-Postgres vs self-hosted.
 
 ---

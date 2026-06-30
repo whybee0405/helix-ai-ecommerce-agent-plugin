@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -35,12 +35,12 @@ def test_search_with_price_filter_returns_200():
 
     with (
         patch(
-            "helix.api.routers.search.embed_query",
+            "eshopeo.api.routers.search.embed_query",
             new_callable=AsyncMock,
             return_value=[0.1] * 1024,
         ),
         patch(
-            "helix.api.routers.search.vector_search_products",
+            "eshopeo.api.routers.search.vector_search_products",
             new_callable=AsyncMock,
             return_value=mock_rows,
         ),
@@ -65,8 +65,8 @@ def test_search_price_filter_passed_to_crud():
     mock_search = AsyncMock(return_value=[])
 
     with (
-        patch("helix.api.routers.search.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024),
-        patch("helix.api.routers.search.vector_search_products", mock_search),
+        patch("eshopeo.api.routers.search.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024),
+        patch("eshopeo.api.routers.search.vector_search_products", mock_search),
     ):
         client.get("/v1/search/products?q=serum&min_price=1000&max_price=5000")
 

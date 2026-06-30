@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -27,7 +27,7 @@ def test_conversation_analytics_returns_200():
     }
 
     with patch(
-        "helix.api.routers.analytics.get_conversation_analytics",
+        "eshopeo.api.routers.analytics.get_conversation_analytics",
         new_callable=AsyncMock,
         return_value=mock_stats,
     ):
@@ -70,7 +70,7 @@ def test_conversation_analytics_zero_when_no_data():
     }
 
     with patch(
-        "helix.api.routers.analytics.get_conversation_analytics",
+        "eshopeo.api.routers.analytics.get_conversation_analytics",
         new_callable=AsyncMock,
         return_value=mock_stats,
     ):

@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 
-from helix.api.app import create_app
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -43,14 +43,14 @@ async def test_search_returns_results(client, tenant):
     fake_product.categories = ["Essence"]
     fake_product.domain_attributes = {}
 
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
-         patch("helix.api.routers.search.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.search.vector_search_products", new_callable=AsyncMock, return_value=[(fake_product, 0.91)]):
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant), \
+         patch("eshopeo.api.routers.search.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.search.vector_search_products", new_callable=AsyncMock, return_value=[(fake_product, 0.91)]):
 
         resp = await client.get(
             "/v1/search/products",
             params={"q": "hydration serum"},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
 
     assert resp.status_code == 200
@@ -61,10 +61,10 @@ async def test_search_returns_results(client, tenant):
 
 
 async def test_search_empty_query_returns_422(client, tenant):
-    with patch("helix.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant):
+    with patch("eshopeo.api.deps.get_tenant_by_public_key", new_callable=AsyncMock, return_value=tenant):
         resp = await client.get(
             "/v1/search/products",
             params={"q": ""},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
     assert resp.status_code == 422

@@ -77,7 +77,7 @@ Returns 404 if product not found or has no embedding.
 
 1. `test_similar_products_returns_200` — mock `get_similar_products` returning 2 products; assert 200 + results list length
 2. `test_similar_products_404_when_no_embedding` — mock returns empty list; assert 404
-3. `test_similar_products_requires_auth` — no `X-Helix-Tenant-Key` → 401
+3. `test_similar_products_requires_auth` — no `X-eShopeo-Tenant-Key` → 401
 
 ---
 
@@ -213,10 +213,10 @@ Response:
 ## 5. File map
 
 **Modified files:**
-- `services/core/helix/db/crud/products.py` — add `get_similar_products`, `get_embedding_coverage`
-- `services/core/helix/db/crud/conversations.py` — add `get_top_referenced_products`
-- `services/core/helix/api/routers/search.py` — add `GET /v1/search/similar/{product_id}`
-- `services/core/helix/api/routers/analytics.py` — add `GET /v1/analytics/products/top`, `GET /v1/analytics/products/embedding-coverage`
+- `services/core/eshopeo/db/crud/products.py` — add `get_similar_products`, `get_embedding_coverage`
+- `services/core/eshopeo/db/crud/conversations.py` — add `get_top_referenced_products`
+- `services/core/eshopeo/api/routers/search.py` — add `GET /v1/search/similar/{product_id}`
+- `services/core/eshopeo/api/routers/analytics.py` — add `GET /v1/analytics/products/top`, `GET /v1/analytics/products/embedding-coverage`
 
 **New files:**
 - `services/core/tests/test_similar_products.py` (3 tests)

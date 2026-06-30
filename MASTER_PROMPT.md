@@ -1,11 +1,11 @@
-# MASTER_PROMPT.md — Helix Commerce Intelligence
+# MASTER_PROMPT.md — eShopeo Commerce Intelligence
 
-> **What this file is.** This is the single source of truth for building Helix. Any
+> **What this file is.** This is the single source of truth for building eShopeo. Any
 > AI coding agent (Claude Code or otherwise) or human contributor reads this first,
 > in full, before writing a line of code. It defines the product, the architecture,
 > the stack, the build order, the rules of engagement, and the working protocol.
 >
-> **Codename:** `helix` (the public brand is undecided — do not hardcode a marketing
+> **Codename:** `eshopeo` (the public brand is undecided — do not hardcode a marketing
 > name anywhere; read it from config/env so it can be set later).
 
 ---
@@ -32,7 +32,7 @@
 
 ## 1. Product in one paragraph
 
-Helix is a hosted, multi-tenant AI commerce-intelligence suite that plugs into both
+eShopeo is a hosted, multi-tenant AI commerce-intelligence suite that plugs into both
 **WooCommerce** and **Shopify** stores through thin connectors. The intelligence lives
 in a central backend, never in the store. The first vertical is **K-beauty**, but the
 domain knowledge is isolated into a swappable **domain pack**, so the same engine can
@@ -65,7 +65,7 @@ story possible. See `docs/adr/0001-hosted-core-vs-self-contained-plugin.md`.
   Opus-class only where complex multi-step reasoning earns its cost. **Pin exact model
   IDs from `docs.claude.com`; never assume an ID from memory.**
 - **Storefront widget:** Preact + Vite, compiled to a single self-contained custom
-  element (`<helix-widget>`) plus a small loader script. Must be framework-agnostic at
+  element (`<eshopeo-widget>`) plus a small loader script. Must be framework-agnostic at
   the page level (works dropped into any theme), styled in a shadow DOM to avoid CSS
   collisions.
 - **Merchant dashboard:** React + Vite + TypeScript + Tailwind + shadcn/ui.
@@ -81,7 +81,7 @@ story possible. See `docs/adr/0001-hosted-core-vs-self-contained-plugin.md`.
 ## 4. Repository layout
 
 ```
-helix/
+eshopeo/
 ├── README.md
 ├── docs/
 │   ├── MASTER_PROMPT.md          # this file
@@ -92,8 +92,8 @@ helix/
 │   ├── compose.yaml
 │   └── docker/
 ├── services/
-│   ├── core/                     # Python package `helix`; API + worker share it
-│   │   ├── helix/
+│   ├── core/                     # Python package `eshopeo`; API + worker share it
+│   │   ├── eshopeo/
 │   │   │   ├── api/              # FastAPI routers (thin; delegate to domain/)
 │   │   │   ├── domain/          # entities + business logic (no framework imports)
 │   │   │   ├── connectors/      # connector contract + server-side sync orchestration
@@ -163,7 +163,7 @@ changes.
 
 ## 6. The LLM gateway (single choke point)
 
-All Claude calls go through `helix.llm`. No router, task, or service calls the Anthropic
+All Claude calls go through `eshopeo.llm`. No router, task, or service calls the Anthropic
 SDK directly. The gateway provides:
 - Model-tier selection (`classify` / `generate` / `reason`) mapped to current pinned
   model IDs in config.

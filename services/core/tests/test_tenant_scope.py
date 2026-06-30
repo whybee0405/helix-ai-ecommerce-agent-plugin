@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from helix.db.tenant_scope import TenantScope
+from eshopeo.db.tenant_scope import TenantScope
 
 
 @pytest.fixture

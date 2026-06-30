@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -38,7 +38,7 @@ def test_similar_products_returns_200():
     ]
 
     with patch(
-        "helix.api.routers.search.get_similar_products",
+        "eshopeo.api.routers.search.get_similar_products",
         new_callable=AsyncMock,
         return_value=mock_rows,
     ):
@@ -62,7 +62,7 @@ def test_similar_products_404_when_no_embedding():
     app.dependency_overrides[get_tenant] = lambda: tenant
 
     with patch(
-        "helix.api.routers.search.get_similar_products",
+        "eshopeo.api.routers.search.get_similar_products",
         new_callable=AsyncMock,
         return_value=[],
     ):

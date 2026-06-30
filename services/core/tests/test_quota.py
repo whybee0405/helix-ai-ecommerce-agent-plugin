@@ -3,8 +3,8 @@ from uuid import uuid4
 
 import pytest
 
-from helix.api.middleware.quota import QuotaMiddleware, _extract_tenant_id
-from helix.api.auth.tokens import issue_widget_token
+from eshopeo.api.middleware.quota import QuotaMiddleware, _extract_tenant_id
+from eshopeo.api.auth.tokens import issue_widget_token
 from tests.conftest import make_test_settings
 
 
@@ -32,7 +32,7 @@ async def test_quota_allows_request_under_limit():
     mock_redis = AsyncMock()
     mock_redis.incr.return_value = 50  # under limit
 
-    with patch("helix.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
         middleware = QuotaMiddleware(app=MagicMock(), settings=settings)
         middleware._redis = mock_redis
 
@@ -55,7 +55,7 @@ async def test_quota_blocks_request_over_limit():
     mock_redis = AsyncMock()
     mock_redis.incr.return_value = 11  # over the limit of 10
 
-    with patch("helix.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
         middleware = QuotaMiddleware(app=MagicMock(), settings=settings)
         middleware._redis = mock_redis
 
@@ -79,7 +79,7 @@ async def test_quota_passes_through_non_widget_paths():
     mock_redis = AsyncMock()
     mock_redis.incr.return_value = 999
 
-    with patch("helix.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
         middleware = QuotaMiddleware(app=MagicMock(), settings=settings)
         middleware._redis = mock_redis
 
@@ -102,7 +102,7 @@ async def test_quota_fails_open_on_redis_error():
     mock_redis = AsyncMock()
     mock_redis.incr.side_effect = Exception("Redis down")
 
-    with patch("helix.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.middleware.quota.aioredis.from_url", return_value=mock_redis):
         middleware = QuotaMiddleware(app=MagicMock(), settings=settings)
         middleware._redis = mock_redis
 

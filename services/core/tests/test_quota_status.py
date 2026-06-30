@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Tenant
 from tests.conftest import make_test_settings
 
 
@@ -22,7 +22,7 @@ def test_quota_status_returns_used_count():
     mock_redis.get = AsyncMock(return_value="3421")
     mock_redis.aclose = AsyncMock()
 
-    with patch("helix.api.routers.analytics.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.routers.analytics.aioredis.from_url", return_value=mock_redis):
         r = client.get("/v1/analytics/quota")
 
     app.dependency_overrides.clear()
@@ -48,7 +48,7 @@ def test_quota_status_zero_when_key_missing():
     mock_redis.get = AsyncMock(return_value=None)
     mock_redis.aclose = AsyncMock()
 
-    with patch("helix.api.routers.analytics.aioredis.from_url", return_value=mock_redis):
+    with patch("eshopeo.api.routers.analytics.aioredis.from_url", return_value=mock_redis):
         r = client.get("/v1/analytics/quota")
 
     app.dependency_overrides.clear()

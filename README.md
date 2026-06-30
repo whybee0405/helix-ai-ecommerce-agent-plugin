@@ -1,6 +1,6 @@
-# Helix — AI Commerce Intelligence
+# eShopeo — AI Commerce Intelligence
 
-Helix is a hosted backend that plugs into **WooCommerce** and **Shopify** stores to add an AI shopping consultant, semantic product search, a skincare routine builder, and AI-generated product descriptions — all from a single service, shared across stores.
+eShopeo is a hosted backend that plugs into **WooCommerce** and **Shopify** stores to add an AI shopping consultant, semantic product search, a skincare routine builder, and AI-generated product descriptions — all from a single service, shared across stores.
 
 The first vertical is **K-beauty**. Domain knowledge (product attributes, compatibility rules, prompt tone, routine structure) lives in a swappable *domain pack*, so the same engine can serve other verticals without touching core code.
 
@@ -8,11 +8,11 @@ The first vertical is **K-beauty**. Domain knowledge (product attributes, compat
 
 ## How it works
 
-The store installs a thin connector plugin (PHP for WooCommerce, a Remix app for Shopify). The connector syncs the catalog, customer profiles, and orders to Helix, then injects a lightweight chat widget into the storefront. All the heavy work — embeddings, LLM calls, conversation history, content generation — runs on the Helix backend.
+The store installs a thin connector plugin (PHP for WooCommerce, a Remix app for Shopify). The connector syncs the catalog, customer profiles, and orders to eShopeo, then injects a lightweight chat widget into the storefront. All the heavy work — embeddings, LLM calls, conversation history, content generation — runs on the eShopeo backend.
 
 ```
 Storefront theme
-  └── widget JS  ─────────────────────►  Helix API (FastAPI)
+  └── widget JS  ─────────────────────►  eShopeo API (FastAPI)
                                               │
 Merchant admin                                ├── PostgreSQL + pgvector
   └── Connector plugin                        ├── Redis (cache / queues)
@@ -61,8 +61,8 @@ docs/
 **Prerequisites:** Docker + Docker Compose, Python 3.12, an Anthropic API key, a Voyage AI API key.
 
 ```bash
-git clone https://github.com/whybee0405/helix-ai-ecommerce-agent-plugin.git helix
-cd helix
+git clone https://github.com/whybee0405/eshopeo-ai-ecommerce-agent-plugin.git eshopeo
+cd eshopeo
 cp .env.example .env   # fill in API keys and secrets
 docker compose -f infra/compose.yaml up --build
 ```

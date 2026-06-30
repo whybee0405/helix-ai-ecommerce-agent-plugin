@@ -3,8 +3,8 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.routers.admin import _auth_provision
+from eshopeo.api.app import create_app
+from eshopeo.api.routers.admin import _auth_provision
 from tests.conftest import make_test_settings
 
 
@@ -24,7 +24,7 @@ def test_admin_tenant_usage_returns_200():
     }
 
     with patch(
-        "helix.api.routers.admin.get_tenant_usage_summary",
+        "eshopeo.api.routers.admin.get_tenant_usage_summary",
         new_callable=AsyncMock,
         return_value=mock_usage,
     ):
@@ -64,7 +64,7 @@ def test_admin_tenant_usage_zero_when_no_events():
     }
 
     with patch(
-        "helix.api.routers.admin.get_tenant_usage_summary",
+        "eshopeo.api.routers.admin.get_tenant_usage_summary",
         new_callable=AsyncMock,
         return_value=mock_usage,
     ):

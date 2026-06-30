@@ -13,9 +13,9 @@
 ## Task P8-1: Conversation models, migration, CRUD
 
 **Files:**
-- Modify: `services/core/helix/db/models.py`
-- Create: `services/core/helix/db/migrations/versions/0003_conversations.py`
-- Create: `services/core/helix/db/crud/conversations.py`
+- Modify: `services/core/eshopeo/db/models.py`
+- Create: `services/core/eshopeo/db/migrations/versions/0003_conversations.py`
+- Create: `services/core/eshopeo/db/crud/conversations.py`
 - Test: `services/core/tests/test_conversation_crud.py`
 
 - [ ] **Step 1: Add models to models.py**
@@ -63,7 +63,7 @@ class ConversationMessage(Base):
 
 - [ ] **Step 2: Create migration 0003**
 
-Create `services/core/helix/db/migrations/versions/0003_conversations.py`:
+Create `services/core/eshopeo/db/migrations/versions/0003_conversations.py`:
 
 ```python
 """create conversation tables
@@ -116,7 +116,7 @@ def downgrade() -> None:
 
 - [ ] **Step 3: Create conversations CRUD**
 
-Create `services/core/helix/db/crud/conversations.py`:
+Create `services/core/eshopeo/db/crud/conversations.py`:
 
 ```python
 from uuid import UUID
@@ -124,7 +124,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.db.models import Conversation, ConversationMessage
+from eshopeo.db.models import Conversation, ConversationMessage
 
 
 async def create_conversation(
@@ -256,14 +256,14 @@ Create `services/core/tests/test_conversation_crud.py`:
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from helix.db.crud.conversations import (
+from eshopeo.db.crud.conversations import (
     append_messages,
     create_conversation,
     get_conversation,
     get_messages,
     set_message_feedback,
 )
-from helix.db.models import Conversation, ConversationMessage
+from eshopeo.db.models import Conversation, ConversationMessage
 
 
 def _make_session():
@@ -382,7 +382,7 @@ def test_set_message_feedback_updates_field():
 - [ ] **Step 5: Run test to verify it fails**
 
 ```
-cd services/core && python -m py_compile helix/db/models.py helix/db/crud/conversations.py tests/test_conversation_crud.py
+cd services/core && python -m py_compile eshopeo/db/models.py eshopeo/db/crud/conversations.py tests/test_conversation_crud.py
 ```
 
 Expected: OK (files compile cleanly).
@@ -390,9 +390,9 @@ Expected: OK (files compile cleanly).
 - [ ] **Step 6: Commit**
 
 ```bash
-git add services/core/helix/db/models.py \
-        services/core/helix/db/migrations/versions/0003_conversations.py \
-        services/core/helix/db/crud/conversations.py \
+git add services/core/eshopeo/db/models.py \
+        services/core/eshopeo/db/migrations/versions/0003_conversations.py \
+        services/core/eshopeo/db/crud/conversations.py \
         services/core/tests/test_conversation_crud.py
 git commit -m "feat: Conversation + ConversationMessage models, migration 0003, CRUD layer"
 ```
@@ -402,7 +402,7 @@ git commit -m "feat: Conversation + ConversationMessage models, migration 0003, 
 ## Task P8-2: Widget integration — conversation tracking
 
 **Files:**
-- Modify: `services/core/helix/api/routers/widget.py`
+- Modify: `services/core/eshopeo/api/routers/widget.py`
 - Test: `services/core/tests/test_widget_conversation.py`
 
 - [ ] **Step 1: Extend ChatRequest and ChatResponse**
@@ -437,7 +437,7 @@ class PipelineResult:
 
 Add these imports at the top of widget.py (check what's already imported):
 ```python
-from helix.db.crud.conversations import (
+from eshopeo.db.crud.conversations import (
     create_conversation,
     append_messages,
     get_conversation,
@@ -524,10 +524,10 @@ from uuid import uuid4, UUID
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_widget_tenant
-from helix.db.models import Tenant
-from helix.llm.gateway import RouteResult
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_widget_tenant
+from eshopeo.db.models import Tenant
+from eshopeo.llm.gateway import RouteResult
 from tests.conftest import make_test_settings
 
 
@@ -543,14 +543,14 @@ def test_chat_response_includes_conversation_id():
     conv_id = uuid4()
     msg_id = uuid4()
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack, \
-         patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
-         patch("helix.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
-         patch("helix.api.routers.widget.get_conversation", new_callable=AsyncMock, return_value=None), \
-         patch("helix.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack, \
+         patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
+         patch("eshopeo.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
+         patch("eshopeo.api.routers.widget.get_conversation", new_callable=AsyncMock, return_value=None), \
+         patch("eshopeo.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(response="Use toner", source="template")
         mock_conv = MagicMock()
@@ -582,14 +582,14 @@ def test_chat_response_includes_assistant_message_id():
 
     msg_id = uuid4()
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack, \
-         patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
-         patch("helix.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
-         patch("helix.api.routers.widget.get_conversation", new_callable=AsyncMock, return_value=None), \
-         patch("helix.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack, \
+         patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
+         patch("eshopeo.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
+         patch("eshopeo.api.routers.widget.get_conversation", new_callable=AsyncMock, return_value=None), \
+         patch("eshopeo.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(response="Use toner", source="template")
         mock_conv = MagicMock()
@@ -616,14 +616,14 @@ def test_chat_creates_new_conversation_when_none_provided():
     tenant.id = uuid4()
     app.dependency_overrides[get_widget_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack, \
-         patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
-         patch("helix.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
-         patch("helix.api.routers.widget.get_conversation", new_callable=AsyncMock) as mock_get_conv, \
-         patch("helix.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack, \
+         patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
+         patch("eshopeo.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
+         patch("eshopeo.api.routers.widget.get_conversation", new_callable=AsyncMock) as mock_get_conv, \
+         patch("eshopeo.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(response="Use toner", source="template")
         mock_conv = MagicMock()
@@ -654,14 +654,14 @@ def test_chat_appends_to_existing_conversation():
 
     existing_conv_id = uuid4()
 
-    with patch("helix.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
-         patch("helix.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
-         patch("helix.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
-         patch("helix.api.routers.widget.get_pack_for_tenant") as mock_pack, \
-         patch("helix.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
-         patch("helix.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
-         patch("helix.api.routers.widget.get_conversation", new_callable=AsyncMock) as mock_get_conv, \
-         patch("helix.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
+    with patch("eshopeo.api.routers.widget.embed_query", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("eshopeo.api.routers.widget.vector_search_products", new_callable=AsyncMock, return_value=[]), \
+         patch("eshopeo.api.routers.widget.handle_query", new_callable=AsyncMock) as mock_handle, \
+         patch("eshopeo.api.routers.widget.get_pack_for_tenant") as mock_pack, \
+         patch("eshopeo.api.routers.widget.create_usage_event", new_callable=AsyncMock), \
+         patch("eshopeo.api.routers.widget.create_conversation", new_callable=AsyncMock) as mock_create_conv, \
+         patch("eshopeo.api.routers.widget.get_conversation", new_callable=AsyncMock) as mock_get_conv, \
+         patch("eshopeo.api.routers.widget.append_messages", new_callable=AsyncMock) as mock_append:
         mock_pack.return_value = MagicMock()
         mock_handle.return_value = RouteResult(response="Use toner", source="template")
         existing_conv = MagicMock()
@@ -684,13 +684,13 @@ def test_chat_appends_to_existing_conversation():
 - [ ] **Step 6: Syntax check**
 
 ```
-python -m py_compile services/core/helix/api/routers/widget.py services/core/tests/test_widget_conversation.py
+python -m py_compile services/core/eshopeo/api/routers/widget.py services/core/tests/test_widget_conversation.py
 ```
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add services/core/helix/api/routers/widget.py \
+git add services/core/eshopeo/api/routers/widget.py \
         services/core/tests/test_widget_conversation.py
 git commit -m "feat: widget chat persists conversation turns, returns conversation_id + assistant_message_id"
 ```
@@ -700,13 +700,13 @@ git commit -m "feat: widget chat persists conversation turns, returns conversati
 ## Task P8-3: Conversation list + detail endpoints
 
 **Files:**
-- Create: `services/core/helix/api/routers/conversations.py`
-- Modify: `services/core/helix/api/app.py`
+- Create: `services/core/eshopeo/api/routers/conversations.py`
+- Modify: `services/core/eshopeo/api/app.py`
 - Test: `services/core/tests/test_conversations_endpoint.py`
 
 - [ ] **Step 1: Create conversations router**
 
-Create `services/core/helix/api/routers/conversations.py`:
+Create `services/core/eshopeo/api/routers/conversations.py`:
 
 ```python
 from typing import Annotated
@@ -717,9 +717,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from helix.api.deps import get_db, get_tenant
-from helix.db.crud.conversations import get_conversation, get_messages, list_conversations
-from helix.db.models import Tenant
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.crud.conversations import get_conversation, get_messages, list_conversations
+from eshopeo.db.models import Tenant
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/v1/conversations", tags=["conversations"])
@@ -805,9 +805,9 @@ async def get_conversation_endpoint(
 
 - [ ] **Step 2: Register router in app.py**
 
-In `services/core/helix/api/app.py`, add:
+In `services/core/eshopeo/api/app.py`, add:
 ```python
-from helix.api.routers.conversations import router as conversations_router
+from eshopeo.api.routers.conversations import router as conversations_router
 # ...
 app.include_router(conversations_router)
 ```
@@ -823,9 +823,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Conversation, ConversationMessage, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Conversation, ConversationMessage, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -849,7 +849,7 @@ def test_list_conversations_returns_200():
     mock_conv.updated_at = _now()
 
     with patch(
-        "helix.api.routers.conversations.list_conversations",
+        "eshopeo.api.routers.conversations.list_conversations",
         new_callable=AsyncMock,
         return_value=[mock_conv],
     ):
@@ -888,8 +888,8 @@ def test_get_conversation_returns_messages():
     mock_msg.feedback = None
     mock_msg.created_at = _now()
 
-    with patch("helix.api.routers.conversations.get_conversation", new_callable=AsyncMock, return_value=mock_conv), \
-         patch("helix.api.routers.conversations.get_messages", new_callable=AsyncMock, return_value=[mock_msg]):
+    with patch("eshopeo.api.routers.conversations.get_conversation", new_callable=AsyncMock, return_value=mock_conv), \
+         patch("eshopeo.api.routers.conversations.get_messages", new_callable=AsyncMock, return_value=[mock_msg]):
         r = client.get(f"/v1/conversations/{conv_id}")
 
     app.dependency_overrides.clear()
@@ -910,7 +910,7 @@ def test_get_conversation_404_when_not_found():
     tenant.id = uuid4()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.conversations.get_conversation", new_callable=AsyncMock, return_value=None):
+    with patch("eshopeo.api.routers.conversations.get_conversation", new_callable=AsyncMock, return_value=None):
         r = client.get(f"/v1/conversations/{uuid4()}")
 
     app.dependency_overrides.clear()
@@ -931,14 +931,14 @@ def test_conversations_requires_auth():
 - [ ] **Step 4: Syntax check**
 
 ```
-python -m py_compile services/core/helix/api/routers/conversations.py services/core/tests/test_conversations_endpoint.py
+python -m py_compile services/core/eshopeo/api/routers/conversations.py services/core/tests/test_conversations_endpoint.py
 ```
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add services/core/helix/api/routers/conversations.py \
-        services/core/helix/api/app.py \
+git add services/core/eshopeo/api/routers/conversations.py \
+        services/core/eshopeo/api/app.py \
         services/core/tests/test_conversations_endpoint.py
 git commit -m "feat: conversation list + detail endpoints GET /v1/conversations"
 ```
@@ -948,14 +948,14 @@ git commit -m "feat: conversation list + detail endpoints GET /v1/conversations"
 ## Task P8-4: Message feedback endpoint
 
 **Files:**
-- Modify: `services/core/helix/api/routers/widget.py`
+- Modify: `services/core/eshopeo/api/routers/widget.py`
 - Test: `services/core/tests/test_message_feedback.py`
 
 - [ ] **Step 1: Add feedback endpoint to widget router**
 
 Add these imports at the top of widget.py (if not already present):
 ```python
-from helix.db.crud.conversations import get_message, set_message_feedback
+from eshopeo.db.crud.conversations import get_message, set_message_feedback
 ```
 
 Add this model and endpoint at the bottom of widget.py (before the embed.js route):
@@ -997,9 +997,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_widget_tenant
-from helix.db.models import ConversationMessage, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_widget_tenant
+from eshopeo.db.models import ConversationMessage, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -1017,8 +1017,8 @@ def test_feedback_accepted_thumbs_up():
     mock_msg.role = "assistant"
     mock_msg.feedback = None
 
-    with patch("helix.api.routers.widget.get_message", new_callable=AsyncMock, return_value=mock_msg), \
-         patch("helix.api.routers.widget.set_message_feedback", new_callable=AsyncMock) as mock_set:
+    with patch("eshopeo.api.routers.widget.get_message", new_callable=AsyncMock, return_value=mock_msg), \
+         patch("eshopeo.api.routers.widget.set_message_feedback", new_callable=AsyncMock) as mock_set:
         r = client.post(
             f"/v1/widget/conversations/{message_id}/feedback",
             json={"feedback": "thumbs_up"},
@@ -1042,7 +1042,7 @@ def test_feedback_404_on_unknown_message():
     tenant.id = uuid4()
     app.dependency_overrides[get_widget_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.widget.get_message", new_callable=AsyncMock, return_value=None):
+    with patch("eshopeo.api.routers.widget.get_message", new_callable=AsyncMock, return_value=None):
         r = client.post(
             f"/v1/widget/conversations/{uuid4()}/feedback",
             json={"feedback": "thumbs_down"},
@@ -1069,13 +1069,13 @@ def test_feedback_requires_widget_auth():
 - [ ] **Step 3: Syntax check**
 
 ```
-python -m py_compile services/core/helix/api/routers/widget.py services/core/tests/test_message_feedback.py
+python -m py_compile services/core/eshopeo/api/routers/widget.py services/core/tests/test_message_feedback.py
 ```
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add services/core/helix/api/routers/widget.py \
+git add services/core/eshopeo/api/routers/widget.py \
         services/core/tests/test_message_feedback.py
 git commit -m "feat: message feedback endpoint POST /v1/widget/conversations/{id}/feedback"
 ```

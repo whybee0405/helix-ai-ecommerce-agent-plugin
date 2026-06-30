@@ -4,9 +4,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_db, get_tenant
-from helix.db.models import Customer, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.db.models import Customer, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -51,15 +51,15 @@ def test_patch_profile_merges_and_returns(client, customer):
     )
     updated.id = customer.id
     with (
-        patch("helix.api.routers.sync.get_customer_by_platform_id",
+        patch("eshopeo.api.routers.sync.get_customer_by_platform_id",
               AsyncMock(return_value=customer)),
-        patch("helix.api.routers.sync.update_customer_profile",
+        patch("eshopeo.api.routers.sync.update_customer_profile",
               AsyncMock(return_value=updated)) as mock_update,
     ):
         r = c.patch(
             "/v1/sync/customers/plat-cust-1/profile",
             json={"profile": {"skin_type": "dry", "concerns": ["acne"]}},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
     assert r.status_code == 200
     data = r.json()
@@ -76,12 +76,12 @@ def test_patch_profile_merges_and_returns(client, customer):
 
 def test_patch_profile_404_unknown_customer(client):
     c, tenant = client
-    with patch("helix.api.routers.sync.get_customer_by_platform_id",
+    with patch("eshopeo.api.routers.sync.get_customer_by_platform_id",
                AsyncMock(return_value=None)):
         r = c.patch(
             "/v1/sync/customers/unknown-plat/profile",
             json={"profile": {"skin_type": "dry"}},
-            headers={"X-Helix-Tenant-Key": str(tenant.public_key)},
+            headers={"X-eShopeo-Tenant-Key": str(tenant.public_key)},
         )
     assert r.status_code == 404
 

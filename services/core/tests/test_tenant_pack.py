@@ -1,4 +1,4 @@
-from helix.db.models import Tenant
+from eshopeo.db.models import Tenant
 
 
 def test_tenant_pack_id_defaults_none():
@@ -15,8 +15,8 @@ def test_tenant_pack_id_can_be_set():
 
 from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
-from helix.api.app import create_app
-from helix.api.deps import get_db
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_db
 from tests.conftest import make_test_settings
 
 
@@ -40,7 +40,7 @@ def test_provision_passes_pack_id_to_tenant():
 
     app.dependency_overrides[get_db] = lambda: mock_db
 
-    with patch("helix.api.routers.tenants.create_tenant", side_effect=mock_create_tenant):
+    with patch("eshopeo.api.routers.tenants.create_tenant", side_effect=mock_create_tenant):
         r = TestClient(app).post(
             "/v1/tenants",
             json={
@@ -49,7 +49,7 @@ def test_provision_passes_pack_id_to_tenant():
                 "credentials": {"key": "val"},
                 "pack_id": "haircare"
             },
-            headers={"X-Helix-Provision-Key": "test-provision-key"},
+            headers={"X-eShopeo-Provision-Key": "test-provision-key"},
         )
 
     assert r.status_code == 201
@@ -57,8 +57,8 @@ def test_provision_passes_pack_id_to_tenant():
 
 
 def test_get_pack_for_tenant_uses_pack_id():
-    from helix.packs.registry import get_pack_for_tenant, _registry
-    from helix.db.models import Tenant
+    from eshopeo.packs.registry import get_pack_for_tenant, _registry
+    from eshopeo.db.models import Tenant
     from unittest.mock import MagicMock
 
     mock_pack = MagicMock()
@@ -74,8 +74,8 @@ def test_get_pack_for_tenant_uses_pack_id():
 
 
 def test_get_pack_for_tenant_falls_back_when_pack_missing():
-    from helix.packs.registry import get_pack_for_tenant, _registry
-    from helix.db.models import Tenant
+    from eshopeo.packs.registry import get_pack_for_tenant, _registry
+    from eshopeo.db.models import Tenant
     from unittest.mock import MagicMock
 
     mock_pack = MagicMock()

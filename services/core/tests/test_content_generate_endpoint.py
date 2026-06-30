@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from helix.api.app import create_app
-from helix.api.deps import get_tenant
-from helix.db.models import Product, Tenant
+from eshopeo.api.app import create_app
+from eshopeo.api.deps import get_tenant
+from eshopeo.db.models import Product, Tenant
 from tests.conftest import make_test_settings
 
 
@@ -34,8 +34,8 @@ def test_generate_returns_202():
 
     mock_task = MagicMock()
     with (
-        patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=product),
-        patch("helix.api.routers.content.generate_description", mock_task),
+        patch("eshopeo.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=product),
+        patch("eshopeo.api.routers.content.generate_description", mock_task),
     ):
         r = client.post(f"/v1/content/products/{product.id}/generate")
 
@@ -54,7 +54,7 @@ def test_generate_404_on_unknown_product():
     tenant = _make_tenant()
     app.dependency_overrides[get_tenant] = lambda: tenant
 
-    with patch("helix.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=None):
+    with patch("eshopeo.api.routers.content.get_product_by_id", new_callable=AsyncMock, return_value=None):
         r = client.post(f"/v1/content/products/{uuid4()}/generate")
 
     app.dependency_overrides.clear()
