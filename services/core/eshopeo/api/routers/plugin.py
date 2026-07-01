@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse, Response
 router = APIRouter(prefix="/v1/plugin", tags=["plugin"])
 
 _PLUGIN_DIR = Path("/plugin")
-_VERSION = "0.5.5"
+_VERSION = "0.6.0"
 
 
 def _build_zip() -> bytes:
@@ -31,7 +31,7 @@ async def plugin_manifest() -> JSONResponse:
         "download_url": "https://eshopeo.cloudia.co.za/v1/plugin/download",
         "requires": "7.0",
         "tested": "6.5",
-        "last_updated": "2026-06-29",  # search bar loading states
+        "last_updated": "2026-07-01",  # rename to eShopeo
     })
 
 
