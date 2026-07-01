@@ -2,14 +2,14 @@
 /**
  * Plugin Name: eShopeo AI Agent
  * Description: Syncs your WooCommerce catalog with the eShopeo commerce intelligence platform.
- * Version: 0.6.0
+ * Version: 0.6.1
  * Requires PHP: 8.0
  * WC requires at least: 7.0
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ESHOPEO_CONNECTOR_VERSION', '0.6.0' );
+define( 'ESHOPEO_CONNECTOR_VERSION', '0.6.1' );
 define( 'ESHOPEO_CONNECTOR_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once ESHOPEO_CONNECTOR_DIR . 'includes/class-eshopeo-pack.php';
