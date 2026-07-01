@@ -16,21 +16,21 @@ echo "==> Pulling latest code..."
 git pull
 
 echo "==> Building images..."
-$COMPOSE build --no-cache api worker
+$COMPOSE build --no-cache api worker web
 
 echo "==> Starting database and redis..."
 $COMPOSE up -d db redis
 
 echo "==> Waiting for database to be healthy..."
-until $COMPOSE exec -T db pg_isready -U helix > /dev/null 2>&1; do
+until $COMPOSE exec -T db pg_isready -U eshopeo > /dev/null 2>&1; do
   sleep 1
 done
 
 echo "==> Running migrations..."
 $COMPOSE run --rm api alembic upgrade head
 
-echo "==> Deploying API and worker..."
-$COMPOSE up -d --force-recreate api worker
+echo "==> Deploying API, worker and web..."
+$COMPOSE up -d --force-recreate api worker web
 
 echo "==> Cleaning up old images..."
 docker image prune -f
