@@ -3391,11 +3391,15 @@ _BRANDING_BOOTSTRAP_JS = r"""
 """.strip()
 
 
+_JS_HEADERS = {"Cache-Control": "no-store"}
+
+
 @router.get("/embed.js", include_in_schema=False)
 async def widget_embed_js() -> Response:
     return Response(
         content=_BRANDING_BOOTSTRAP_JS + "\n" + _EMBED_JS,
         media_type="application/javascript",
+        headers=_JS_HEADERS,
     )
 
 
@@ -3404,6 +3408,7 @@ async def widget_searchbar_js() -> Response:
     return Response(
         content=_BRANDING_BOOTSTRAP_JS + "\n" + _SEARCH_BAR_JS,
         media_type="application/javascript",
+        headers=_JS_HEADERS,
     )
 
 
