@@ -331,6 +331,7 @@ _EMBED_JS = r"""
   (function () {
     var cached = null;
     try { cached = JSON.parse(localStorage.getItem('hx_brand_' + KEY) || 'null'); } catch (e) {}
+    if (cached && cached._ts && (Date.now() - cached._ts) > (window.eShopeoBranding._TTL || 1800000)) cached = null;
     if (cached) { applyEmbedBranding(cached); if (cached.pack_cta_type) _ctaType = cached.pack_cta_type; }
   })();
   window.eShopeoBranding.load(BASE, KEY).then(function (B) {
@@ -2700,6 +2701,7 @@ _SEARCH_BAR_JS = r"""
   (function () {
     var cached = null;
     try { cached = JSON.parse(localStorage.getItem('hx_brand_' + KEY) || 'null'); } catch (e) {}
+    if (cached && cached._ts && (Date.now() - cached._ts) > (window.eShopeoBranding._TTL || 1800000)) cached = null;
     if (cached) { applyBranding(cached); if (cached.pack_cta_type) _ctaType = cached.pack_cta_type; }
   })();
   window.eShopeoBranding.load(BASE, KEY).then(function (B) {
@@ -3319,11 +3321,16 @@ _BRANDING_BOOTSTRAP_JS = r"""
   window.eShopeoBranding = {
     _p: null,
     _applied: null,
+    _TTL: 30 * 60 * 1000,
     load: function (BASE, KEY) {
       if (this._p) return this._p;
       var lsKey = 'hx_brand_' + KEY;
       var stored = null;
       try { stored = JSON.parse(localStorage.getItem(lsKey) || 'null'); } catch (e) {}
+      if (stored && stored._ts && (Date.now() - stored._ts) > this._TTL) {
+        try { localStorage.removeItem(lsKey); } catch (e) {}
+        stored = null;
+      }
       if (stored) {
         this._applied = stored;
         this._applyCSS(stored);
@@ -3340,6 +3347,10 @@ _BRANDING_BOOTSTRAP_JS = r"""
         })
         .then(function (b) {
           if (b && b.version) {
+            if (stored && stored.version !== b.version) {
+              try { localStorage.removeItem(lsKey); } catch (e) {}
+            }
+            b._ts = Date.now();
             try { localStorage.setItem(lsKey, JSON.stringify(b)); } catch (e) {}
             self._applied = b;
             self._applyCSS(b);
