@@ -13,8 +13,8 @@ async def create_usage_event(
     tokens_out: int,
     cost_usd: float,
     endpoint: str,
+    source: str | None = None,
 ) -> UsageEvent:
-    """Create and persist a UsageEvent record."""
     event = UsageEvent(
         tenant_id=tenant_id,
         model=model,
@@ -22,6 +22,7 @@ async def create_usage_event(
         tokens_out=tokens_out,
         cost_usd=cost_usd,
         endpoint=endpoint,
+        source=source,
     )
     session.add(event)
     await session.flush()

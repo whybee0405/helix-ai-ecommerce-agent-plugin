@@ -155,6 +155,7 @@ class UsageEvent(Base):
     tokens_out: Mapped[int] = mapped_column(Integer, nullable=False)
     cost_usd: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False)
     endpoint: Mapped[str] = mapped_column(String, nullable=False)
+    source: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, default=_now
     )

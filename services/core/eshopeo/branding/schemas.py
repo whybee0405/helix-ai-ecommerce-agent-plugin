@@ -45,6 +45,9 @@ class Branding(BaseModel):
 
     custom_css: str = Field(default="", max_length=8000)
 
+    sb_anim: str = "rainbow"     # "rainbow" | "pulse" | "brand" | "none" | "custom"
+    sb_anim_css: str = ""        # only used when sb_anim == "custom"
+
     # Operational settings — stored in branding JSONB but never sent to the public widget
     lead_webhook_url: Optional[str] = Field(default=None, max_length=2000)
 

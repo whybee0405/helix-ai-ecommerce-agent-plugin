@@ -113,10 +113,12 @@ class Eshopeo_Cost_Dashboard {
             border-radius: 8px 8px 0 0;
             background: #e5e7eb;
         }
-        .eshopeo-usage-card.tier::before   { background: linear-gradient(90deg, #6366f1, #818cf8); }
-        .eshopeo-usage-card.spend::before  { background: #f59e0b; }
-        .eshopeo-usage-card.total::before  { background: #ef4444; }
-        .eshopeo-usage-card.status::before { background: #10b981; }
+        .eshopeo-usage-card.tier::before    { background: linear-gradient(90deg, #6366f1, #818cf8); }
+        .eshopeo-usage-card.spend::before   { background: #f59e0b; }
+        .eshopeo-usage-card.total::before   { background: #ef4444; }
+        .eshopeo-usage-card.status::before  { background: #10b981; }
+        .eshopeo-usage-card.cache::before   { background: linear-gradient(90deg, #10b981, #34d399); }
+        .eshopeo-usage-card.savings::before { background: linear-gradient(90deg, #059669, #10b981); }
         .eshopeo-usage-card-label {
             font-size: 11px;
             font-weight: 600;
@@ -132,10 +134,12 @@ class Eshopeo_Cost_Dashboard {
             line-height: 1;
             letter-spacing: -.01em;
         }
-        .eshopeo-usage-card.tier   .eshopeo-usage-card-value { color: #6366f1; text-transform: capitalize; }
-        .eshopeo-usage-card.spend  .eshopeo-usage-card-value { color: #f59e0b; }
-        .eshopeo-usage-card.total  .eshopeo-usage-card-value { color: #ef4444; }
-        .eshopeo-usage-card.status .eshopeo-usage-card-value { font-size: 14px; font-weight: 600; }
+        .eshopeo-usage-card.tier    .eshopeo-usage-card-value { color: #6366f1; text-transform: capitalize; }
+        .eshopeo-usage-card.spend   .eshopeo-usage-card-value { color: #f59e0b; }
+        .eshopeo-usage-card.total   .eshopeo-usage-card-value { color: #ef4444; }
+        .eshopeo-usage-card.status  .eshopeo-usage-card-value { font-size: 14px; font-weight: 600; }
+        .eshopeo-usage-card.cache   .eshopeo-usage-card-value { color: #10b981; }
+        .eshopeo-usage-card.savings .eshopeo-usage-card-value { color: #059669; }
         .eshopeo-usage-card-sub {
             font-size: 12px;
             color: #9ca3af;
@@ -269,19 +273,51 @@ class Eshopeo_Cost_Dashboard {
             font-size: 13px;
         }
 
+        /* ── Cache savings section ── */
+        .eshopeo-cache-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 4px;
+        }
+        .eshopeo-cache-stat {
+            text-align: center;
+            padding: 12px;
+            background: #f0fdf4;
+            border-radius: 8px;
+            border: 1px solid #bbf7d0;
+        }
+        .eshopeo-cache-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #059669;
+            line-height: 1;
+        }
+        .eshopeo-cache-stat-label {
+            font-size: 11px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            margin-top: 6px;
+            font-weight: 600;
+        }
+
         /* ── Responsive ── */
         @media (max-width: 1024px) {
-            .eshopeo-usage-cards { grid-template-columns: repeat(2, 1fr); }
+            .eshopeo-usage-cards { grid-template-columns: repeat(3, 1fr); }
+            .eshopeo-cache-stats { grid-template-columns: repeat(3, 1fr); }
         }
         @media (max-width: 782px) {
             .eshopeo-usage-page { padding: 16px 12px 40px; }
             .eshopeo-usage-header { flex-direction: column; align-items: flex-start; }
             .eshopeo-usage-cards { grid-template-columns: repeat(2, 1fr); }
             .eshopeo-usage-section-body { padding: 16px; }
+            .eshopeo-cache-stats { grid-template-columns: repeat(3, 1fr); }
         }
         @media (max-width: 480px) {
             .eshopeo-usage-cards { grid-template-columns: 1fr; }
             .eshopeo-budget-pct { font-size: 22px; min-width: 48px; }
+            .eshopeo-cache-stats { grid-template-columns: 1fr; }
         }
         </style>
         <?php
@@ -324,13 +360,17 @@ class Eshopeo_Cost_Dashboard {
             return;
         }
 
-        $tier         = $usage['tier'] ?? 'free';
-        $daily_budget = (float) ( $usage['daily_budget_usd'] ?? 0 );
-        $today_spend  = (float) ( $usage['today_spend_usd'] ?? 0 );
-        $total_cost   = (float) ( $usage['total_cost_usd'] ?? 0 );
-        $daily        = $usage['daily'] ?? [];
-        $mode         = $usage['budget_mode'] ?? 'normal';
-        $pct          = $daily_budget > 0 ? min( 100, round( $today_spend / $daily_budget * 100 ) ) : 0;
+        $tier              = $usage['tier'] ?? 'free';
+        $daily_budget      = (float) ( $usage['daily_budget_usd'] ?? 0 );
+        $today_spend       = (float) ( $usage['today_spend_usd'] ?? 0 );
+        $total_cost        = (float) ( $usage['total_cost_usd'] ?? 0 );
+        $daily             = $usage['daily'] ?? [];
+        $mode              = $usage['budget_mode'] ?? 'normal';
+        $pct               = $daily_budget > 0 ? min( 100, round( $today_spend / $daily_budget * 100 ) ) : 0;
+        $cache_hits        = (int) ( $usage['cache_hits_total'] ?? 0 );
+        $llm_calls         = (int) ( $usage['llm_calls_total'] ?? 0 );
+        $cache_hit_rate    = (float) ( $usage['cache_hit_rate'] ?? 0 );
+        $est_savings       = (float) ( $usage['estimated_savings_usd'] ?? 0 );
 
         $bar_color = $pct >= 100 ? '#ef4444' : ( $pct >= 80 ? '#f59e0b' : '#10b981' );
         $pct_color = $pct >= 100 ? '#ef4444' : ( $pct >= 80 ? '#f59e0b' : '#10b981' );
@@ -419,6 +459,37 @@ class Eshopeo_Cost_Dashboard {
                 </div>
             </div>
 
+            <!-- Cache savings -->
+            <div class="eshopeo-usage-section">
+                <div class="eshopeo-usage-section-head">
+                    <h2>Cache Savings &mdash; Last <?php echo (int) 30; ?> Days</h2>
+                    <span style="font-size:12px;color:#10b981;font-weight:600;">
+                        <?php echo number_format( $cache_hit_rate, 1 ); ?>% hit rate
+                    </span>
+                </div>
+                <div class="eshopeo-usage-section-body">
+                    <div class="eshopeo-cache-stats">
+                        <div class="eshopeo-cache-stat">
+                            <div class="eshopeo-cache-stat-value"><?php echo number_format( $cache_hits ); ?></div>
+                            <div class="eshopeo-cache-stat-label">Cache Hits</div>
+                        </div>
+                        <div class="eshopeo-cache-stat">
+                            <div class="eshopeo-cache-stat-value"><?php echo number_format( $cache_hit_rate, 1 ); ?>%</div>
+                            <div class="eshopeo-cache-stat-label">Hit Rate</div>
+                        </div>
+                        <div class="eshopeo-cache-stat">
+                            <div class="eshopeo-cache-stat-value">$<?php echo number_format( $est_savings, 4 ); ?></div>
+                            <div class="eshopeo-cache-stat-label">Est. Saved (USD)</div>
+                        </div>
+                    </div>
+                    <?php if ( $cache_hits === 0 ) : ?>
+                    <p style="font-size:12px;color:#9ca3af;margin:12px 0 0;text-align:center;">
+                        Cache savings will appear here once the AI starts serving cached responses.
+                    </p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <!-- Daily breakdown table -->
             <div class="eshopeo-usage-section">
                 <div class="eshopeo-usage-section-head">
@@ -431,7 +502,8 @@ class Eshopeo_Cost_Dashboard {
                             <thead>
                                 <tr>
                                     <th>Day</th>
-                                    <th>API Calls</th>
+                                    <th>LLM Calls</th>
+                                    <th>Cache Hits</th>
                                     <th>Tokens In</th>
                                     <th>Tokens Out</th>
                                     <th>Cost (USD)</th>
@@ -440,16 +512,19 @@ class Eshopeo_Cost_Dashboard {
                             <tbody>
                                 <?php if ( empty( $daily ) ) : ?>
                                     <tr>
-                                        <td colspan="5" class="eshopeo-usage-table-empty">No usage data yet for the last 30 days.</td>
+                                        <td colspan="6" class="eshopeo-usage-table-empty">No usage data yet for the last 30 days.</td>
                                     </tr>
                                 <?php else : ?>
                                     <?php foreach ( array_reverse( $daily ) as $d ) :
                                         $cost = (float) $d['cost_usd'];
-                                        $cost_color = $cost > 1 ? '#ef4444' : ( $cost > 0.5 ? '#f59e0b' : '#374151' );
+                                        $cost_color  = $cost > 1 ? '#ef4444' : ( $cost > 0.5 ? '#f59e0b' : '#374151' );
+                                        $day_hits    = (int) ( $d['cache_hits'] ?? 0 );
+                                        $day_llm     = (int) ( $d['llm_calls'] ?? (int) $d['calls'] );
                                     ?>
                                         <tr>
                                             <td class="date-cell"><?php echo esc_html( $d['day'] ); ?></td>
-                                            <td><?php echo number_format( (int) $d['calls'] ); ?></td>
+                                            <td><?php echo number_format( $day_llm ); ?></td>
+                                            <td style="color:#10b981;font-weight:<?php echo $day_hits > 0 ? '600' : '400'; ?>;"><?php echo number_format( $day_hits ); ?></td>
                                             <td><?php echo number_format( (int) $d['tokens_in'] ); ?></td>
                                             <td><?php echo number_format( (int) $d['tokens_out'] ); ?></td>
                                             <td class="cost-cell" style="color:<?php echo esc_attr($cost_color); ?>;">$<?php echo number_format( $cost, 4 ); ?></td>
