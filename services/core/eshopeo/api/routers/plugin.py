@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse, Response
 router = APIRouter(prefix="/v1/plugin", tags=["plugin"])
 
 _PLUGIN_DIR = Path("/plugin")
-_VERSION = "0.6.1"
+_VERSION = "0.7.0"
 
 
 def _build_zip() -> bytes:
