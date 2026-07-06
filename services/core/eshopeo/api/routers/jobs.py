@@ -1,3 +1,11 @@
+"""
+Background jobs router — bulk embedding job status.
+
+POST /v1/jobs/embed/bulk  — queue a bulk product-embedding job
+GET  /v1/jobs/{job_id}    — job status detail
+GET  /v1/jobs              — list jobs
+"""
+
 from typing import Annotated
 from uuid import UUID
 
@@ -49,6 +57,7 @@ async def bulk_embed_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> BulkEmbedResponse:
+    """POST /v1/jobs/embed/bulk."""
     products = await list_products_without_embedding(db, tenant.id)
     for product in products:
         embed_product.delay(str(tenant.id), str(product.id))
@@ -61,6 +70,7 @@ async def get_job_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> JobOut:
+    """GET /v1/jobs/{job_id}."""
     job = await jobs_crud.get_job(db, tenant.id, job_id)
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
@@ -73,5 +83,6 @@ async def list_jobs_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> list[JobOut]:
+    """GET /v1/jobs."""
     jobs = await jobs_crud.list_jobs(db, tenant.id, job_type=type)
     return [_job_out(j) for j in jobs]

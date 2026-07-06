@@ -1,18 +1,20 @@
-"""SEO meta generation router — uses Claude Haiku to write title + description."""
+"""
+SEO meta generation router — uses Claude Haiku to write title + description.
+
+POST /v1/seo-meta/generate — generate SEO title + meta description for a post
+"""
 
 from __future__ import annotations
 
-import json as _json
-
-import anthropic
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from eshopeo.api.deps import get_db, get_tenant, check_ai_op_quota, get_tenant_anthropic_key
 from eshopeo.config import get_settings
 from eshopeo.db.models import Tenant
+from eshopeo.llm.gateway import GenerationMeta, LLMGateway, LLMParseError, ModelTier
 
 logger = structlog.get_logger(__name__)
 
@@ -25,9 +27,15 @@ class SeoMetaRequest(BaseModel):
     pack_id: str = "general"
 
 
+class _SeoMetaLLM(BaseModel):
+    title: str = Field(description="SEO title, max 60 chars")
+    description: str = Field(description="meta description, max 160 chars")
+
+
 class SeoMetaResponse(BaseModel):
     seo_title: str
     seo_description: str
+    meta: GenerationMeta
 
 
 @router.post("/generate", response_model=SeoMetaResponse)
@@ -37,38 +45,46 @@ async def generate_seo_meta(
     _: Tenant = Depends(check_ai_op_quota),
     db: AsyncSession = Depends(get_db),
 ) -> SeoMetaResponse:
-    """Generate SEO title (≤60 chars) and meta description (≤160 chars)."""
+    """POST /v1/seo-meta/generate — Generate SEO title (≤60 chars) and meta description (≤160 chars)."""
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=get_tenant_anthropic_key(tenant) or settings.anthropic_api_key.get_secret_value())
-
     excerpt_snippet = body.post_excerpt[:200] if body.post_excerpt else "none"
-    prompt = (
-        f"Generate an SEO title (max 60 chars) and meta description (max 160 chars) "
-        f"for a page titled '{body.post_title}'. "
-        f"Excerpt: {excerpt_snippet}. "
-        f'Return JSON only: {{"title": "...", "description": "..."}}'
+
+    system_prompt = "You write concise SEO titles and meta descriptions. Return valid JSON only."
+    user_prompt = (
+        f"Generate an SEO title and meta description for a page titled '{body.post_title}'. "
+        f"Excerpt: {excerpt_snippet}"
     )
 
-    response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=120,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    raw = response.content[0].text.strip()  # type: ignore[index]
+    gateway = LLMGateway(settings, tenant.id, api_key_override=get_tenant_anthropic_key(tenant))
 
     try:
-        data = _json.loads(raw)
-    except _json.JSONDecodeError:
-        # Try to extract JSON from the response.
-        import re
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
-        if not match:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Model returned non-JSON: {raw[:200]}",
-            )
-        data = _json.loads(match.group())
+        result = await gateway.complete(
+            ModelTier.CLASSIFY,
+            system_prompt,
+            user_prompt,
+            _SeoMetaLLM,
+            max_tokens=120,
+        )
+    except LLMParseError as exc:
+        logger.error("seo_meta_parse_failure", tenant_id=str(tenant.id), error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The AI returned an unreadable response. Please try again.",
+        )
+    except Exception as exc:  # anthropic SDK errors (timeout/connection/status)
+        logger.error("seo_meta_llm_failure", tenant_id=str(tenant.id), error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not reach the AI provider. Please try again in a moment.",
+        )
+
+    seo_title = result.title.strip()[:60]
+    seo_description = result.description.strip()[:160]
+    if not seo_title or not seo_description:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The AI returned an incomplete response. Please try again.",
+        )
 
     logger.info(
         "seo_meta_generated",
@@ -76,7 +92,9 @@ async def generate_seo_meta(
         post_title=body.post_title,
     )
 
+    usage = gateway.last_usage
     return SeoMetaResponse(
-        seo_title=data.get("title", "")[:60],
-        seo_description=data.get("description", "")[:160],
+        seo_title=seo_title,
+        seo_description=seo_description,
+        meta=GenerationMeta(model=usage["model"], cost_usd=usage["cost_usd"]),
     )

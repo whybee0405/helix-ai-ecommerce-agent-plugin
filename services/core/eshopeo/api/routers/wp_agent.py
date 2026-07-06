@@ -190,7 +190,7 @@ class ActionsResponse(BaseModel):
 
 @router.get("/actions", response_model=ActionsResponse)
 async def list_actions() -> ActionsResponse:
-    """Return the list of available quick actions for dynamic discovery."""
+    """GET /v1/wp-agent/actions — Return the list of available quick actions for dynamic discovery."""
     actions = [
         {
             "id": t["name"],
@@ -209,7 +209,7 @@ async def wp_agent_chat(
     tenant: Tenant = Depends(get_tenant),
     _: Tenant = Depends(check_ai_op_quota),
 ) -> ChatResponse:
-    """
+    """POST /v1/wp-agent/chat — 
     Run an agentic Claude conversation with WordPress management tools.
 
     Executes an agentic loop: send to Claude → if tool_use blocks are returned,

@@ -100,38 +100,33 @@ class Eshopeo_Digest {
         ];
     }
 
-    /* ── Send digest ───────────────────────────────────────────────────────── */
+    /* ── Generate digest content ──────────────────────────────────────────── */
 
-    public static function send_digest( string $to = '' ): bool {
+    private static function generate_digest_content(): array|WP_Error {
         $api_url = get_option( 'eshopeo_api_url', '' );
         $pub_key = get_option( 'eshopeo_public_key', '' );
 
         if ( ! $api_url || ! $pub_key ) {
-            return false;
+            return new WP_Error( 'eshopeo_not_configured', 'eShopeo API not configured' );
         }
 
-        $stats = self::collect_stats();
+        $client = new Eshopeo_API_Client( $api_url, $pub_key );
+        $body   = $client->content_generate( 'digest/generate', self::collect_stats(), 30 );
 
-        $response = wp_remote_post(
-            trailingslashit( $api_url ) . 'v1/digest/generate',
-            [
-                'timeout' => 30,
-                'headers' => [
-                    'Content-Type'       => 'application/json',
-                    'X-eShopeo-Tenant-Key' => $pub_key,
-                ],
-                'body'    => wp_json_encode( $stats ),
-            ]
-        );
-
-        if ( is_wp_error( $response ) ) {
-            return false;
+        if ( is_wp_error( $body ) ) {
+            return $body;
         }
+        if ( empty( $body['subject'] ) ) {
+            return new WP_Error( 'eshopeo_digest_empty', 'eShopeo API returned an unexpected response.' );
+        }
+        return $body;
+    }
 
-        $code = (int) wp_remote_retrieve_response_code( $response );
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+    /* ── Send digest ───────────────────────────────────────────────────────── */
 
-        if ( $code !== 200 || empty( $body['subject'] ) ) {
+    public static function send_digest( string $to = '' ): bool {
+        $body = self::generate_digest_content();
+        if ( is_wp_error( $body ) ) {
             return false;
         }
 
@@ -155,13 +150,23 @@ class Eshopeo_Digest {
             wp_send_json_error( 'Unauthorized', 403 );
         }
 
-        $email  = sanitize_email( $_POST['email'] ?? get_option( 'admin_email', '' ) );
-        $result = self::send_digest( $email );
+        $email = sanitize_email( $_POST['email'] ?? get_option( 'admin_email', '' ) );
+        $body  = self::generate_digest_content();
 
-        if ( $result ) {
-            wp_send_json_success( [ 'sent' => true, 'email' => $email ] );
-        } else {
-            wp_send_json_error( 'Failed to send digest. Check API configuration.', 502 );
+        if ( is_wp_error( $body ) ) {
+            wp_send_json_error( $body->get_error_message(), 502 );
         }
+
+        if ( ! $email || ! wp_mail( $email, sanitize_text_field( $body['subject'] ), wp_kses_post( $body['body'] ) ) ) {
+            wp_send_json_error( 'Digest generated but the email could not be sent. Check your mail configuration.', 502 );
+        }
+
+        wp_send_json_success( [
+            'sent'    => true,
+            'email'   => $email,
+            'subject' => sanitize_text_field( $body['subject'] ),
+            'body'    => wp_kses_post( $body['body'] ),
+            'meta'    => $body['meta'] ?? null,
+        ] );
     }
 }

@@ -1,19 +1,20 @@
-"""Review synthesis router — summarises product reviews into structured insights."""
+"""
+Review synthesis router — summarises product reviews into structured insights.
+
+POST /v1/reviews/synthesise — synthesise a product's reviews into summary/pros/cons
+"""
 
 from __future__ import annotations
 
-import json as _json
-import re
-
-import anthropic
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from eshopeo.api.deps import get_db, get_tenant
+from eshopeo.api.deps import get_db, get_tenant, check_ai_op_quota, get_tenant_anthropic_key
 from eshopeo.config import get_settings
 from eshopeo.db.models import Tenant
+from eshopeo.llm.gateway import GenerationMeta, LLMGateway, LLMParseError, ModelTier
 
 logger = structlog.get_logger(__name__)
 
@@ -30,21 +31,30 @@ class ReviewSynthesisRequest(BaseModel):
     reviews: list[ReviewItem]
 
 
+class _ReviewSynthesisLLM(BaseModel):
+    summary: str
+    pros: list[str]
+    cons: list[str]
+    sentiment: str
+
+
 class ReviewSynthesisResponse(BaseModel):
     summary: str
     pros: list[str]
     cons: list[str]
     sentiment: str
     avg_rating: float
+    meta: GenerationMeta
 
 
 @router.post("/synthesise", response_model=ReviewSynthesisResponse)
 async def synthesise_reviews(
     body: ReviewSynthesisRequest,
     tenant: Tenant = Depends(get_tenant),
+    _: Tenant = Depends(check_ai_op_quota),
     db: AsyncSession = Depends(get_db),
 ) -> ReviewSynthesisResponse:
-    """Synthesise a list of product reviews into a structured summary."""
+    """POST /v1/reviews/synthesise — Synthesise a list of product reviews into a structured summary."""
     if not body.reviews:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -52,8 +62,6 @@ async def synthesise_reviews(
         )
 
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key.get_secret_value())
-
     avg_rating = round(sum(r.rating for r in body.reviews) / len(body.reviews), 1)
 
     # Build a compact review block (max 30 reviews, 200 chars each).
@@ -63,32 +71,39 @@ async def synthesise_reviews(
         review_lines.append(f"[{r.rating}/5] {snippet}")
     reviews_text = "\n".join(review_lines)
 
-    prompt = (
-        f"Analyse these customer reviews for '{body.product_title}' and return a JSON object.\n\n"
+    system_prompt = (
+        "You analyse customer reviews for an e-commerce store and return a structured summary. "
+        "Return valid JSON only."
+    )
+    user_prompt = (
+        f"Analyse these customer reviews for '{body.product_title}'.\n\n"
         f"Reviews:\n{reviews_text}\n\n"
-        f"Return ONLY valid JSON with this exact shape:\n"
-        f'{{"summary":"<2-3 sentence overview>","pros":["<up to 4 key positives>"],'
-        f'"cons":["<up to 3 key negatives>"],"sentiment":"<positive|mixed|negative>"}}'
+        f"summary: a 2-3 sentence overview. pros: up to 4 key positives. "
+        f"cons: up to 3 key negatives. sentiment: one of positive|mixed|negative."
     )
 
-    response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=400,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    raw = response.content[0].text.strip()  # type: ignore[index]
+    gateway = LLMGateway(settings, tenant.id, api_key_override=get_tenant_anthropic_key(tenant))
 
     try:
-        data = _json.loads(raw)
-    except _json.JSONDecodeError:
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
-        if not match:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Model returned non-JSON: {raw[:200]}",
-            )
-        data = _json.loads(match.group())
+        result = await gateway.complete(
+            ModelTier.CLASSIFY,
+            system_prompt,
+            user_prompt,
+            _ReviewSynthesisLLM,
+            max_tokens=400,
+        )
+    except LLMParseError as exc:
+        logger.error("reviews_synthesis_parse_failure", tenant_id=str(tenant.id), error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The AI returned an unreadable response. Please try again.",
+        )
+    except Exception as exc:  # anthropic SDK errors (timeout/connection/status)
+        logger.error("reviews_synthesis_llm_failure", tenant_id=str(tenant.id), error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not reach the AI provider. Please try again in a moment.",
+        )
 
     logger.info(
         "reviews_synthesised",
@@ -97,10 +112,12 @@ async def synthesise_reviews(
         review_count=len(body.reviews),
     )
 
+    usage = gateway.last_usage
     return ReviewSynthesisResponse(
-        summary=data.get("summary", ""),
-        pros=data.get("pros", []),
-        cons=data.get("cons", []),
-        sentiment=data.get("sentiment", "mixed"),
+        summary=result.summary,
+        pros=result.pros,
+        cons=result.cons,
+        sentiment=result.sentiment,
         avg_rating=avg_rating,
+        meta=GenerationMeta(model=usage["model"], cost_usd=usage["cost_usd"]),
     )

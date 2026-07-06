@@ -1,3 +1,11 @@
+"""
+Tenant provisioning router — used by the provisioning key holder (not tenants themselves).
+
+POST  /v1/tenants                    — provision a new tenant
+GET   /v1/tenants/{tenant_id}        — tenant detail
+PATCH /v1/tenants/{tenant_id}        — update a tenant
+"""
+
 import secrets
 from typing import Annotated, Any
 from uuid import UUID
@@ -61,6 +69,7 @@ async def provision_tenant(
     _: str = Depends(_auth_provision_key),
     db: AsyncSession = Depends(get_db),
 ) -> ProvisionResponse:
+    """POST /v1/tenants."""
     settings = get_settings()
 
     admin_secret = secrets.token_hex(32)
@@ -103,6 +112,7 @@ async def get_tenant_endpoint(
     _: str = Depends(_auth_provision_key),
     db: AsyncSession = Depends(get_db),
 ) -> TenantDetail:
+    """GET /v1/tenants/{tenant_id}."""
     tenant = await get_tenant_by_id(db, tenant_id)
     if not tenant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
@@ -124,6 +134,7 @@ async def patch_tenant_endpoint(
     _: str = Depends(_auth_provision_key),
     db: AsyncSession = Depends(get_db),
 ) -> TenantDetail:
+    """PATCH /v1/tenants/{tenant_id}."""
     tenant = await get_tenant_by_id(db, tenant_id)
     if not tenant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")

@@ -1,3 +1,10 @@
+"""
+Vertical packs router — lists loaded domain packs (kbeauty, automotive, etc.).
+
+GET /v1/packs             — list loaded packs
+GET /v1/packs/{pack_id}   — pack detail
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
@@ -25,6 +32,7 @@ class PackDetail(BaseModel):
 
 @router.get("", response_model=list[PackSummary])
 async def list_packs(_tenant: Tenant = Depends(get_tenant)) -> list[PackSummary]:
+    """GET /v1/packs."""
     return [
         PackSummary(id=p.id, display_name=p.display_name, version=p.version)
         for p in _registry.values()
@@ -35,6 +43,7 @@ async def list_packs(_tenant: Tenant = Depends(get_tenant)) -> list[PackSummary]
 async def get_pack_detail(
     pack_id: str, _tenant: Tenant = Depends(get_tenant)
 ) -> PackDetail:
+    """GET /v1/packs/{pack_id}."""
     if pack_id not in _registry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Pack not found"

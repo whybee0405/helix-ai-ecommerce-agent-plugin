@@ -1,3 +1,9 @@
+"""
+Health check router.
+
+GET /health — liveness/readiness probe (DB + Redis)
+"""
+
 import redis.asyncio as aioredis
 from fastapi import APIRouter
 from sqlalchemy import text
@@ -7,6 +13,7 @@ router = APIRouter(tags=["ops"])
 
 @router.get("/health")
 async def health() -> dict:
+    """GET /health."""
     db_ok = False
     redis_ok = False
     try:

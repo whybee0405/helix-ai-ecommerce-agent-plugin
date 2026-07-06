@@ -100,7 +100,7 @@ async def create_checkout(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> CheckoutResponse:
-    """Generate a Paddle hosted checkout URL for a tenant."""
+    """POST /v1/billing/checkout — Generate a Paddle hosted checkout URL for a tenant."""
     if body.tier not in ("starter", "growth", "pro"):
         raise HTTPException(status_code=400, detail="Invalid tier")
 
@@ -125,7 +125,7 @@ async def paddle_webhook(
     db: AsyncSession = Depends(get_db),
     paddle_signature: str | None = Header(None, alias="Paddle-Signature"),
 ) -> dict:
-    """Receive and process Paddle webhook events."""
+    """POST /v1/billing/webhook — Receive and process Paddle webhook events."""
     raw_body = await request.body()
     s = get_settings()
 
@@ -266,7 +266,7 @@ def _get_price_id_from_sub(data: dict) -> str | None:
 async def billing_status(
     tenant: Tenant = Depends(get_tenant),
 ) -> BillingStatusResponse:
-    """Return the current subscription state for the authenticated tenant."""
+    """GET /v1/billing/status — Return the current subscription state for the authenticated tenant."""
     from datetime import datetime, timezone
     import redis as sync_redis
 
@@ -312,7 +312,7 @@ async def billing_status(
 async def customer_portal(
     tenant: Tenant = Depends(get_tenant),
 ) -> PortalResponse:
-    """Generate a Paddle customer portal URL for the tenant."""
+    """POST /v1/billing/portal — Generate a Paddle customer portal URL for the tenant."""
     if not tenant.paddle_customer_id:
         raise HTTPException(
             status_code=404,
@@ -328,7 +328,7 @@ async def cancel_subscription(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Cancel the tenant's subscription at the end of the current billing period."""
+    """POST /v1/billing/cancel — Cancel the tenant's subscription at the end of the current billing period."""
     if not tenant.paddle_subscription_id:
         raise HTTPException(status_code=404, detail="No active subscription.")
     paddle = _get_paddle_client()
@@ -348,7 +348,7 @@ async def set_byok_key(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Store (or clear) a tenant's own Anthropic API key for BYOK."""
+    """PUT /v1/billing/byok — Store (or clear) a tenant's own Anthropic API key for BYOK."""
     s = get_settings()
     enc: bytes | None = None
     if body.anthropic_api_key:

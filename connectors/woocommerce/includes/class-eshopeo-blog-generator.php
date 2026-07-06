@@ -40,34 +40,26 @@ class Eshopeo_Blog_Generator {
 
         $kw_array = array_filter( array_map( 'trim', explode( ',', $keywords ) ) );
 
-        $response = wp_remote_post(
-            trailingslashit( $api_url ) . 'v1/blog/generate',
+        $client = new Eshopeo_API_Client( $api_url, $pub_key );
+        $body   = $client->content_generate(
+            'blog/generate',
             [
-                'timeout' => 90,
-                'headers' => [
-                    'Content-Type'       => 'application/json',
-                    'X-eShopeo-Tenant-Key' => $pub_key,
-                ],
-                'body'    => wp_json_encode( [
-                    'topic'      => $topic,
-                    'keywords'   => $kw_array,
-                    'tone'       => $tone,
-                    'word_count' => $word_count,
-                    'pack_id'    => $pack_id,
-                    'site_name'  => get_bloginfo( 'name' ),
-                ] ),
-            ]
+                'topic'      => $topic,
+                'keywords'   => $kw_array,
+                'tone'       => $tone,
+                'word_count' => $word_count,
+                'pack_id'    => $pack_id,
+                'site_name'  => get_bloginfo( 'name' ),
+            ],
+            90
         );
 
-        if ( is_wp_error( $response ) ) {
-            wp_send_json_error( $response->get_error_message(), 502 );
+        if ( is_wp_error( $body ) ) {
+            wp_send_json_error( $body->get_error_message(), 502 );
         }
 
-        $code = (int) wp_remote_retrieve_response_code( $response );
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-
-        if ( $code !== 200 || empty( $body['title'] ) ) {
-            wp_send_json_error( 'API error: ' . esc_html( wp_remote_retrieve_body( $response ) ), 502 );
+        if ( empty( $body['title'] ) ) {
+            wp_send_json_error( 'eShopeo API returned an unexpected response.', 502 );
         }
 
         $result = [

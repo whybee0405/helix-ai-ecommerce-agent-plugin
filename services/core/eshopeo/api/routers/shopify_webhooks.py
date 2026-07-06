@@ -1,3 +1,10 @@
+"""
+Shopify webhooks router — inbound product/order sync events from Shopify.
+
+POST /v1/webhooks/shopify/products  — Shopify product create/update/delete webhook
+POST /v1/webhooks/shopify/orders    — Shopify order create/update webhook
+"""
+
 import json
 import structlog
 import jsonschema
@@ -29,6 +36,7 @@ async def shopify_product_webhook(
     x_shopify_hmac_sha256: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ):
+    """POST /v1/webhooks/shopify/products."""
     if x_eshopeo_tenant_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing tenant ID")
     if x_shopify_hmac_sha256 is None:
@@ -92,6 +100,7 @@ async def shopify_order_webhook(
     x_shopify_hmac_sha256: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ):
+    """POST /v1/webhooks/shopify/orders."""
     if x_eshopeo_tenant_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing tenant ID")
     if x_shopify_hmac_sha256 is None:

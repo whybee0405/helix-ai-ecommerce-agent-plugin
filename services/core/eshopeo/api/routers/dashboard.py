@@ -1,3 +1,14 @@
+"""
+Dashboard router — summary widgets for the tenant admin dashboard.
+
+GET /v1/dashboard                                              — dashboard summary
+GET /v1/dashboard/embedding-coverage                           — % of catalog embedded
+GET /v1/dashboard/widget-events                                — widget event feed
+GET /v1/dashboard/conversations                                — recent conversations
+GET /v1/dashboard/conversations/{conversation_id}/messages     — a conversation's messages
+GET /v1/dashboard/events/daily                                 — daily event counts
+"""
+
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -31,6 +42,7 @@ async def get_dashboard(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> DashboardOut:
+    """GET /v1/dashboard."""
     settings = get_settings()
     now = datetime.now(timezone.utc)
     year, mon = now.year, now.month
@@ -59,6 +71,7 @@ async def get_embedding_coverage_endpoint(
     x_eshopeo_tenant_key: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> EmbeddingCoverageOut:
+    """GET /v1/dashboard/embedding-coverage."""
     raw_key = tenant_key or x_eshopeo_tenant_key
     if not raw_key:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing tenant key")
@@ -87,6 +100,7 @@ async def get_widget_event_summary_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> WidgetEventSummaryOut:
+    """GET /v1/dashboard/widget-events."""
     from eshopeo.db.crud.widget_events import get_widget_event_summary
     now = datetime.now(timezone.utc)
     year, mon = now.year, now.month
@@ -125,6 +139,7 @@ async def list_dashboard_conversations(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ConversationListOut:
+    """GET /v1/dashboard/conversations."""
     from eshopeo.db.crud.conversations import list_conversations_with_stats
     items, total = await list_conversations_with_stats(
         db, tenant.id, limit=limit, offset=(page - 1) * limit
@@ -159,6 +174,7 @@ async def get_conversation_detail(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ConversationDetailOut:
+    """GET /v1/dashboard/conversations/{conversation_id}/messages."""
     from eshopeo.db.crud.conversations import get_conversation, get_messages
     conv = await get_conversation(db, conversation_id, tenant.id)
     if conv is None:
@@ -199,6 +215,7 @@ async def get_daily_events(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> DailyEventsOut:
+    """GET /v1/dashboard/events/daily."""
     from eshopeo.db.crud.widget_events import get_daily_event_counts
     rows = await get_daily_event_counts(db, tenant.id, days=days)
     return DailyEventsOut(

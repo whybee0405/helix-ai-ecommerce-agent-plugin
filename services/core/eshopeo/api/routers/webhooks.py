@@ -1,3 +1,10 @@
+"""
+WooCommerce webhooks router — inbound product/order sync events from WooCommerce.
+
+POST /v1/webhooks/products  — WooCommerce product create/update/delete webhook
+POST /v1/webhooks/orders    — WooCommerce order create/update webhook
+"""
+
 import base64
 import hashlib
 import hmac
@@ -37,6 +44,7 @@ async def product_webhook(
     x_wc_webhook_signature: str = Header(...),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
+    """POST /v1/webhooks/products."""
     body = await request.body()
 
     try:
@@ -117,6 +125,7 @@ async def order_webhook(
     x_wc_webhook_signature: str = Header(...),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
+    """POST /v1/webhooks/orders."""
     body = await request.body()
 
     try:

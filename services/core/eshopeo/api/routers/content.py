@@ -1,3 +1,15 @@
+"""
+Content drafts router — async (Celery-queued) product description/SEO generation.
+
+GET  /v1/content/drafts                                    — list content drafts
+POST /v1/content/products/{product_id}/generate             — queue description generation
+GET  /v1/content/products/{product_id}/draft                — read a product's draft
+POST /v1/content/products/{product_id}/draft/approve         — approve + publish a draft
+POST /v1/content/bulk-generate                               — queue bulk description generation
+POST /v1/content/products/{product_id}/generate-seo          — queue SEO metadata generation
+POST /v1/content/bulk-generate-seo                            — queue bulk SEO generation
+"""
+
 from typing import Annotated
 from uuid import UUID
 
@@ -82,6 +94,7 @@ async def list_drafts(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ContentDraftListResponse:
+    """GET /v1/content/drafts."""
     drafts = await list_content_drafts(db, tenant.id, status=status, limit=limit, offset=offset)
     total = await count_content_drafts(db, tenant.id, status=status)
     return ContentDraftListResponse(
@@ -98,6 +111,7 @@ async def generate_product_description(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> GenerateResponse:
+    """POST /v1/content/products/{product_id}/generate."""
     product = await get_product_by_id(db, tenant.id, product_id)
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
@@ -112,6 +126,7 @@ async def get_product_draft(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ContentDraftOut:
+    """GET /v1/content/products/{product_id}/draft."""
     draft = await get_content_draft(db, tenant.id, product_id, field=field)
     if draft is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No draft found for this product")
@@ -125,6 +140,7 @@ async def approve_product_draft(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ApproveDraftOut:
+    """POST /v1/content/products/{product_id}/draft/approve."""
     draft = await get_content_draft(db, tenant.id, product_id, field=field)
     if draft is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No draft found for this product")
@@ -163,6 +179,7 @@ async def bulk_generate_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> BulkGenerateResponse:
+    """POST /v1/content/bulk-generate."""
     products = await list_products_without_draft(db, tenant.id)
     for product in products:
         generate_description.delay(str(tenant.id), str(product.id))
@@ -176,6 +193,7 @@ async def generate_product_seo(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> SeoGenerateResponse:
+    """POST /v1/content/products/{product_id}/generate-seo."""
     product = await get_product_by_id(db, tenant.id, product_id)
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
@@ -188,6 +206,7 @@ async def bulk_generate_seo_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> BulkGenerateResponse:
+    """POST /v1/content/bulk-generate-seo."""
     products = await list_products_without_draft(db, tenant.id, field="meta_title")
     for product in products:
         generate_seo_metadata.delay(str(tenant.id), str(product.id))

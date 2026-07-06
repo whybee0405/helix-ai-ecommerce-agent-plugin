@@ -1,3 +1,10 @@
+"""
+WordPress plugin distribution router.
+
+GET /v1/plugin/manifest  — plugin version/update manifest
+GET /v1/plugin/download  — download the plugin zip
+"""
+
 import io
 import json
 import zipfile
@@ -24,6 +31,7 @@ def _build_zip() -> bytes:
 
 @router.get("/manifest", include_in_schema=False)
 async def plugin_manifest() -> JSONResponse:
+    """GET /v1/plugin/manifest."""
     return JSONResponse({
         "name": "eShopeo Connector",
         "slug": "eshopeo-connector",
@@ -37,6 +45,7 @@ async def plugin_manifest() -> JSONResponse:
 
 @router.get("/download", include_in_schema=False)
 async def plugin_download() -> Response:
+    """GET /v1/plugin/download."""
     if not _PLUGIN_DIR.exists():
         return Response(status_code=404, content="Plugin directory not mounted")
     data = _build_zip()

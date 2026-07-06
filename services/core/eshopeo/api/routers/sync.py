@@ -1,3 +1,12 @@
+"""
+WooCommerce sync router — inbound bulk sync calls from the WP plugin.
+
+POST  /v1/sync/products                              — bulk upsert products
+POST  /v1/sync/customers                              — bulk upsert customers
+PATCH /v1/sync/customers/{platform_id}/profile        — update a customer's domain profile
+POST  /v1/sync/orders                                 — bulk upsert orders
+"""
+
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -36,6 +45,7 @@ async def sync_products(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> SyncResponse:
+    """POST /v1/sync/products."""
     pack = get_pack_for_tenant(tenant)
     validator = jsonschema.Draft7Validator(pack.product_schema)
 
@@ -102,6 +112,7 @@ async def sync_customers(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> CustomerSyncResponse:
+    """POST /v1/sync/customers."""
     pack = get_pack_for_tenant(tenant)
     profile_validator = jsonschema.Draft7Validator(pack.profile_schema)
 
@@ -141,6 +152,7 @@ async def patch_customer_profile(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    """PATCH /v1/sync/customers/{platform_id}/profile."""
     customer = await get_customer_by_platform_id(db, tenant.id, platform_id)
     if customer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
@@ -166,6 +178,7 @@ async def sync_orders(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> OrderSyncResponse:
+    """POST /v1/sync/orders."""
     synced = 0
     failed = 0
     errors: list[str] = []

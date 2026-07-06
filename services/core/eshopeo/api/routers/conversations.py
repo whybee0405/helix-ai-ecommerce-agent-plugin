@@ -1,3 +1,10 @@
+"""
+Conversations router — dashboard read access to widget chat history.
+
+GET /v1/conversations                    — list conversations
+GET /v1/conversations/{conversation_id}  — conversation detail + messages
+"""
+
 from typing import Annotated
 from uuid import UUID
 
@@ -49,6 +56,7 @@ async def list_conversations_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ConversationListResponse:
+    """GET /v1/conversations."""
     convs = await list_conversations(db, tenant.id, limit=limit, offset=offset)
     return ConversationListResponse(
         conversations=[
@@ -69,6 +77,7 @@ async def get_conversation_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ConversationDetail:
+    """GET /v1/conversations/{conversation_id}."""
     conv = await get_conversation(db, conversation_id, tenant.id)
     if conv is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")

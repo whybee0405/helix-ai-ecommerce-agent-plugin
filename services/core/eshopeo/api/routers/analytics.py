@@ -1,3 +1,18 @@
+"""
+Analytics router — dashboard usage, conversation, and commerce metrics.
+
+GET /v1/analytics/usage                          — AI usage/cost summary
+GET /v1/analytics/quota                           — current quota status
+GET /v1/analytics/conversations                   — conversation volume over time
+GET /v1/analytics/top-queries                      — most common customer queries
+GET /v1/analytics/products/top                     — top-referenced products
+GET /v1/analytics/products/embedding-coverage      — % of catalog embedded
+GET /v1/analytics/customers/segments               — customer segmentation
+GET /v1/analytics/orders                           — order volume over time
+GET /v1/analytics/orders/by-status                 — order breakdown by status
+GET /v1/analytics/products/inventory                — inventory-level analytics
+"""
+
 import redis.asyncio as aioredis
 from datetime import date, datetime, timedelta, timezone
 
@@ -41,6 +56,7 @@ async def get_usage(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> UsageSummary:
+    """GET /v1/analytics/usage."""
     today = date.today()
     start = start_date or (today - timedelta(days=30))
     end = end_date or today
@@ -64,6 +80,7 @@ class QuotaStatus(BaseModel):
 async def get_quota_status(
     tenant: Tenant = Depends(get_tenant),
 ) -> QuotaStatus:
+    """GET /v1/analytics/quota."""
     settings = get_settings()
     period = datetime.now(timezone.utc).strftime("%Y-%m")
     key = f"quota:{tenant.id}:{period}"
@@ -101,6 +118,7 @@ async def get_conversation_analytics_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ConversationAnalytics:
+    """GET /v1/analytics/conversations."""
     today = date.today()
     start = start_date or (today - timedelta(days=30))
     end = end_date or today
@@ -129,6 +147,7 @@ async def get_top_queries_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> TopQueriesResponse:
+    """GET /v1/analytics/top-queries."""
     queries = await get_top_queries(db, tenant.id, limit=limit, start=start_date, end=end_date)
     return TopQueriesResponse(queries=[TopQueryItem(**q) for q in queries])
 
@@ -150,6 +169,7 @@ async def get_top_referenced_products_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> TopReferencedProductsResponse:
+    """GET /v1/analytics/products/top."""
     products = await get_top_referenced_products(
         db, tenant.id, limit=limit, start=start_date, end=end_date
     )
@@ -170,6 +190,7 @@ async def get_embedding_coverage_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> EmbeddingCoverage:
+    """GET /v1/analytics/products/embedding-coverage."""
     coverage = await get_embedding_coverage(db, tenant.id)
     return EmbeddingCoverage(**coverage)
 
@@ -188,6 +209,7 @@ async def get_customer_segments_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> CustomerSegmentsResponse:
+    """GET /v1/analytics/customers/segments."""
     segments = await get_customer_segments(db, tenant.id)
     return CustomerSegmentsResponse(
         segments=[CustomerSegmentItem(**s) for s in segments]
@@ -208,6 +230,7 @@ async def get_order_analytics_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> OrderAnalyticsResponse:
+    """GET /v1/analytics/orders."""
     today = date.today()
     effective_start = start_date or (today - timedelta(days=30))
     effective_end = end_date or today
@@ -237,6 +260,7 @@ async def get_orders_by_status_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> OrdersByStatusResponse:
+    """GET /v1/analytics/orders/by-status."""
     statuses = await get_orders_by_status(
         db, tenant.id, start=start_date, end=end_date
     )
@@ -257,5 +281,6 @@ async def get_inventory_snapshot_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> InventorySnapshot:
+    """GET /v1/analytics/products/inventory."""
     snapshot = await get_inventory_snapshot(db, tenant.id)
     return InventorySnapshot(**snapshot)

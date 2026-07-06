@@ -1,3 +1,13 @@
+"""
+Platform admin router — cross-tenant stats and quota management.
+
+GET  /v1/admin/stats                             — platform-wide usage stats
+GET  /v1/admin/tenants                           — list all tenants
+GET  /v1/admin/tenants/{tenant_id}/usage         — per-tenant usage detail
+GET  /v1/admin/tenants/{tenant_id}               — tenant detail
+POST /v1/admin/tenants/{tenant_id}/quota/reset   — reset a tenant's quota counter
+"""
+
 from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
@@ -78,6 +88,7 @@ def _auth_provision(x_eshopeo_provision_key: Annotated[str | None, Header()] = N
 async def admin_stats(
     _: str = Depends(_auth_provision), db: AsyncSession = Depends(get_db)
 ) -> PlatformStats:
+    """GET /v1/admin/stats."""
     today = datetime.now(timezone.utc).date()
     month_start = datetime(today.year, today.month, 1, tzinfo=timezone.utc)
     month_end = datetime.now(timezone.utc)
@@ -92,6 +103,7 @@ async def list_tenants_endpoint(
     _: str = Depends(_auth_provision),
     db: AsyncSession = Depends(get_db),
 ) -> TenantListResponse:
+    """GET /v1/admin/tenants."""
     tenants = await list_tenants(db, limit=limit, offset=offset)
     total = await count_tenants(db)
     return TenantListResponse(
@@ -109,6 +121,7 @@ async def get_tenant_usage_endpoint(
     _: str = Depends(_auth_provision),
     db: AsyncSession = Depends(get_db),
 ) -> TenantUsageSummary:
+    """GET /v1/admin/tenants/{tenant_id}/usage."""
     today = datetime.now(timezone.utc)
     if month:
         try:
@@ -138,6 +151,7 @@ async def get_tenant_endpoint(
     _: str = Depends(_auth_provision),
     db: AsyncSession = Depends(get_db),
 ) -> TenantOut:
+    """GET /v1/admin/tenants/{tenant_id}."""
     tenant = await get_tenant_by_id(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
@@ -149,6 +163,7 @@ async def reset_tenant_quota(
     tenant_id: UUID,
     _: str = Depends(_auth_provision),
 ) -> QuotaResetResponse:
+    """POST /v1/admin/tenants/{tenant_id}/quota/reset."""
     settings = get_settings()
     today = datetime.now(timezone.utc)
     key = f"quota:{tenant_id}:{today.year}-{today.month:02d}"

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from enum import Enum
@@ -14,6 +15,13 @@ logger = structlog.get_logger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
+# Hung/overloaded Anthropic calls must not hang a user-facing wp-admin request
+# indefinitely, and transient errors (429/500/529) are worth one retry rather
+# than surfacing as a bare 500 to the browser.
+_REQUEST_TIMEOUT_S = 45.0
+_TRANSIENT_STATUS_CODES = {429, 500, 529}
+_RETRY_BACKOFF_S = 1.5
+
 _COSTS: dict[str, tuple[float, float]] = {
     "claude-haiku-4-5":  (1.00, 5.00),
     "claude-sonnet-4-6": (3.00, 15.00),
@@ -29,6 +37,15 @@ class ModelTier(str, Enum):
 
 class LLMParseError(Exception):
     pass
+
+
+class GenerationMeta(BaseModel):
+    """Attached to content-generation router responses so the wp-admin UI can
+    show a small cost/model footer instead of the caller having no visibility
+    into what a click just did."""
+    model: str
+    cost_usd: float
+    cached: bool = False
 
 
 class QueryIntent(BaseModel):
@@ -88,6 +105,12 @@ class LLMGateway:
             "cost_usd": 0.0,
         }
 
+    @property
+    def last_usage(self) -> dict:
+        """Model/token/cost info for the most recent complete() call — used by
+        content-generation routers to populate GenerationMeta on the response."""
+        return self._last_usage
+
     async def complete(
         self,
         tier: ModelTier,
@@ -101,13 +124,14 @@ class LLMGateway:
         if message_history is None:
             message_history = []
         model_id = self._tier_to_model[tier]
-        client = anthropic.AsyncAnthropic(api_key=self._api_key)
+        client = anthropic.AsyncAnthropic(api_key=self._api_key, timeout=_REQUEST_TIMEOUT_S)
         schema_hint = json.dumps(response_schema.model_json_schema(), indent=2)
         user_with_schema = (
             f"{user}\n\nRespond with only valid JSON that matches this schema:\n{schema_hint}"
         )
 
-        message = await client.messages.create(
+        message = await self._create_with_retry(
+            client,
             model=model_id,
             max_tokens=max_tokens,
             system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
@@ -117,7 +141,8 @@ class LLMGateway:
         raw = message.content[0].text
         result = self._parse(raw, response_schema)
         if result is None:
-            repair_msg = await client.messages.create(
+            repair_msg = await self._create_with_retry(
+                client,
                 model=model_id,
                 max_tokens=max_tokens,
                 system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
@@ -139,6 +164,21 @@ class LLMGateway:
         self._log_usage(message, model_id, "primary")
         return result
 
+    @staticmethod
+    async def _create_with_retry(client: "anthropic.AsyncAnthropic", **kwargs) -> "anthropic.types.Message":
+        """One retry on transient failure (429/500/529 or a timeout) so a blip
+        upstream doesn't surface as a bare 500 to a user-facing wp-admin request."""
+        try:
+            return await client.messages.create(**kwargs)
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError):
+            await asyncio.sleep(_RETRY_BACKOFF_S)
+            return await client.messages.create(**kwargs)
+        except anthropic.APIStatusError as exc:
+            if exc.status_code not in _TRANSIENT_STATUS_CODES:
+                raise
+            await asyncio.sleep(_RETRY_BACKOFF_S)
+            return await client.messages.create(**kwargs)
+
     async def stream_text(
         self,
         tier: ModelTier,
@@ -154,7 +194,7 @@ class LLMGateway:
         if message_history is None:
             message_history = []
         model_id = self._tier_to_model[tier]
-        client = anthropic.AsyncAnthropic(api_key=self._api_key)
+        client = anthropic.AsyncAnthropic(api_key=self._api_key, timeout=_REQUEST_TIMEOUT_S)
         accumulated = ""
         async with client.messages.stream(
             model=model_id,

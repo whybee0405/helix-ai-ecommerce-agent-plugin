@@ -94,32 +94,24 @@ class Eshopeo_Product_Descriptions {
             }
         }
 
-        $response = wp_remote_post(
-            trailingslashit( $api_url ) . 'v1/products/rewrite-description',
+        $client = new Eshopeo_API_Client( $api_url, $pub_key );
+        $body   = $client->content_generate(
+            'products/rewrite-description',
             [
-                'timeout' => 45,
-                'headers' => [
-                    'Content-Type'       => 'application/json',
-                    'X-eShopeo-Tenant-Key' => $pub_key,
-                ],
-                'body'    => wp_json_encode( [
-                    'product_title'       => $post->post_title,
-                    'current_description' => $post->post_content,
-                    'domain_attributes'   => $domain_attrs,
-                    'pack_id'             => $pack_id,
-                ] ),
-            ]
+                'product_title'       => $post->post_title,
+                'current_description' => $post->post_content,
+                'domain_attributes'   => $domain_attrs,
+                'pack_id'             => $pack_id,
+            ],
+            45
         );
 
-        if ( is_wp_error( $response ) ) {
-            wp_send_json_error( $response->get_error_message(), 502 );
+        if ( is_wp_error( $body ) ) {
+            wp_send_json_error( $body->get_error_message(), 502 );
         }
 
-        $code = (int) wp_remote_retrieve_response_code( $response );
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-
-        if ( $code !== 200 || empty( $body['description_html'] ) ) {
-            wp_send_json_error( 'API error: ' . esc_html( wp_remote_retrieve_body( $response ) ), 502 );
+        if ( empty( $body['description_html'] ) ) {
+            wp_send_json_error( 'eShopeo API returned an unexpected response.', 502 );
         }
 
         $new_description = wp_kses_post( $body['description_html'] );

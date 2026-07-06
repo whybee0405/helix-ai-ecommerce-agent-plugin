@@ -229,4 +229,45 @@ class Eshopeo_API_Client {
         if ( $code >= 400 ) return new WP_Error( 'eshopeo_usage_failed', "HTTP {$code}" );
         return json_decode( wp_remote_retrieve_body( $response ), true ) ?? [];
     }
+
+    /**
+     * Shared transport for the AI content-generation features (alt text, blog,
+     * descriptions, repurpose, reviews, SEO meta, internal links, digest).
+     * Centralizes tenant auth, timeout, and error normalization so callers get
+     * the actual backend error message instead of a bare "HTTP {code}".
+     */
+    public function content_generate( string $endpoint, array $payload, int $timeout = 45 ): array|WP_Error {
+        $response = wp_remote_post(
+            $this->api_url . '/v1/' . ltrim( $endpoint, '/' ),
+            [
+                'headers' => [
+                    'Content-Type'         => 'application/json',
+                    'X-eShopeo-Tenant-Key' => $this->tenant_key,
+                ],
+                'body'    => wp_json_encode( $payload ),
+                'timeout' => $timeout,
+            ]
+        );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $code = wp_remote_retrieve_response_code( $response );
+        $raw_body = wp_remote_retrieve_body( $response );
+        $decoded  = json_decode( $raw_body, true );
+
+        if ( $code >= 400 ) {
+            $message = is_array( $decoded ) && isset( $decoded['detail'] )
+                ? ( is_string( $decoded['detail'] ) ? $decoded['detail'] : wp_json_encode( $decoded['detail'] ) )
+                : ( $raw_body !== '' ? mb_substr( $raw_body, 0, 300 ) : "HTTP {$code}" );
+            return new WP_Error( 'eshopeo_content_generate_failed', $message, [ 'status' => $code ] );
+        }
+
+        if ( ! is_array( $decoded ) ) {
+            return new WP_Error( 'eshopeo_content_generate_invalid_json', 'eShopeo API returned an unreadable response.', [ 'status' => $code ] );
+        }
+
+        return $decoded;
+    }
 }

@@ -114,7 +114,7 @@ async def register(
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ) -> RegisterResponse:
-    """Self-service tenant registration. Creates a 14-day trial on the Starter plan."""
+    """POST /v1/auth/register — Self-service tenant registration. Creates a 14-day trial on the Starter plan."""
     settings = get_settings()
 
     from eshopeo.packs.registry import _registry as pack_registry
@@ -194,7 +194,7 @@ async def request_magic_link(
     body: MagicLinkRequest,
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Send a magic login link. Always returns 204 to prevent email enumeration."""
+    """POST /v1/auth/magic-link — Send a magic login link. Always returns 204 to prevent email enumeration."""
     tenant = await get_tenant_by_email(db, body.email)
     if tenant is None:
         return  # silent — don't reveal whether email exists
@@ -222,7 +222,7 @@ async def exchange_magic_link(
     token: str = Query(...),
     db: AsyncSession = Depends(get_db),
 ) -> TokenPairResponse:
-    """Exchange a single-use magic link token for an access + refresh token pair."""
+    """GET /v1/auth/session — Exchange a single-use magic link token for an access + refresh token pair."""
     r = _get_redis()
     key = f"magic:{token}"
     tenant_id_str = await r.get(key)
@@ -245,7 +245,7 @@ async def exchange_magic_link(
 
 @router.post("/refresh", response_model=TokenPairResponse)
 async def refresh_token(body: RefreshRequest) -> TokenPairResponse:
-    """Rotate refresh token and issue a new access token."""
+    """POST /v1/auth/refresh — Rotate refresh token and issue a new access token."""
     r = _get_redis()
     hash_key = f"refresh:{_refresh_hash(body.refresh_token)}"
     tenant_id_str = await r.get(hash_key)
@@ -266,14 +266,14 @@ async def refresh_token(body: RefreshRequest) -> TokenPairResponse:
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(body: RefreshRequest) -> None:
-    """Invalidate a refresh token."""
+    """POST /v1/auth/logout — Invalidate a refresh token."""
     r = _get_redis()
     await r.delete(f"refresh:{_refresh_hash(body.refresh_token)}")
 
 
 @router.get("/me", response_model=MeResponse)
 async def me(tenant: Tenant = Depends(get_dashboard_tenant)) -> MeResponse:
-    """Return current tenant info for the dashboard."""
+    """GET /v1/auth/me — Return current tenant info for the dashboard."""
     return MeResponse(
         tenant_id=str(tenant.id),
         name=tenant.name,

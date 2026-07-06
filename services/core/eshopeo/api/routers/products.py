@@ -1,3 +1,10 @@
+"""
+Products router — read/update access to synced catalog products.
+
+GET   /v1/products/{product_id}  — product detail
+PATCH /v1/products/{product_id}  — update a product
+"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -51,6 +58,7 @@ async def get_product(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ProductDetailOut:
+    """GET /v1/products/{product_id}."""
     product = await get_product_by_id(db, tenant.id, product_id)
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
@@ -64,6 +72,7 @@ async def patch_product(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> ProductDetailOut:
+    """PATCH /v1/products/{product_id}."""
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(

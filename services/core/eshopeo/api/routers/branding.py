@@ -1,3 +1,19 @@
+"""
+Branding + admin FAQ/leads router (mixed prefixes — see paths below).
+
+GET    /v1/widget/branding                          — public widget branding config
+GET    /v1/admin/branding                            — admin: read branding config
+POST   /v1/admin/branding                            — admin: update branding config
+POST   /v1/admin/branding/apply-preset               — admin: apply a branding preset
+GET    /v1/admin/presets                             — admin: list branding presets
+GET    /v1/admin/usage                                — admin: usage/cost summary
+POST   /v1/tenants/{tenant_id}/admin-secret          — bootstrap the admin HMAC secret
+POST   /v1/admin/faqs                                 — admin: create a manual FAQ
+GET    /v1/admin/faqs                                 — admin: list manual FAQs
+DELETE /v1/admin/faqs/{faq_id}                        — admin: delete a manual FAQ
+GET    /v1/admin/leads                                — admin: list captured leads
+"""
+
 import base64
 import hashlib
 import hmac
@@ -121,6 +137,7 @@ async def widget_branding(
     key: str,
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
+    """GET /v1/widget/branding."""
     try:
         key_uuid = UUID(key)
     except ValueError as e:
@@ -162,6 +179,7 @@ async def widget_branding(
 async def admin_get_branding(
     tenant: Tenant = Depends(_auth_admin),
 ) -> dict:
+    """GET /v1/admin/branding."""
     branding = await get_effective_branding(tenant)
     payload = branding.model_dump(mode="json")
     payload["version"] = tenant.branding_version
@@ -174,6 +192,7 @@ async def admin_update_branding(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(_auth_admin),
 ) -> dict:
+    """POST /v1/admin/branding."""
     new = await update_tenant_branding(db, tenant, patch)
     await db.commit()
     payload = new.model_dump(mode="json")
@@ -187,6 +206,7 @@ async def admin_apply_preset(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(_auth_admin),
 ) -> dict:
+    """POST /v1/admin/branding/apply-preset."""
     preset_id = (body or {}).get("preset_id", "general")
     new = await apply_preset_to_tenant(db, tenant, preset_id)
     await db.commit()
@@ -204,6 +224,7 @@ async def admin_apply_preset(
 async def admin_list_presets(
     _: Tenant = Depends(_auth_admin),
 ) -> list[dict]:
+    """GET /v1/admin/presets."""
     return list_presets()
 
 
@@ -213,12 +234,15 @@ async def admin_usage(
     tenant: Tenant = Depends(_auth_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    """GET /v1/admin/usage."""
     from datetime import datetime, timedelta, timezone
     from decimal import Decimal
     from sqlalchemy import func, select
     import redis.asyncio as aioredis
     from eshopeo.db.models import UsageEvent
     from eshopeo.llm.budget import check_budget
+
+    _CACHE_SOURCES = ("semantic_cache", "template", "rules")
 
     days = max(1, min(days, 90))
     since = datetime.now(timezone.utc) - timedelta(days=days)
@@ -229,6 +253,12 @@ async def admin_usage(
             func.coalesce(func.sum(UsageEvent.tokens_out), 0).label("tokens_out"),
             func.coalesce(func.sum(UsageEvent.cost_usd), 0).label("cost_usd"),
             func.count().label("calls"),
+            func.count(UsageEvent.id).filter(
+                UsageEvent.source.in_(_CACHE_SOURCES)
+            ).label("cache_hits"),
+            func.count(UsageEvent.id).filter(
+                UsageEvent.source == "llm"
+            ).label("llm_calls"),
         )
         .where(UsageEvent.tenant_id == tenant.id)
         .where(UsageEvent.created_at >= since)
@@ -242,6 +272,8 @@ async def admin_usage(
             "tokens_out": int(r.tokens_out),
             "cost_usd": float(r.cost_usd),
             "calls": int(r.calls),
+            "cache_hits": int(r.cache_hits),
+            "llm_calls": int(r.llm_calls),
         }
         for r in rows
     ]
@@ -253,14 +285,25 @@ async def admin_usage(
     finally:
         await redis.aclose()
 
-    total = sum(d["cost_usd"] for d in daily)
+    total_cost = sum(d["cost_usd"] for d in daily)
+    total_cache_hits = sum(d["cache_hits"] for d in daily)
+    total_llm_calls = sum(d["llm_calls"] for d in daily)
+    avg_llm_cost = total_cost / total_llm_calls if total_llm_calls > 0 else 0.0
+    estimated_savings = round(total_cache_hits * avg_llm_cost, 6)
+    total_queries = total_cache_hits + total_llm_calls
+    cache_hit_rate = round(total_cache_hits / total_queries * 100, 1) if total_queries > 0 else 0.0
+
     return {
         "daily": daily,
-        "total_cost_usd": round(total, 6),
+        "total_cost_usd": round(total_cost, 6),
         "tier": tenant.tier,
         "daily_budget_usd": float(budget.daily_limit),
         "today_spend_usd": float(budget.daily_spend),
         "budget_mode": budget.mode.value,
+        "cache_hits_total": total_cache_hits,
+        "llm_calls_total": total_llm_calls,
+        "cache_hit_rate": cache_hit_rate,
+        "estimated_savings_usd": estimated_savings,
     }
 
 
@@ -273,6 +316,7 @@ async def bootstrap_admin_secret(
     x_eshopeo_provision_key: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    """POST /v1/tenants/{tenant_id}/admin-secret."""
     settings = get_settings()
     if x_eshopeo_provision_key != settings.provision_key.get_secret_value():
         raise HTTPException(
@@ -315,6 +359,7 @@ async def admin_create_faq(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(_auth_admin),
 ) -> FaqOut:
+    """POST /v1/admin/faqs."""
     from eshopeo.db.crud.faqs import upsert_faq
 
     faq = await upsert_faq(db, tenant.id, None, body.question, body.answer)
@@ -342,6 +387,7 @@ async def admin_list_faqs(
     tenant: Tenant = Depends(_auth_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[FaqOut]:
+    """GET /v1/admin/faqs."""
     from eshopeo.db.crud.faqs import list_faqs
 
     faqs = await list_faqs(db, tenant.id)
@@ -363,6 +409,7 @@ async def admin_delete_faq(
     tenant: Tenant = Depends(_auth_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
+    """DELETE /v1/admin/faqs/{faq_id}."""
     from eshopeo.db.crud.faqs import delete_faq
 
     deleted = await delete_faq(db, faq_id, tenant.id)
@@ -378,6 +425,7 @@ async def admin_list_leads(
     tenant: Tenant = Depends(_auth_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    """GET /v1/admin/leads."""
     from sqlalchemy import select, func
     from eshopeo.db.models import Lead
 

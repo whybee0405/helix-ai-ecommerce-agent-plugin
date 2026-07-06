@@ -1,3 +1,12 @@
+"""
+Product search router — semantic + keyword search over the catalog.
+
+GET /v1/search/browse                    — browse/filter products
+GET /v1/search/suggest                   — search-as-you-type suggestions
+GET /v1/search/products                  — full product search
+GET /v1/search/similar/{product_id}      — similar-product recommendations
+"""
+
 from typing import Annotated
 from uuid import UUID
 
@@ -67,6 +76,7 @@ async def browse_products_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> BrowseResponse:
+    """GET /v1/search/browse."""
     products, total = await browse_products(
         db, tenant.id,
         in_stock_only=in_stock_only,
@@ -103,6 +113,7 @@ async def suggest_products(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> SuggestResponse:
+    """GET /v1/search/suggest."""
     suggestions = await suggest_product_titles(db, tenant.id, q, limit)
     return SuggestResponse(suggestions=suggestions, prefix=q)
 
@@ -118,6 +129,7 @@ async def search_products(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> SearchResponse:
+    """GET /v1/search/products."""
     settings = get_settings()
     query_vector = await embed_query(q, settings)
     rows = await vector_search_products(
@@ -148,6 +160,7 @@ async def get_similar_products_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> SearchResponse:
+    """GET /v1/search/similar/{product_id}."""
     rows = await get_similar_products(db, tenant.id, product_id, limit)
     if not rows:
         raise HTTPException(status_code=404, detail="Product not found or has no embedding")

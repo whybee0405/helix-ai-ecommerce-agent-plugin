@@ -1,11 +1,11 @@
-"""Internal links suggestion router — uses Claude Haiku to find linking opportunities."""
+"""
+Internal links suggestion router — uses Claude Haiku to find linking opportunities.
+
+POST /v1/internal-links/suggest — suggest up to 5 internal link opportunities for a post
+"""
 
 from __future__ import annotations
 
-import json as _json
-import re
-
-import anthropic
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from eshopeo.api.deps import get_db, get_tenant, check_ai_op_quota, get_tenant_anthropic_key
 from eshopeo.config import get_settings
 from eshopeo.db.models import Tenant
+from eshopeo.llm.gateway import GenerationMeta, LLMGateway, LLMParseError, ModelTier
 
 logger = structlog.get_logger(__name__)
 
@@ -39,8 +40,13 @@ class LinkSuggestion(BaseModel):
     target_title: str
 
 
+class _InternalLinksLLM(BaseModel):
+    suggestions: list[LinkSuggestion] = []
+
+
 class InternalLinksResponse(BaseModel):
     suggestions: list[LinkSuggestion]
+    meta: GenerationMeta | None = None
 
 
 @router.post("/suggest", response_model=InternalLinksResponse)
@@ -50,12 +56,11 @@ async def suggest_links(
     _: Tenant = Depends(check_ai_op_quota),
     db: AsyncSession = Depends(get_db),
 ) -> InternalLinksResponse:
-    """Suggest up to 5 internal link opportunities for a given post."""
+    """POST /v1/internal-links/suggest — Suggest up to 5 internal link opportunities for a given post."""
     if not body.all_posts:
         return InternalLinksResponse(suggestions=[])
 
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=get_tenant_anthropic_key(tenant) or settings.anthropic_api_key.get_secret_value())
 
     # Build compact post list.
     post_list = "\n".join(
@@ -66,45 +71,43 @@ async def suggest_links(
 
     content_snippet = body.post_content[:1500]
 
-    prompt = (
-        f"You are an SEO expert. Given the post titled '{body.post_title}' with this content:\n\n"
+    system_prompt = (
+        "You are an SEO expert who suggests internal linking opportunities. "
+        "Return valid JSON only."
+    )
+    user_prompt = (
+        f"Given the post titled '{body.post_title}' with this content:\n\n"
         f"{content_snippet}\n\n"
         f"And these other published posts on the same site:\n{post_list}\n\n"
         f"Suggest up to 5 internal link opportunities. For each, identify a phrase "
-        f"that already appears verbatim in the post content, and match it to the most "
-        f"relevant target post URL.\n\n"
-        f"Return ONLY a JSON array:\n"
-        f'[{{"anchor_text":"<exact phrase from content>","target_url":"<url>","target_title":"<title>"}}]'
+        f"that already appears verbatim in the post content (anchor_text), and match it "
+        f"to the most relevant target post (target_url, target_title)."
     )
 
-    response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=600,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    raw = response.content[0].text.strip()  # type: ignore[index]
+    gateway = LLMGateway(settings, tenant.id, api_key_override=get_tenant_anthropic_key(tenant))
 
     try:
-        suggestions_raw = _json.loads(raw)
-    except _json.JSONDecodeError:
-        match = re.search(r"\[.*\]", raw, re.DOTALL)
-        if not match:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Model returned non-JSON: {raw[:200]}",
-            )
-        suggestions_raw = _json.loads(match.group())
-
-    suggestions = [
-        LinkSuggestion(
-            anchor_text=s.get("anchor_text", ""),
-            target_url=s.get("target_url", ""),
-            target_title=s.get("target_title", ""),
+        result = await gateway.complete(
+            ModelTier.CLASSIFY,
+            system_prompt,
+            user_prompt,
+            _InternalLinksLLM,
+            max_tokens=600,
         )
-        for s in suggestions_raw
-        if s.get("anchor_text") and s.get("target_url")
-    ]
+    except LLMParseError as exc:
+        logger.error("internal_links_parse_failure", tenant_id=str(tenant.id), error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The AI returned an unreadable response. Please try again.",
+        )
+    except Exception as exc:  # anthropic SDK errors (timeout/connection/status)
+        logger.error("internal_links_llm_failure", tenant_id=str(tenant.id), error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not reach the AI provider. Please try again in a moment.",
+        )
+
+    suggestions = [s for s in result.suggestions if s.anchor_text and s.target_url]
 
     logger.info(
         "internal_links_suggested",
@@ -113,4 +116,8 @@ async def suggest_links(
         suggestion_count=len(suggestions),
     )
 
-    return InternalLinksResponse(suggestions=suggestions)
+    usage = gateway.last_usage
+    return InternalLinksResponse(
+        suggestions=suggestions,
+        meta=GenerationMeta(model=usage["model"], cost_usd=usage["cost_usd"]),
+    )

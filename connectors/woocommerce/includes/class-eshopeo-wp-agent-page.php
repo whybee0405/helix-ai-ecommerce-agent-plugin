@@ -463,7 +463,7 @@ class Eshopeo_WP_Agent_Page {
                             <button id="hwpa-digest-test" class="hwpa-btn hwpa-btn-secondary hwpa-btn-sm">Send Test Digest</button>
                             <div class="hwpa-spinner" id="hwpa-digest-spinner"></div>
                         </div>
-                        <p id="hwpa-digest-result" style="margin:10px 0 0;font-size:12px;display:none;"></p>
+                        <div id="hwpa-digest-result" style="margin:10px 0 0;font-size:12px;display:none;"></div>
                     </div>
                 </div>
             </div>
@@ -1015,6 +1015,64 @@ class Eshopeo_WP_Agent_Page {
             /* ═══════════════════════════════════════════════════════════
              *  QUICK ACTIONS
              * ═══════════════════════════════════════════════════════════ */
+
+            /* Renders a quick-action dry-run/result payload as a readable
+             * preview instead of a raw JSON dump — every action already
+             * returns a human-written "preview" sentence server-side, plus
+             * an optional array field (sample/rows/offenders/etc.) that we
+             * render as a table. Falls back to a collapsed raw-JSON view
+             * only when the payload has neither. */
+            function renderQuickActionPreview(d) {
+                var html = '';
+                if (d.preview) {
+                    html += '<p style="font-size:13px;color:#374151;margin:0 0 12px;">' + escHtml(String(d.preview)) + '</p>';
+                }
+
+                var statBits = [];
+                if (d.count !== undefined) statBits.push(d.count + ' item(s)');
+                if (d.affected !== undefined) statBits.push(d.affected + ' affected');
+                if (statBits.length) {
+                    html += '<div style="display:inline-block;background:#eef2ff;color:#4338ca;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;margin-bottom:12px;">' + escHtml(statBits.join(' • ')) + '</div>';
+                }
+
+                var listKeys = ['sample', 'rows', 'offenders', 'attachments', 'images', 'admins', 'list', 'items'];
+                var rows = null;
+                for (var i = 0; i < listKeys.length; i++) {
+                    var candidate = d[listKeys[i]];
+                    if (Array.isArray(candidate) && candidate.length && typeof candidate[0] === 'object') {
+                        rows = candidate;
+                        break;
+                    }
+                }
+
+                if (rows) {
+                    var cols = Object.keys(rows[0]).slice(0, 6);
+                    html += '<div style="overflow-x:auto;max-height:260px;overflow-y:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
+                    html += '<thead><tr>' + cols.map(function (c) {
+                        return '<th style="text-align:left;padding:6px 8px;border-bottom:2px solid #e5e7eb;white-space:nowrap;">' + escHtml(c) + '</th>';
+                    }).join('') + '</tr></thead><tbody>';
+                    rows.slice(0, 25).forEach(function (r) {
+                        html += '<tr>' + cols.map(function (c) {
+                            var v = r[c];
+                            if (v === null || v === undefined) v = '';
+                            if (typeof v === 'object') v = JSON.stringify(v);
+                            return '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escAttr(String(v)) + '">' + escHtml(String(v)) + '</td>';
+                        }).join('') + '</tr>';
+                    });
+                    html += '</tbody></table></div>';
+                    if (rows.length > 25) {
+                        html += '<p style="font-size:11px;color:#9ca3af;margin:6px 0 0;">Showing 25 of ' + rows.length + ' row(s).</p>';
+                    }
+                }
+
+                if (!html) {
+                    html = '<details><summary style="cursor:pointer;font-size:12px;color:#6b7280;">View raw response</summary>' +
+                        '<pre style="background:#f3f4f6;border-radius:6px;padding:12px;font-size:12px;white-space:pre-wrap;word-break:break-all;margin-top:8px;">' +
+                        escHtml(JSON.stringify(d, null, 2)) + '</pre></details>';
+                }
+                return html;
+            }
+
             var currentAction = null;
             var modal         = document.getElementById('hwpa-modal');
             var modalTitle    = document.getElementById('hwpa-modal-title');
@@ -1041,7 +1099,7 @@ class Eshopeo_WP_Agent_Page {
                     if (highRisk) {
                         html += '<div class="hwpa-modal-warning">&#9888; This action is <strong>high-risk</strong> and cannot be undone. Type <strong>CONFIRM</strong> below to proceed.</div>';
                     }
-                    html += '<pre style="background:#f3f4f6;border-radius:6px;padding:12px;font-size:12px;white-space:pre-wrap;word-break:break-all;">' + escHtml(JSON.stringify(d, null, 2)) + '</pre>';
+                    html += renderQuickActionPreview(d);
                     if (highRisk) {
                         html += '<label style="font-size:12px;font-weight:500;color:#374151;">Type CONFIRM to enable execution:</label>';
                         html += '<input type="text" id="hwpa-confirm-input" class="hwpa-confirm-input" placeholder="CONFIRM">';
@@ -1309,6 +1367,38 @@ class Eshopeo_WP_Agent_Page {
                 chatInput.disabled = false;
             }
 
+            /* Tool-call results come from arbitrary WP REST endpoints, so shape
+             * varies per tool. When the result is a flat object we render a
+             * readable key/value list; otherwise fall back to the (still
+             * collapsed-by-default) raw JSON view. */
+            function renderToolResult(result) {
+                if (result && typeof result === 'object' && !Array.isArray(result)) {
+                    var keys = Object.keys(result);
+                    var flat = keys.length > 0 && keys.every(function (k) {
+                        var v = result[k];
+                        return v === null || typeof v !== 'object';
+                    });
+                    if (flat && keys.length <= 12) {
+                        var rows = keys.map(function (k) {
+                            var v = result[k];
+                            if (v === null || v === undefined) v = '—';
+                            return '<tr><td style="padding:3px 8px 3px 0;color:#6b7280;white-space:nowrap;vertical-align:top;">' + escHtml(k) + '</td><td style="padding:3px 0;color:#111827;word-break:break-word;">' + escHtml(String(v)) + '</td></tr>';
+                        }).join('');
+                        return '<table class="hwpa-tool-pre" style="font-size:11px;border-collapse:collapse;">' + rows + '</table>';
+                    }
+                }
+                return '<pre class="hwpa-tool-pre">' + escHtml(JSON.stringify(result, null, 2)) + '</pre>';
+            }
+
+            /* Small muted "generated with Haiku · $0.0002" footer for AI
+             * generation results that carry a meta{model,cost_usd} block. */
+            function metaFooter(d) {
+                if (!d || !d.meta || !d.meta.model) return '';
+                var cost = typeof d.meta.cost_usd === 'number' ? '$' + d.meta.cost_usd.toFixed(4) : '';
+                return '<div class="eshopeo-usage-card-sub" style="margin-top:10px;font-size:11px;color:#9ca3af;">Generated with ' +
+                    escHtml(d.meta.model) + (cost ? ' · ' + cost : '') + '</div>';
+            }
+
             /* ── Prompts modal ──────────────────────────────────────────── */
             var promptsOverlay = document.getElementById('hwpa-prompts-overlay');
             document.getElementById('hwpa-prompts-open').addEventListener('click', function () {
@@ -1376,8 +1466,7 @@ class Eshopeo_WP_Agent_Page {
                         var tcHtml = '<div class="hwpa-tool-calls">';
                         res.tool_calls.forEach(function (tc) {
                             var label = tc.name.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
-                            var detail = JSON.stringify(tc.result, null, 2);
-                            tcHtml += '<details class="hwpa-tool-detail"><summary><span class="hwpa-tool-chip"><span class="hwpa-tool-chip-icon">⚙</span> ' + escHtml(label) + '</span></summary><pre class="hwpa-tool-pre">' + escHtml(detail) + '</pre></details>';
+                            tcHtml += '<details class="hwpa-tool-detail"><summary><span class="hwpa-tool-chip"><span class="hwpa-tool-chip-icon">⚙</span> ' + escHtml(label) + '</span></summary>' + renderToolResult(tc.result) + '</details>';
                         });
                         tcHtml += '</div>';
                         appendBubble('tool-result', tcHtml);
@@ -1954,12 +2043,14 @@ class Eshopeo_WP_Agent_Page {
                 }
 
                 document.getElementById('hwpa-at-scan').addEventListener('click', loadAlt);
-                document.getElementById('hwpa-at-gen-all').addEventListener('click', function () {
+                var atGenAllBtn = document.getElementById('hwpa-at-gen-all');
+                atGenAllBtn.addEventListener('click', function () {
                     if (!atItems.length) { toast('Scan first.', 'error'); return; }
+                    atGenAllBtn.disabled = true;
                     atSpinner.style.display = 'inline-block';
                     var i = 0;
                     function genNext() {
-                        if (i >= atItems.length) { atSpinner.style.display = 'none'; toast('All alt texts generated.', 'success'); loadAlt(); return; }
+                        if (i >= atItems.length) { atGenAllBtn.disabled = false; atSpinner.style.display = 'none'; toast('All alt texts generated.', 'success'); loadAlt(); return; }
                         ajaxPost('eshopeo_alt_text_generate_one', { attachment_id: atItems[i].id }, function () { i++; genNext(); });
                     }
                     genNext();
@@ -2012,12 +2103,14 @@ class Eshopeo_WP_Agent_Page {
                 }
 
                 document.getElementById('hwpa-sm-scan').addEventListener('click', loadSeo);
-                document.getElementById('hwpa-sm-gen-all').addEventListener('click', function () {
+                var smGenAllBtn = document.getElementById('hwpa-sm-gen-all');
+                smGenAllBtn.addEventListener('click', function () {
                     if (!smItems.length) { toast('Scan first.', 'error'); return; }
+                    smGenAllBtn.disabled = true;
                     smSpinner.style.display = 'inline-block';
                     var i = 0;
                     function genNext() {
-                        if (i >= smItems.length) { smSpinner.style.display = 'none'; toast('All SEO meta generated.', 'success'); loadSeo(); return; }
+                        if (i >= smItems.length) { smGenAllBtn.disabled = false; smSpinner.style.display = 'none'; toast('All SEO meta generated.', 'success'); loadSeo(); return; }
                         ajaxPost('eshopeo_seo_generate_one', { post_id: smItems[i].ID }, function () { i++; genNext(); });
                     }
                     genNext();
@@ -2076,6 +2169,7 @@ class Eshopeo_WP_Agent_Page {
                             d.cons.forEach(function (c) { html += '<span style="background:#fee2e2;color:#7f1d1d;padding:3px 10px;border-radius:20px;font-size:12px;">' + escHtml(c) + '</span>'; });
                             html += '</div></div>';
                         }
+                        html += metaFooter(d);
                         html += '</div>';
                         rvResult.innerHTML = html;
                     });
@@ -2091,12 +2185,15 @@ class Eshopeo_WP_Agent_Page {
             (function () {
                 var ilResults = document.getElementById('hwpa-il-results');
                 var ilSpinner = document.getElementById('hwpa-il-spinner');
+                var ilBtn     = document.getElementById('hwpa-il-suggest');
 
-                document.getElementById('hwpa-il-suggest').addEventListener('click', function () {
+                ilBtn.addEventListener('click', function () {
                     var pid = document.getElementById('hwpa-il-post-id').value;
                     if (!pid) { toast('Enter a Post ID.', 'error'); return; }
+                    ilBtn.disabled = true;
                     ilSpinner.style.display = 'inline-block';
                     ajaxPost('eshopeo_internal_links_suggest', { post_id: pid }, function (res) {
+                        ilBtn.disabled = false;
                         ilSpinner.style.display = 'none';
                         if (!res.success) { ilResults.innerHTML = '<p style="color:#ef4444;">' + escHtml(String(res.data || 'Failed')) + '</p>'; return; }
                         var sugs = res.data.suggestions || [];
@@ -2149,10 +2246,12 @@ class Eshopeo_WP_Agent_Page {
                 var bgSpinner = document.getElementById('hwpa-bg-spinner');
                 var bgData    = null;
 
-                document.getElementById('hwpa-bg-generate').addEventListener('click', function () {
+                var bgBtn = document.getElementById('hwpa-bg-generate');
+                bgBtn.addEventListener('click', function () {
                     var topic = document.getElementById('hwpa-bg-topic').value.trim();
                     if (!topic) { toast('Enter a topic.', 'error'); return; }
                     var tone = document.querySelector('input[name="hwpa-bg-tone"]:checked');
+                    bgBtn.disabled = true;
                     bgSpinner.style.display = 'inline-block';
                     bgResult.innerHTML = '';
                     bgData = null;
@@ -2164,6 +2263,7 @@ class Eshopeo_WP_Agent_Page {
                         word_count: document.getElementById('hwpa-bg-wordcount').value,
                         save_draft: '0',
                     }, function (res) {
+                        bgBtn.disabled = false;
                         bgSpinner.style.display = 'none';
                         if (!res.success) { bgResult.innerHTML = '<p style="color:#ef4444;">' + escHtml(String(res.data || 'Failed')) + '</p>'; return; }
                         bgData = res.data;
@@ -2178,7 +2278,9 @@ class Eshopeo_WP_Agent_Page {
                             bgData.suggested_tags.forEach(function (t) { html += '<span style="background:#f3f4f6;padding:2px 8px;border-radius:10px;">' + escHtml(t) + '</span>'; });
                             html += '</div>';
                         }
-                        html += '</div></div>';
+                        html += '</div>';
+                        html += metaFooter(bgData);
+                        html += '</div>';
                         bgResult.innerHTML = html;
                         document.getElementById('hwpa-bg-save').addEventListener('click', function () {
                             var saveBtn = this;
@@ -2267,15 +2369,18 @@ class Eshopeo_WP_Agent_Page {
             (function () {
                 var rpResult  = document.getElementById('hwpa-rp-result');
                 var rpSpinner = document.getElementById('hwpa-rp-spinner');
+                var rpBtn     = document.getElementById('hwpa-rp-generate');
 
-                document.getElementById('hwpa-rp-generate').addEventListener('click', function () {
+                rpBtn.addEventListener('click', function () {
                     var pid = document.getElementById('hwpa-rp-post-id').value;
                     if (!pid) { toast('Enter a Post ID.', 'error'); return; }
                     var formats = [];
                     document.querySelectorAll('.hwpa-rp-format:checked').forEach(function (cb) { formats.push(cb.value); });
                     if (!formats.length) { toast('Select at least one format.', 'error'); return; }
+                    rpBtn.disabled = true;
                     rpSpinner.style.display = 'inline-block';
                     ajaxPost('eshopeo_repurpose', { post_id: pid, formats: formats.join(',') }, function (res) {
+                        rpBtn.disabled = false;
                         rpSpinner.style.display = 'none';
                         if (!res.success) { rpResult.innerHTML = '<p style="color:#ef4444;">' + escHtml(String(res.data || 'Failed')) + '</p>'; return; }
                         var d = res.data;
@@ -2301,6 +2406,7 @@ class Eshopeo_WP_Agent_Page {
                             });
                             html += '</div>';
                         }
+                        html += metaFooter(d);
                         html += '</div>';
                         rpResult.innerHTML = html;
                         rpResult.querySelectorAll('.hwpa-rp-copy').forEach(function (btn) {
@@ -2399,8 +2505,15 @@ class Eshopeo_WP_Agent_Page {
                         digestSpinner.style.display = 'none';
                         digestResult.style.display = 'block';
                         if (res.success) {
-                            digestResult.style.color = '#10b981';
-                            digestResult.textContent = 'Digest sent to ' + res.data.email + '.';
+                            var d = res.data;
+                            var bodySnippet = String(d.body || '').slice(0, 220);
+                            var html = '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-top:4px;">';
+                            html += '<div style="font-size:11px;color:#10b981;font-weight:600;margin-bottom:6px;">&#10003; Sent to ' + escHtml(d.email) + '</div>';
+                            html += '<div style="font-size:13px;font-weight:600;color:#1e1b4b;margin-bottom:4px;">' + escHtml(d.subject || '') + '</div>';
+                            html += '<div style="font-size:12px;color:#6b7280;">' + escHtml(bodySnippet) + (String(d.body || '').length > 220 ? '…' : '') + '</div>';
+                            html += metaFooter(d);
+                            html += '</div>';
+                            digestResult.innerHTML = html;
                             toast('Test digest sent.', 'success');
                         } else {
                             digestResult.style.color = '#ef4444';

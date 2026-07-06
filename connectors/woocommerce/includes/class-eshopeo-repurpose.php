@@ -52,32 +52,20 @@ class Eshopeo_Repurpose {
 
         $content = wp_strip_all_tags( $post->post_content );
 
-        $response = wp_remote_post(
-            trailingslashit( $api_url ) . 'v1/content/repurpose',
+        $client = new Eshopeo_API_Client( $api_url, $pub_key );
+        $body   = $client->content_generate(
+            'content/repurpose',
             [
-                'timeout' => 60,
-                'headers' => [
-                    'Content-Type'       => 'application/json',
-                    'X-eShopeo-Tenant-Key' => $pub_key,
-                ],
-                'body'    => wp_json_encode( [
-                    'source_title'   => $post->post_title,
-                    'source_content' => mb_substr( $content, 0, 3000 ),
-                    'formats'        => array_values( $formats ),
-                    'pack_id'        => $pack_id,
-                ] ),
-            ]
+                'source_title'   => $post->post_title,
+                'source_content' => mb_substr( $content, 0, 3000 ),
+                'formats'        => array_values( $formats ),
+                'pack_id'        => $pack_id,
+            ],
+            60
         );
 
-        if ( is_wp_error( $response ) ) {
-            wp_send_json_error( $response->get_error_message(), 502 );
-        }
-
-        $code = (int) wp_remote_retrieve_response_code( $response );
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-
-        if ( $code !== 200 ) {
-            wp_send_json_error( 'API error: ' . esc_html( wp_remote_retrieve_body( $response ) ), 502 );
+        if ( is_wp_error( $body ) ) {
+            wp_send_json_error( $body->get_error_message(), 502 );
         }
 
         wp_send_json_success( [

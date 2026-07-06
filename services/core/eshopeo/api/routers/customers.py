@@ -1,3 +1,11 @@
+"""
+Customers router — dashboard read access to synced customer records.
+
+GET /v1/customers                                  — list customers
+GET /v1/customers/{customer_id}/conversations       — a customer's conversation history
+GET /v1/customers/{customer_id}                     — customer detail
+"""
+
 from typing import Annotated
 from uuid import UUID
 
@@ -46,6 +54,7 @@ async def list_customers_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> CustomerListResponse:
+    """GET /v1/customers."""
     customers = await list_customers(db, tenant.id, limit=limit, offset=offset)
     total = await count_customers(db, tenant.id)
     return CustomerListResponse(
@@ -73,6 +82,7 @@ async def get_customer_conversations_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> CustomerConversationsResponse:
+    """GET /v1/customers/{customer_id}/conversations."""
     customer = await get_customer_by_id(db, customer_id, tenant.id)
     if customer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
@@ -98,6 +108,7 @@ async def get_customer_endpoint(
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> CustomerOut:
+    """GET /v1/customers/{customer_id}."""
     customer = await get_customer_by_id(db, customer_id, tenant.id)
     if customer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
